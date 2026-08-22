@@ -668,6 +668,19 @@ svg.buildup text.scap{font-size:6.4px;font-weight:700;letter-spacing:.7px;fill:v
 #layer-card .hint{margin-top:6px;font-size:10px;color:var(--ink-3)}
 
 /* the load path */
+.chain{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-bottom:9px;
+  font-size:11px;line-height:1.5}
+.chain .lnk{padding:2px 7px;border-radius:999px;border:1px solid var(--line);
+  background:var(--bg-0);color:var(--ink-1)}
+.chain .lnk.surface{border-color:#8fb8e8;color:#8fb8e8}
+.chain .lnk.horizontal{border-color:#7fc9a6;color:#7fc9a6}
+.chain .lnk.inclined{border-color:#e58b4a;color:#e58b4a}
+.chain .lnk.vertical{border-color:#d6453f;color:#d6453f}
+.chain .arw{color:var(--ink-3)}
+.chip-btn.path-surface[aria-pressed="true"]{border-color:#8fb8e8;color:#8fb8e8;background:rgba(143,184,232,.14)}
+.chip-btn.path-horizontal[aria-pressed="true"]{border-color:#7fc9a6;color:#7fc9a6;background:rgba(127,201,166,.14)}
+.chip-btn.path-inclined[aria-pressed="true"]{border-color:#e58b4a;color:#e58b4a;background:rgba(229,139,74,.14)}
+.chip-btn.path-vertical[aria-pressed="true"]{border-color:#d6453f;color:#d6453f;background:rgba(214,69,63,.14)}
 #cmd .stat{font-size:11px;color:var(--ink-2);white-space:nowrap;padding:0 2px}
 #cmd .stat b{font-family:var(--mono);font-size:12px;color:var(--ink-0);font-weight:640}
 table.loads{font-size:10.5px;width:100%}
@@ -3877,8 +3890,14 @@ const Gen = (() => {
     const support = {};                 // levelId -> { kind, points, lines }
     const base = { points:[], lines:[], kind:'points' };
 
+    /* Read the slot from the document we were HANDED, not from the Store. They
+       are the same object in the running app, but a comparison, a test or any
+       what-if generation passes a different document - and silently generating
+       the wrong building from the right document is a nasty way to be wrong. */
     const pick = (part, levelId) => {
-      const slot = Store.slot ? Store.slot(part, levelId) : (M.slots[part] || {});
+      const b = M.slots[part] || { sys:null, p:{} };
+      const over = levelId && M.perLevel && M.perLevel[levelId] && M.perLevel[levelId][part];
+      const slot = over ? { sys:over.sys || b.sys, p:Object.assign({}, b.p, over.p) } : b;
       const s = SYSTEMS[slot.sys];
       if(!s) return null;
       const p = {};
@@ -4170,6 +4189,102 @@ const Loads = (() => {
              worst, maxN:worst ? worst.N : 0, wFloor, wRoof };
   }
 
+  /* --- which way does the load travel through this member? ----------------
+     One geometric rule covers every system there is or will be. A role name
+     would need a list to keep up with; a direction vector does not. */
+  const VERT = 0.94, HORIZ = 0.09;
+  function classify(a, b){
+    const dx = b[0]-a[0], dy = b[1]-a[1], dz = b[2]-a[2];
+    const L = Math.hypot(dx, dy, dz) || 1;
+    const uy = Math.abs(dy/L);
+    return uy > VERT ? 'vertical' : uy < HORIZ ? 'horizontal' : 'inclined';
+  }
+
+  /** Roles that carry floor or roof load along themselves to a support. */
+  const SPANNING = new Set(['joist','secondary','primary','purlin','plank','rib',
+                            'rafter','truss','beam','edge','panel','deck','slab',
+                            'topping','tie','ridge']);
+
+  /**
+   * Where the load goes ALONG the structure, not just down it.
+   *
+   * A level's load is shared out among the members that span it, in proportion
+   * to the strip of floor each one carries. Each member then delivers half of
+   * what it collects to the support at either end - the classic w·L/2 - and an
+   * inclined member also pushes its support sideways, which is the whole reason
+   * a pitched roof needs a tie.
+   *
+   * The shares are normalised so they add back up to the level's load. Nothing
+   * may be lost travelling horizontally any more than vertically, and the test
+   * suite checks both.
+   */
+  function paths(doc, plans){
+    const base = compute(doc);
+    const grid = base.grid, levels = base.levels;
+    const byLevel = new Map(base.rows.map(r => [r.id, r]));
+    const segs = [];
+
+    // members that actually span, grouped by the level whose load they carry
+    const spans = new Map();
+    for(const pl of plans){
+      if(pl.part === 'connection' || pl.part === 'foundation') continue;
+      if(pl.kind !== 'member' && pl.kind !== 'run') continue;
+      if(!SPANNING.has(pl.role)) continue;
+      const r = byLevel.get(pl.level);
+      if(!r) continue;
+      const L = Math.hypot(pl.b[0]-pl.a[0], pl.b[1]-pl.a[1], pl.b[2]-pl.a[2]);
+      if(L < 0.4) continue;
+      const n = pl.kind === 'run' ? (pl.count || 1) : 1;
+      // the strip of floor this member carries: the spacing of its own family
+      // where there is one, otherwise the bay it sits in
+      const step = pl.kind === 'run' && pl.step
+        ? Math.hypot(pl.step[0], pl.step[1], pl.step[2]) : 0;
+      const trib = step > 0.05 ? step : Math.min(grid.sx, grid.sz)/2;
+      const kind = classify(pl.a, pl.b);
+      const list = spans.get(pl.level) || (spans.set(pl.level, []), spans.get(pl.level));
+      list.push({ pl, L, n, trib, kind, share:L*trib*n });
+    }
+
+    for(const [levelId, list] of spans){
+      const r = byLevel.get(levelId);
+      const totalShare = list.reduce((a, x) => a + x.share, 0) || 1;
+      // normalise: whatever the strips came to, together they carry this level
+      const k = r.load/totalShare;
+      for(const x of list){
+        const load = x.share*k;              // kN carried by the whole family
+        const each = load/x.n;               // kN carried by one member of it
+        const R = each/2;                    // delivered to each end
+        const rise = Math.abs(x.pl.b[1] - x.pl.a[1]);
+        const run  = Math.hypot(x.pl.b[0]-x.pl.a[0], x.pl.b[2]-x.pl.a[2]);
+        // a sloping member pushes its foot outward: H = V / tan(pitch)
+        const thrust = x.kind === 'inclined' && rise > 1e-6 ? R*(run/rise) : 0;
+        segs.push({ addr:x.pl.addr, role:x.pl.role, level:levelId, kind:x.kind,
+                    a:x.pl.a, b:x.pl.b, count:x.n, step:x.pl.step || null,
+                    length:x.L, trib:x.trib, inferred:!(x.pl.kind === 'run' && x.pl.step),
+                    lineLoad:each/x.L, each, R, thrust,
+                    pitch: rise > 1e-6 ? Math.atan2(rise, run)*180/Math.PI : 0 });
+      }
+    }
+
+    // the vertical half, from the takedown already computed
+    if(!base.onWalls) for(const sp of base.supports)
+      for(const s of sp.perLevel)
+        segs.push({ kind:'vertical', level:s.level, ref:sp.ref,
+                    a:[sp.x, s.y, sp.z], b:[sp.x, levels[0].y, sp.z], N:s.N });
+
+    const per = kindTotals(segs);
+    return Object.assign({}, base, { segs, per,
+      delivered: segs.filter(s => s.kind !== 'vertical')
+                     .reduce((a, s) => a + s.R*2*(s.count || 1)/(s.count || 1), 0) });
+  }
+
+  /** How much of each kind there is, for the panel and the filter chips. */
+  function kindTotals(segs){
+    const out = { surface:0, horizontal:0, inclined:0, vertical:0 };
+    for(const s of segs) if(out[s.kind] !== undefined) out[s.kind]++;
+    return out;
+  }
+
   /** A colour ramp for load: pale where it is light, deep red where it is heavy. */
   function colourFor(t){
     const stops = [[0.00, 0x8fb8e8], [0.35, 0x7fc9a6], [0.60, 0xe8c463],
@@ -4188,7 +4303,7 @@ const Loads = (() => {
     return stops[stops.length-1][1];
   }
 
-  return { compute, colourFor };
+  return { compute, paths, classify, colourFor, SPANNING };
 })();
 
 /* ==========================================================================
@@ -4430,6 +4545,8 @@ const Render = (() => {
     fitOrtho(w/h);
     scene.traverse(o => { if(o.material && o.material.isLineMaterial) o.material.resolution.set(w,h); });
     dirty = true;
+    // setSize cleared the buffer; draw before the browser gets a chance to show it
+    if(camera && !inRender) renderNow();
   }
 
   /**
@@ -4439,14 +4556,56 @@ const Render = (() => {
    * rejected early - that is the difference between a smooth orbit and a
    * stuttering one. Both are restored the instant the drag ends.
    */
-  let interacting = false, fullPixelRatio = 1;
-  function setInteracting(v){
-    if(v === interacting || !renderer) return;
-    interacting = v;
-    renderer.setPixelRatio(v ? 1 : fullPixelRatio);   // this re-applies setSize itself
-    labelRenderer.domElement.style.visibility = v ? 'hidden' : '';
-    if(!v){ lastBudget = 0; }                         // force one re-budget on release
+  let interacting = false, fullPixelRatio = 1, restoreTimer = null;
+
+  /**
+   * Changing the pixel ratio resizes the drawing buffer, and a resize CLEARS it.
+   * Leaving the redraw to the next animation frame lets the browser composite an
+   * empty canvas first, so the draw has to happen here, in the same task.
+   */
+  function applyRatio(v){
+    if(!renderer || renderer.getPixelRatio() === v) return;
+    renderer.setPixelRatio(v);
+    if(scene && camera) renderNow();
     dirty = true;
+  }
+
+  /**
+   * Only a SUSTAINED gesture is worth dropping resolution for.
+   *
+   * OrbitControls dispatches `start` and `end` back to back inside a single
+   * wheel event, so acting on them literally reallocated the drawing buffer
+   * twice per notch of the scroll wheel - measured at 120 reallocations for 30
+   * notches. Reallocating is what the eye sees as flashing, and it is worth
+   * nothing on a gesture that is already over.
+   *
+   * So the drop waits: if the pointer is still down after a moment, the gesture
+   * is a real orbit and the resolution comes down once. A wheel notch, a click,
+   * a tap - anything finished inside that moment - never resizes at all.
+   */
+  const HOLD_MS = 110, RESTORE_MS = 220;
+  let holdTimer = null;
+  function setInteracting(v){
+    if(holdTimer){ clearTimeout(holdTimer); holdTimer = null; }
+    if(restoreTimer){ clearTimeout(restoreTimer); restoreTimer = null; }
+    if(v){
+      if(interacting) return;
+      holdTimer = setTimeout(() => {
+        holdTimer = null;
+        interacting = true;
+        labelRenderer.domElement.style.visibility = 'hidden';
+        applyRatio(1);
+      }, HOLD_MS);
+      return;
+    }
+    if(!interacting) return;               // the gesture ended before it counted
+    restoreTimer = setTimeout(() => {
+      restoreTimer = null;
+      interacting = false;
+      labelRenderer.domElement.style.visibility = '';
+      lastBudget = 0;                      // force one re-budget on release
+      applyRatio(fullPixelRatio);
+    }, RESTORE_MS);
   }
 
   function start(){ if(!raf && !disposed) raf = requestAnimationFrame(tick); }
@@ -4469,8 +4628,13 @@ const Render = (() => {
      release. When it is running, it is throttled: label positions do not need
      re-budgeting sixty times a second. */
   const LBL_MS = 100;
-  let lastBudget = 0;
+  let lastBudget = 0, inRender = false;
   function renderNow(){
+    if(inRender) return;                    // resize() may draw, and drawing may resize
+    inRender = true;
+    try { renderFrame(); } finally { inRender = false; }
+  }
+  function renderFrame(){
     if(!(renderHook && renderHook())) renderer.render(scene, camera);
     if(interacting) return;
     labelRenderer.render(scene, camera);
@@ -5235,7 +5399,11 @@ const View = (() => {
     // planes are per layer and cannot follow each leaf, so a cut through a wall
     // that had moved would be a cut in the wrong place.
     const sideways = !state.section.on;
-    for(const o of Realize.groups){
+    // The load diagram carries the same layer and wall stamps as the elements it
+    // describes, so opening the walls takes their load band with them and the
+    // column sleeves stay on the frame now visible behind.
+    const moving = Realize.groups.concat(Render.groups.loads.children);
+    for(const o of moving){
       const l = o.userData.layer ?? 3;
       const w = o.userData.wall;
       let x = 0, z = 0;
@@ -6989,107 +7157,273 @@ const Compare = (() => {
 /* ==========================================================================
    19b  LOAD PATH - the takedown, drawn
    ==========================================================================
-   Loads.compute does the arithmetic; this draws it. Around every column stands
-   a translucent sleeve, one segment per storey, that widens and warms in colour
-   as the load accumulates on the way down. The shape is the point: a student
-   can see the load being collected floor by floor and arriving at the ground
-   as something several times larger than it started.
+   Loads.compute does the vertical arithmetic and Loads.paths the horizontal;
+   this draws both. Around every column stands a translucent sleeve, one segment
+   per storey, that widens and warms in colour as the load accumulates on the
+   way down - and along every member runs an arrow pointing the way the weight
+   actually travels.
 
-   The sleeve's cross-section is proportional to the load, not its width, so a
-   column carrying four times as much looks four times as heavy rather than
-   sixteen times.
+   The three directions are the point. Load starts spread over a SURFACE, is
+   collected HORIZONTALLY by joists and beams into a few points, may run down an
+   INCLINED rafter on the way, and finally goes VERTICALLY down a column or wall
+   to the ground. A student who can name those four steps on their own building
+   understands the structure.
+
+   An inclined member gets one arrow nothing else in the app can show: the
+   horizontal thrust at its foot. A pitched roof pushes its walls apart, and
+   that is the entire reason a ceiling tie exists.
    ========================================================================== */
 const LoadPath = (() => {
-  let on = false, data = null;
+  let on = false, data = null, filter = 'all', shown = null;
+
+  const KINDS = ['surface','horizontal','inclined','vertical'];
+  const KIND_LABEL = { surface:'Surface', horizontal:'Horizontal',
+                       inclined:'Inclined', vertical:'Vertical' };
+  const THRUST_COL = 0xd6453f;
 
   const MAT = new Map();
-  function mat(hex){
-    if(MAT.has(hex)) return MAT.get(hex);
+  function mat(hex, opacity = 0.42){
+    const key = hex + '|' + opacity;
+    if(MAT.has(key)) return MAT.get(key);
     // depthTest off: a load diagram is of no use hidden inside the cladding it
-    // is trying to explain, so the sleeves read through the building like an
-    // overlay on a drawing.
-    const m = new THREE.MeshBasicMaterial({ color:hex, transparent:true, opacity:0.42,
+    // is trying to explain, so it reads through the building like an overlay.
+    const m = new THREE.MeshBasicMaterial({ color:hex, transparent:true, opacity,
       depthWrite:false, depthTest:false, side:THREE.DoubleSide });
-    MAT.set(hex, m);
+    MAT.set(key, m);
     return m;
   }
 
   const box = (() => { let g; return () => (g || (g = new THREE.BoxGeometry(1,1,1))); })();
+
+  /** A unit arrow: length 1 along +Y, radius 1, shaft and head in one geometry. */
+  const arrowGeo = (() => {
+    let g;
+    return () => {
+      if(g) return g;
+      const shaft = new THREE.CylinderGeometry(0.3, 0.3, 0.66, 7);
+      shaft.translate(0, 0.33, 0);
+      const head = new THREE.ConeGeometry(0.85, 0.34, 10);
+      head.translate(0, 0.83, 0);
+      g = BufferGeometryUtils.mergeGeometries([shaft, head]);
+      return g;
+    };
+  })();
+
+  /* Arrows are merged into one mesh per (colour, layer). The layer has to stay
+     separate so the diagram moves with the part it belongs to when the model is
+     exploded or opened; the colour, so the ramp still reads. */
+  let buckets = null;
+  const _up = new THREE.Vector3(0,1,0);
+  const _q = new THREE.Quaternion(), _d = new THREE.Vector3(), _s = new THREE.Vector3();
+  function arrow(from, dir, len, rad, hex, layer){
+    const L = Math.hypot(dir[0], dir[1], dir[2]);
+    if(L < 1e-6 || len < 1e-4) return;
+    _d.set(dir[0]/L, dir[1]/L, dir[2]/L);
+    _q.setFromUnitVectors(_up, _d);
+    const m = new THREE.Matrix4().compose(
+      new THREE.Vector3(from[0], from[1], from[2]), _q, _s.set(rad, len, rad));
+    const key = hex + '|' + layer;
+    let b = buckets.get(key);
+    if(!b){ b = { hex, layer, geos:[] }; buckets.set(key, b); }
+    const g = arrowGeo().clone();
+    g.applyMatrix4(m);
+    b.geos.push(g);
+  }
+
+  function flushArrows(g){
+    for(const b of buckets.values()){
+      if(!b.geos.length) continue;
+      const merged = BufferGeometryUtils.mergeGeometries(b.geos);
+      for(const x of b.geos) x.dispose();
+      if(!merged) continue;
+      const m = new THREE.Mesh(merged, mat(b.hex, 0.72));
+      m.renderOrder = 901;
+      m.userData = { loadpath:true, layer:b.layer };
+      g.add(m);
+    }
+    buckets = new Map();
+  }
 
   function clear(){
     Render.clearGroup(Render.groups.loads);
     Render.invalidate();
   }
 
+  const wants = k => filter === 'all' || filter === k;
+
+  /* --- drawing ------------------------------------------------------------ */
   function build(){
     const g = Render.groups.loads;
     Render.clearGroup(g);
-    if(!on) return;
+    if(!on){ shown = null; return; }
+    buckets = new Map();
     const doc = Store.doc;
-    data = Loads.compute(doc);
-    const levels = data.levels;
+    data = Loads.paths(doc, Gen.plans);
+    const levels = data.levels, grid = data.grid;
     const groundY = levels[0].y;
+    const span = Math.max(1, Math.min(grid.sx, grid.sz));
+    shown = { surface:[0,0], horizontal:[0,0], inclined:[0,0], vertical:[0,0] };
 
-    if(data.onWalls){
-      /* A wall gathers load along its whole length, so the sleeve is a band that
-         thickens storey by storey rather than a stack of boxes. */
-      const grid = data.grid;
-      const segs = [[[0,0],[grid.W,0]], [[grid.W,0],[grid.W,grid.D]],
-                    [[grid.W,grid.D],[0,grid.D]], [[0,grid.D],[0,0]]];
-      const maxPM = data.perMetre || 1;
-      for(let k = 0; k < data.rows.length; k++){
-        const r = data.rows[k];
-        const below = levels[levels.length - 1 - k - 1] || levels[0];
-        const t = r.cumulative/data.total;
-        /* A band wrapped round the building at each level, sticking OUT from the
-           wall by an amount proportional to the load it carries. Making the load
-           the projection rather than the height keeps the diagram beside the
-           building instead of painting over it - and a bar you read outward is
-           easier to compare storey to storey than a block of colour. */
-        const H = 0.3, proj = 0.12 + 0.9*Math.sqrt(t);
-        const y = below.y + (r.y - below.y)*0.12;
-        for(const [a, b] of segs){
-          const L = Math.hypot(b[0]-a[0], b[1]-a[1]);
-          const ang = Math.atan2(b[1]-a[1], b[0]-a[0]);
-          const n = Geom.normalOf(a, b);
-          const off = 0.12 + proj/2;
-          const m = new THREE.Mesh(box(), mat(Loads.colourFor(t)));
-          m.scale.set(L, H, proj);
-          m.position.set((a[0]+b[0])/2 + n[0]*off, y, (a[1]+b[1])/2 + n[1]*off);
-          m.rotation.y = -ang;
-          m.renderOrder = 900;
-          g.add(m);
-        }
-        g.add(Render.label(`${U.fx(r.cumulative/data.runLen, 0)} kN/m`,
-          new THREE.Vector3(-0.3 - proj, y, grid.D/2), 'val', 10));
+    /* 1. where it starts: a downward arrow over each bay of each level */
+    if(wants('surface')){
+      for(const r of data.rows){
+        const t = r.w/Math.max(...data.rows.map(x => x.w));
+        for(let i = 0; i < grid.nx - 1; i++)
+          for(let j = 0; j < grid.nz - 1; j++){
+            shown.surface[1]++;
+            if(shown.surface[0] >= 96) continue;
+            shown.surface[0]++;
+            const x = (grid.xs[i] + grid.xs[i+1])/2, z = (grid.zs[j] + grid.zs[j+1])/2;
+            arrow([x, r.y + 0.95, z], [0,-1,0], 0.8, 0.10 + 0.05*t,
+                  Loads.colourFor(0.12), r.isRoof ? 6 : 4);
+          }
       }
-    } else {
-      const maxN = data.maxN || 1;
-      for(const sp of data.supports){
-        const per = sp.perLevel;
-        for(let k = 0; k < per.length; k++){
-          const here = per[k];
-          const belowY = per[k+1] ? per[k+1].y : groundY;
-          const t = here.N/maxN;
-          const side = 0.3 + 1.0*Math.sqrt(t);
-          const m = new THREE.Mesh(box(), mat(Loads.colourFor(t)));
-          m.scale.set(side, Math.max(0.05, here.y - belowY), side);
-          m.position.set(sp.x, (here.y + belowY)/2, sp.z);
-          m.renderOrder = 900;
-          g.add(m);
-        }
-        // the number that matters: what arrives at the foundation
-        g.add(Render.label(`${U.fx(sp.N, 0)} kN`,
-          new THREE.Vector3(sp.x, groundY + 0.35, sp.z), 'val',
-          sp.N >= maxN*0.999 ? 12 : 8));
-      }
-      // and, on the worst column, the load at every storey it passes
-      const w = data.worst;
-      if(w) for(const s of w.perLevel)
-        g.add(Render.label(`${U.fx(s.N, 0)} kN`,
-          new THREE.Vector3(w.x + 0.6, s.y - 0.4, w.z + 0.6), 'val', 11));
     }
+
+    /* 2. along the members, to their supports. A run of 34 rafters becomes a
+          few arrows: the diagram has to stay a diagram. */
+    const horiz = data.segs.filter(s => s.kind === 'horizontal');
+    const incl  = data.segs.filter(s => s.kind === 'inclined');
+    const maxR  = Math.max(1, ...data.segs.filter(s => s.R).map(s => s.R));
+    const maxThrust = Math.max(1e-6, ...incl.map(s => s.thrust || 0));
+
+    for(const [list, kind, cap] of [[horiz,'horizontal',30], [incl,'inclined',26]]){
+      if(!wants(kind)) continue;
+      for(const s of list){
+        const n = s.count || 1;
+        shown[kind][1] += n;
+        const take = Math.min(n, n > 1 ? 2 : 1);          // at most two of a run
+        for(let k = 0; k < take; k++){
+          if(shown[kind][0] >= cap) break;
+          shown[kind][0]++;
+          const f = n > 1 ? (k + 0.5)/take : 0;
+          const off = s.step ? [s.step[0]*f*(n-1), s.step[1]*f*(n-1), s.step[2]*f*(n-1)] : [0,0,0];
+          const a = [s.a[0]+off[0], s.a[1]+off[1], s.a[2]+off[2]];
+          const b = [s.b[0]+off[0], s.b[1]+off[1], s.b[2]+off[2]];
+          const mid = [(a[0]+b[0])/2, (a[1]+b[1])/2, (a[2]+b[2])/2];
+          const t = s.R/maxR;
+          const len = Math.min(s.length*0.34, span*0.42);
+          const rad = 0.075 + 0.13*Math.sqrt(t);
+          const hex = Loads.colourFor(0.25 + 0.65*t);
+          const layer = s.level === levels[levels.length-1].id ? 5 : 3;
+          // from mid-span outward to each support: that is where the load goes
+          for(const end of [a, b]){
+            const d = [end[0]-mid[0], end[1]-mid[1], end[2]-mid[2]];
+            const dl = Math.hypot(d[0], d[1], d[2]) || 1;
+            const start = [mid[0] + d[0]/dl*0.18, mid[1] + d[1]/dl*0.18 + 0.30,
+                           mid[2] + d[2]/dl*0.18];
+            arrow(start, d, len, rad, hex, layer);
+          }
+          // and the sideways push an inclined member puts into its support
+          if(kind === 'inclined' && s.thrust > 0){
+            const low = a[1] <= b[1] ? a : b;
+            const out = [low[0] - mid[0], 0, low[2] - mid[2]];
+            const ol = Math.hypot(out[0], out[2]) || 1;
+            const ft = s.thrust/maxThrust;
+            arrow([low[0], low[1] + 0.12, low[2]], [out[0]/ol, 0, out[2]/ol],
+                  span*0.3*(0.55 + 0.45*ft), 0.09 + 0.11*Math.sqrt(ft), THRUST_COL, 5);
+          }
+        }
+      }
+    }
+
+    /* 3. down the vertical structure, inside the accumulation sleeve */
+    if(wants('vertical')){
+      if(data.onWalls) buildWallBands(g, data, levels, grid);
+      else buildColumnSleeves(g, data, levels, groundY);
+    }
+
+    flushArrows(g);
     Render.invalidate();
+  }
+
+  /** A wall gathers along its whole length, so it gets a band, not a stack. */
+  function buildWallBands(g, data, levels, grid){
+    const segs = [[[0,0],[grid.W,0]], [[grid.W,0],[grid.W,grid.D]],
+                  [[grid.W,grid.D],[0,grid.D]], [[0,grid.D],[0,0]]];
+    for(let k = 0; k < data.rows.length; k++){
+      const r = data.rows[k];
+      const below = levels[levels.length - 1 - k - 1] || levels[0];
+      const t = r.cumulative/data.total;
+      /* The load is the band's PROJECTION out from the wall, not its height:
+         a bar you read outward is easier to compare storey to storey than a
+         block of colour, and it leaves the building visible behind it. */
+      const H = 0.3, proj = 0.12 + 0.9*Math.sqrt(t);
+      const y = below.y + (r.y - below.y)*0.12;
+      for(const [a, b] of segs){
+        const L = Math.hypot(b[0]-a[0], b[1]-a[1]);
+        const ang = Math.atan2(b[1]-a[1], b[0]-a[0]);
+        const n = Geom.normalOf(a, b);
+        const off = 0.12 + proj/2;
+        const m = new THREE.Mesh(box(), mat(Loads.colourFor(t)));
+        m.scale.set(L, H, proj);
+        m.position.set((a[0]+b[0])/2 + n[0]*off, y, (a[1]+b[1])/2 + n[1]*off);
+        m.rotation.y = -ang;
+        m.renderOrder = 900;
+        // stamped like a real wall leaf, so Open swings it aside with the wall
+        m.userData = { loadpath:true, layer:2, wall:{ i:0, n:1, nx:n[0], nz:n[1] } };
+        g.add(m);
+        if(shown.vertical[0] < 40){
+          shown.vertical[0]++; shown.vertical[1]++;
+          arrow([(a[0]+b[0])/2 + n[0]*off, y + 0.22, (a[1]+b[1])/2 + n[1]*off],
+                [0,-1,0], 0.55, 0.06 + 0.08*Math.sqrt(t), Loads.colourFor(t), 2);
+        }
+      }
+      g.add(Render.label(`${U.fx(r.cumulative/data.runLen, 0)} kN/m`,
+        new THREE.Vector3(-0.3 - proj, y, grid.D/2), 'val', 10));
+    }
+  }
+
+  function buildColumnSleeves(g, data, levels, groundY){
+    const maxN = data.maxN || 1;
+    for(const sp of data.supports){
+      const per = sp.perLevel;
+      for(let k = 0; k < per.length; k++){
+        const here = per[k];
+        const belowY = per[k+1] ? per[k+1].y : groundY;
+        const t = here.N/maxN;
+        const side = 0.3 + 1.0*Math.sqrt(t);
+        const m = new THREE.Mesh(box(), mat(Loads.colourFor(t)));
+        m.scale.set(side, Math.max(0.05, here.y - belowY), side);
+        m.position.set(sp.x, (here.y + belowY)/2, sp.z);
+        m.renderOrder = 900;
+        m.userData = { loadpath:true, layer:2 };
+        g.add(m);
+        {
+          shown.vertical[1]++;
+          if(shown.vertical[0] < 72){
+            shown.vertical[0]++;
+            arrow([sp.x, here.y - 0.15, sp.z], [0,-1,0],
+                  Math.min(0.9, (here.y - belowY)*0.5), 0.05 + 0.10*Math.sqrt(t),
+                  Loads.colourFor(t), 2);
+          }
+        }
+      }
+      // what arrives at the foundation, and where it goes
+      g.add(Render.label(`${U.fx(sp.N, 0)} kN`,
+        new THREE.Vector3(sp.x, groundY + 0.35, sp.z), 'val',
+        sp.N >= maxN*0.999 ? 12 : 8));
+      arrow([sp.x, groundY - 0.25, sp.z], [0,-1,0], 0.75,
+              0.06 + 0.12*Math.sqrt(sp.N/maxN), Loads.colourFor(sp.N/maxN), 0);
+    }
+    const w = data.worst;
+    if(w) for(const s of w.perLevel)
+      g.add(Render.label(`${U.fx(s.N, 0)} kN`,
+        new THREE.Vector3(w.x + 0.6, s.y - 0.4, w.z + 0.6), 'val', 11));
+  }
+
+  /* --- the chain, in words ------------------------------------------------ */
+  function chain(doc){
+    const sys = p => SYSTEMS[(doc.slots[p] || {}).sys];
+    const roof = sys('roof'), vert = sys('vertical'), fdn = sys('foundation');
+    const kindOf = seg => (data && data.segs.some(s => s.kind === seg)) ? seg : null;
+    const out = [];
+    if(roof) out.push({ t:roof.label, k:kindOf('inclined') ? 'inclined' : 'horizontal' });
+    out.push({ t:'floors', k:'horizontal' });
+    if(vert) out.push({ t:vert.label, k:'vertical' });
+    if(fdn)  out.push({ t:fdn.label, k:'vertical' });
+    out.push({ t:'ground', k:null });
+    return out;
   }
 
   /* --- the takedown, as a table ------------------------------------------- */
@@ -7097,6 +7431,13 @@ const LoadPath = (() => {
     if(!on) return null;
     const d = data || Loads.compute(Store.doc);
     const body = el('div', { class:'body' });
+
+    // the chain first: it is the shape of the answer
+    const ch = chain(Store.doc);
+    body.appendChild(el('div', { class:'chain' }, ch.flatMap((c, i) => [
+      i ? el('span', { class:'arw', text:'→' }) : null,
+      el('span', { class:'lnk ' + (c.k || ''), text:c.t })
+    ].filter(Boolean))));
 
     body.appendChild(el('div', { class:'note info', html:
       'Every square metre of floor is carried by the support nearest to it. ' +
@@ -7139,6 +7480,32 @@ const LoadPath = (() => {
              `<b>${d.supports.length}</b> columns.` }));
     }
 
+    // the thrust an inclined roof puts into its walls, where there is one
+    const inc = (d.segs || []).filter(s => s.kind === 'inclined' && s.thrust > 0);
+    if(inc.length){
+      const worst = inc.reduce((a, b) => b.thrust > a.thrust ? b : a);
+      body.appendChild(el('div', { class:'sizing marginal' }, [
+        el('div', { class:'head' }, [
+          el('span', { class:'ttl', text:'Thrust at the eaves' })]),
+        el('div', { class:'formula',
+          text:`${U.fx(worst.R,1)} kN ÷ tan ${U.fx(worst.pitch,0)}° = ${U.fx(worst.thrust,1)} kN outward` }),
+        el('div', { class:'advice',
+          text:'A sloping roof does not only press down — it pushes the walls apart. ' +
+               'That push is what a ceiling tie, a ring beam or a buttress is for.' })
+      ]));
+    }
+
+    if(shown){
+      const bits = KINDS.filter(k => shown[k][1])
+        .map(k => `${shown[k][0]} of ${shown[k][1]} ${KIND_LABEL[k].toLowerCase()}`);
+      if(bits.length) body.appendChild(el('div', { class:'hint',
+        text:`Arrows drawn: ${bits.join(', ')} — repeats are thinned so the diagram ` +
+             `stays readable.` }));
+    }
+    if((d.segs || []).some(s => s.inferred)) body.appendChild(el('div', { class:'hint',
+      text:'Where a member’s spacing is not given by the system, the strip it carries ' +
+           'is taken as half the bay.' }));
+
     body.appendChild(el('div', { class:'hint',
       text:'Gravity only, by tributary area — no frame action, no wind. This is the ' +
            'hand calculation done at the start of a project, not a structural analysis.' }));
@@ -7155,7 +7522,10 @@ const LoadPath = (() => {
     get on(){ return on },
     set on(v){ on = !!v; build(); },
     get data(){ return data },
-    build, clear, card
+    get filter(){ return filter },
+    set filter(v){ filter = v; build(); },
+    get shown(){ return shown },
+    KINDS, KIND_LABEL, build, clear, card
   };
 })();
 
@@ -7656,12 +8026,26 @@ const Ribbon = (() => {
                   'columns or walls, and down to the foundations' }),
         LoadPath.on ? btn('Fit', 'i-eye', () => Render.fit()) : null
       ].filter(Boolean)),
+      ...(LoadPath.on ? [grp('Direction', [
+        el('div', { class:'chips' }, [
+          { k:'all', t:'All' },
+          ...LoadPath.KINDS.map(k => ({ k, t:LoadPath.KIND_LABEL[k] }))
+        ].map(o => el('button', { class:'chip-btn path-' + o.k,
+          'aria-pressed':String(LoadPath.filter === o.k),
+          title:{ all:'Every part of the path at once',
+                  surface:'Where the load starts: spread over the floor and roof',
+                  horizontal:'Collected along beams and joists to their supports',
+                  inclined:'Running down a rafter — and pushing outward at its foot',
+                  vertical:'Down the columns or walls to the ground' }[o.k],
+          onclick:() => { LoadPath.filter = o.k; App.refreshChrome(); Dock.render(); } },
+          [o.t])))
+      ])] : []),
       grp('What it shows', [
         el('div', { class:'hintbox', title:
-          'A sleeve stands around each column, one segment per storey. It widens and ' +
-          'warms in colour as the load builds up on the way down.',
+          'Load starts spread over a surface, is collected horizontally into a few ' +
+          'points, may run down an inclined rafter, and goes vertically to the ground.',
           html: LoadPath.on
-            ? 'The sleeve around each column widens as the load builds up on the way down.'
+            ? 'Arrows point the way the weight travels; the sleeve widens as it builds.'
             : 'Turn it on to see where the weight of the building actually goes.' })
       ], null, 'prose'),
       ...(d ? [grp('Totals', [

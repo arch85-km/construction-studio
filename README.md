@@ -29,7 +29,7 @@ architects already use in SketchUp. There is no analysis in it, deliberately.
 | **Sizing** | Preliminary depths from span rules of thumb, with the arithmetic shown: `7.50 m ÷ 23.5 = 319 mm → IPE 330`. A green / amber / red flag says whether the span suits the system. |
 | **Detail** | Diagram (centre lines) · Members (real sections) · Full assembly (every stud at 400 mm, and each wall built as its real stack of layers). |
 | **View** | Exploded — layers rise on a shared vertical axis while each wall's leaves slide apart along its own normal · Open — swings the enclosure aside to show the structure inside · shaded / realistic / wireframe / x-ray · layer isolation · section box. |
-| **Load path** | Follow the weight down: a sleeve around every column that widens and warms in colour as the load accumulates, the number at each storey, and the takedown as a table. Gravity by tributary area — the hand calculation, not an analysis. |
+| **Load path** | Follow the weight from where it lands to where it goes. Arrows point the way it travels — spread over a **surface**, collected **horizontally** by joists and beams, running down an **inclined** rafter, then **vertically** to the ground — with a sleeve round each column that widens and warms as the load accumulates. Gravity by tributary area: the hand calculation, not an analysis. |
 | **Teaching** | Live sizing readout · build-sequence animation · labelled build-up diagram with a dimension chain · side-by-side comparison on one shared camera. |
 | **Import** | DXF as a traceable underlay or measured into grid lines, OBJ as ghosted site context, and a plan image scaled by two-point calibration. |
 | **Export** | PNG with labels, a title block and the copyright. |
@@ -153,7 +153,7 @@ offers to walk you through. After that:
 | **View** | Explode, Open, display style, layer and part isolation, section box. |
 | **Teach** | Build sequence, build-up diagram, system comparison. |
 | **Context** | DXF, OBJ and image import; underlay opacity; PNG export. |
-| **Analysis** | The load path from roof to foundation, and the building's use class. |
+| **Analysis** | The load path from roof to foundation, filtered by direction, and the building's use class. |
 
 Click any element to see what it is, why it is that size, and to change or
 delete it. Edits are remembered **by position**, so they survive a change to
@@ -186,7 +186,7 @@ literature:
 
 ## Technical notes
 
-Roughly 8,000 lines in one file. Nothing is minified; it is meant to be read.
+Roughly 8,300 lines in one file. Nothing is minified; it is meant to be read.
 
 - **Plans, then geometry.** A system's `build()` emits plain-data plans, never
   three.js objects. A repeating group — 216 studs — is a *single* plan, so
@@ -208,9 +208,19 @@ Roughly 8,000 lines in one file. Nothing is minified; it is meant to be read.
   junctions are read off the plans and resolved from the pair of materials
   meeting there. A new system inherits the right joints the moment it declares
   its material.
-- **The takedown has an invariant.** The loads on every support must add up to
-  the loads on every floor — nothing may be lost on the way down. The test
-  suite asserts it, in the browser and out of it.
+- **The takedown has two invariants.** The loads on every support must add up to
+  the loads on every floor — nothing lost on the way down — and the reactions
+  every level's members deliver must add up to that level's load — nothing lost
+  travelling sideways either. Both are asserted, in the browser and out of it.
+- **A member's load path is read from its direction**, not from its name:
+  `|uy| > 0.94` is vertical, `< 0.09` horizontal, anything between is inclined.
+  A rafter, a brace and a portal leg classify themselves, and so will whatever
+  is added next.
+- **Resolution drops only for a sustained gesture.** OrbitControls fires `start`
+  and `end` back-to-back inside a single wheel event, so acting on them
+  literally reallocated the drawing buffer twice per notch of the scroll wheel —
+  the flashing. Now the drop waits to see whether the gesture lasts, and the
+  redraw happens in the same task as the resize, never a frame later.
 - WebGL context-loss recovery, label budgeting, and an on-demand render loop
   that pauses when the iframe scrolls out of view.
 
@@ -221,9 +231,11 @@ column rule produces, not just its load); the generator exercised across every
 system, every cross-part combination, edits, orphaned edits and scale; and the
 app driven in real Chromium for picking, explode reversibility, detail
 round-trips, save round-trips, undo, export, all three importers, orbit
-behaviour, wall assembly order, the load path and three viewport widths plus an
-iframe (32 checks), and the load takedown checked against hand arithmetic
-(11 checks). Every guided-tour step is asserted to spotlight a real, on-screen
+behaviour, wall assembly order, the load path and its three directions, and
+three viewport widths plus an iframe (37 checks); the load takedown checked
+against hand arithmetic in both directions, including the eaves thrust
+(18 checks); and the orbit measured for buffer reallocations so the flashing
+cannot come back. Every guided-tour step is asserted to spotlight a real, on-screen
 element, and every band of every build-up drawing is asserted either to pick
 out real geometry or to say plainly that it is not modelled. Console clean
 throughout.
