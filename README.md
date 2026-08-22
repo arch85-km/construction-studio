@@ -200,8 +200,10 @@ Roughly 6,900 lines in one file. Nothing is minified; it is meant to be read.
 
 ### Verified
 
-Sizing checked against hand calculation (21 checks); the generator exercised
-across every system, every cross-part combination, edits, orphaned edits and
-scale; and the app driven in real Chromium for picking, explode reversibility,
-detail round-trips, save round-trips, undo, export, all three importers and
-three viewport widths plus an iframe. Console clean throughout.
+Sizing checked against hand calculation (27 checks, including the section each
+column rule produces, not just its load); the generator exercised across every
+system, every cross-part combination, edits, orphaned edits and scale; and the
+app driven in real Chromium for picking, explode reversibility, detail
+round-trips, save round-trips, undo, export, all three importers, orbit
+behaviour and three viewport widths plus an iframe (22 checks). Every guided-tour
+step is asserted to spotlight a real, on-screen element. Console clean throughout.

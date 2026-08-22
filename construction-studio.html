@@ -827,7 +827,7 @@ window.__csBooted = false;
     <button data-view="left">L</button><button data-view="axo">AXO</button><button data-view="right">R</button>
     <button class="mid" data-view="se">&nbsp;</button><button data-view="front">FR</button><button data-view="fit">FIT</button>
    </div>
-   <div class="pill"><label for="vp-explode">Explode</label>
+   <div class="pill" id="explode-ctl"><label for="vp-explode">Explode</label>
      <input type="range" id="vp-explode" min="0" max="1" step="0.01" value="0" style="width:86px">
      <b id="vp-explode-val">0%</b></div>
   </div>
@@ -1641,7 +1641,7 @@ const SIZING = (() => {
     ratio:'A ≈ N / 0.6 f_y,  with N = tributary area × storeys × load',
     source:'Tributary-area estimate for preliminary column sizing.',
     load: c => c.Atrib * Math.max(1, c.storeys) * (c.w || 11),
-    area: c => c.N*1000 / (0.6 * 275e3) * 1e6,     // mm2, S275
+    area: c => c.N / (0.6 * 275e3) * 1e6,          // kN / kPa = m2, then mm2. S275
     fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${c.storeys} storeys × ${c.w || 11} kN/m² ` +
                      `= ${Math.round(c.N)} kN  →  ${s ? s.name : '—'}`
   },
@@ -1698,7 +1698,7 @@ const SIZING = (() => {
     label:'RC column', family:['RC'], synth:'RC', byArea:true,
     ratio:'A_c ≈ N / 0.4 f_ck,  with N = tributary area × storeys × load',
     load: c => c.Atrib * Math.max(1, c.storeys) * (c.w || 11),
-    area: c => c.N*1000 / (0.4 * 30e3) * 1e6,      // mm2, C30
+    area: c => c.N / (0.4 * 30e3) * 1e6,           // kN / kPa = m2, then mm2. C30
     square: true, minDim: 225, round: 25,
     fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${c.storeys} × ${c.w || 11} kN/m² ` +
                      `= ${Math.round(c.N)} kN  →  ${s ? s.name : '—'}`
@@ -1776,7 +1776,7 @@ const SIZING = (() => {
     label:'Timber post', family:['GL'], synth:'GL', byArea:true, square:true,
     ratio:'A ≈ N / 0.6 f_c,  with N = tributary area × storeys × load',
     load: c => c.Atrib * Math.max(1, c.storeys) * (c.w || 9),
-    area: c => c.N*1000 / (0.6 * 24e3) * 1e6,
+    area: c => c.N / (0.6 * 24e3) * 1e6,           // kN / kPa = m2, then mm2. GL24
     minDim: 140, round: 20,
     fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${c.storeys} × ${c.w || 9} kN/m² ` +
                      `= ${Math.round(c.N)} kN  →  ${s ? s.name : '—'}`
@@ -1801,7 +1801,7 @@ const SIZING = (() => {
     label:'Masonry pier', family:['MAS'], synth:'MAS', byArea:true, square:true,
     ratio:'A ≈ N / f_d',
     load: c => c.Atrib * Math.max(1, c.storeys) * (c.w || 9),
-    area: c => c.N*1000 / 2.5e3 * 1e6,
+    area: c => c.N / 2.5e3 * 1e6,                  // kN / kPa = m2, then mm2
     minDim: 215, round: 5,
     fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${c.storeys} × ${c.w || 9} kN/m² ` +
                      `= ${Math.round(c.N)} kN  →  ${s ? s.name : '—'}`
@@ -2435,8 +2435,11 @@ def({
         addr:ctx.A('pad', pt.i, pt.j), meta:z,
         label:`${U.fx(B,2)} × ${U.fx(B,2)} m pad` });
     }
-    if(base.lines.length) ctx.note('info',
-      'Walls also need a strip footing — switch the foundation to Strip footings.');
+    // Only when Gen's own `needs` check stays quiet - that is, the building really
+    // does stand on columns, but has some load-bearing walls too. If it stands on
+    // walls, Gen already says so and this would just repeat it.
+    if(base.lines.length && base.kind === 'points') ctx.note('info',
+      'There are load-bearing walls here too, and they need a strip footing under them.');
   }
 });
 
@@ -2464,8 +2467,9 @@ def({
         y:-p.below - p.depth, h:p.depth, mat:'C30',
         addr:ctx.A('strip', i), meta:z, label:`${U.fx(B,2)} m wide strip` });
     });
-    if(!base.lines.length) ctx.note('warn',
-      'Strip footings follow walls, and this building has none. Try pad foundations.');
+    // No note here when there are no walls to follow: Gen already emits one from
+    // this system's declarative `needs`, and two near-identical warnings for the
+    // same condition read as a bug.
   }
 });
 
@@ -3677,7 +3681,8 @@ const Render = (() => {
       canvas, antialias:true, alpha:false,
       powerPreference:'high-performance', preserveDrawingBuffer:true
     });
-    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    fullPixelRatio = Math.min(devicePixelRatio || 1, 2);
+    renderer.setPixelRatio(fullPixelRatio);
     renderer.shadowMap.enabled = false;
     renderer.localClippingEnabled = true;   // the section box lives on this
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -3696,6 +3701,9 @@ const Render = (() => {
     controls.maxPolarAngle = Math.PI*0.98;
     controls.touches = { ONE:THREE.TOUCH.ROTATE, TWO:THREE.TOUCH.DOLLY_PAN };
     controls.addEventListener('change', () => { dirty = true; });
+    // OrbitControls reports the start and end of every drag, wheel and pinch.
+    controls.addEventListener('start', () => setInteracting(true));
+    controls.addEventListener('end',   () => setInteracting(false));
 
     labelRenderer = new CSS2DRenderer({ element:labelEl });
     labelRenderer.domElement.style.position = 'absolute';
@@ -3818,6 +3826,23 @@ const Render = (() => {
     dirty = true;
   }
 
+  /**
+   * While the pointer is down, draw at one device pixel per CSS pixel and hide
+   * the label layer. On a HiDPI screen full resolution is four times the
+   * fragments, and in X-ray - translucent, depth-write off, so nothing is
+   * rejected early - that is the difference between a smooth orbit and a
+   * stuttering one. Both are restored the instant the drag ends.
+   */
+  let interacting = false, fullPixelRatio = 1;
+  function setInteracting(v){
+    if(v === interacting || !renderer) return;
+    interacting = v;
+    renderer.setPixelRatio(v ? 1 : fullPixelRatio);   // this re-applies setSize itself
+    labelRenderer.domElement.style.visibility = v ? 'hidden' : '';
+    if(!v){ lastBudget = 0; }                         // force one re-budget on release
+    dirty = true;
+  }
+
   function start(){ if(!raf && !disposed) raf = requestAnimationFrame(tick); }
   function stop(){ if(raf){ cancelAnimationFrame(raf); raf = null; } }
   function tick(){
@@ -3830,10 +3855,21 @@ const Render = (() => {
   /** Something else may want to take over drawing - the side-by-side compare
       renders two scenes into scissor regions. It returns true when it has. */
   let renderHook = null;
+  /* Labels are DOM. Every frame CSS2DRenderer writes a transform on each one and
+     budgetLabels writes a display, and the browser must recompute style for all of
+     it - which is most of the cost of an orbit frame, on a model whose geometry is
+     only a few thousand triangles. While the camera is actually moving the labels
+     are unreadable anyway, so the whole pipeline is suspended and resumed on
+     release. When it is running, it is throttled: label positions do not need
+     re-budgeting sixty times a second. */
+  const LBL_MS = 100;
+  let lastBudget = 0;
   function renderNow(){
     if(!(renderHook && renderHook())) renderer.render(scene, camera);
+    if(interacting) return;
     labelRenderer.render(scene, camera);
-    budgetLabels();
+    const t = performance.now();
+    if(t - lastBudget >= LBL_MS){ lastBudget = t; budgetLabels(); }
   }
   const invalidate = () => { dirty = true; start(); };
 
@@ -3960,19 +3996,27 @@ const Render = (() => {
     return o;
   }
 
+  /** Set `display` only when it actually differs - a redundant write still
+      dirties style and forces a recalculation. */
+  const setShown = (o, on) => {
+    const v = on ? '' : 'none';
+    if(o.element.style.display !== v) o.element.style.display = v;
+  };
   function budgetLabels(){
     const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
     const items = [];
-    scene.traverse(o => {
+    // Every label in the app is created by Build.refsFor and lives in groups.ref,
+    // so there is no reason to walk the whole scene graph twice a frame.
+    (groups.ref || scene).traverse(o => {
       if(!o.isCSS2DObject) return;
       let p = o.parent, shown = true;
       while(p){ if(!p.visible){ shown = false; break; } p = p.parent; }
-      if(!shown){ o.element.style.display = 'none'; return; }
+      if(!shown){ setShown(o, false); return; }
       o.getWorldPosition(_lblV);
       const d = _lblV.distanceTo(camera.position);
       _lblV.project(camera);
       if(_lblV.z < -1 || _lblV.z > 1 || Math.abs(_lblV.x) > 1.25 || Math.abs(_lblV.y) > 1.25){
-        o.element.style.display = 'none'; return;
+        setShown(o, false); return;
       }
       items.push({ o, d,
         x:(_lblV.x*0.5 + 0.5)*w, y:(-_lblV.y*0.5 + 0.5)*h,
@@ -3983,13 +4027,13 @@ const Render = (() => {
     const CX = 30, CY = 20, occ = new Uint8Array(CX*CY);
     let shown = 0;
     for(const it of items){
-      if(shown >= LBL_CAP){ it.o.element.style.display = 'none'; continue; }
+      if(shown >= LBL_CAP){ setShown(it.o, false); continue; }
       const cx = Util.clamp(Math.floor(it.x/w*CX), 0, CX-1);
       const cy = Util.clamp(Math.floor(it.y/h*CY), 0, CY-1);
       const k = cy*CX + cx;
-      if(occ[k]){ it.o.element.style.display = 'none'; continue; }
+      if(occ[k]){ setShown(it.o, false); continue; }
       occ[k] = 1;
-      it.o.element.style.display = '';
+      setShown(it.o, true);
       shown++;
     }
   }
@@ -4083,17 +4127,27 @@ const Realize = (() => {
      a separate clipping-plane set per exploded layer. Roughly forty materials
      in total, which is nothing. */
   function material(fam, style, layer, opts = {}){
-    const key = `${fam}|${style}|${layer}|${opts.tag || ''}`;
+    // The section box is part of the key because it decides `side` below, and a
+    // material cached with the wrong one would survive the toggle.
+    const cut = View.state.section.on;
+    const key = `${fam}|${style}|${layer}|${cut ? 'cut' : ''}|${opts.tag || ''}`;
     if(MAT.has(key)) return MAT.get(key);
     const colour = LAYER_MAT[fam] ?? Render.C[fam] ?? 0xb8bcc2;
-    const base = { color:colour, side:THREE.DoubleSide };
+    // Everything here is a closed box, so back faces are never seen and culling
+    // them halves the rasterisation - and in the translucent styles, which write
+    // no depth and so get no early-z rejection at all, it halves the shading too.
+    // A section cut is the exception: with back faces gone, a sliced solid is a
+    // hole rather than a hollow shell, and there is no cap pass to fill it.
+    const base = { color:colour, side:cut ? THREE.DoubleSide : THREE.FrontSide };
     let m;
     if(style === 'wireframe'){
       m = new THREE.MeshBasicMaterial(Object.assign({}, base,
         { transparent:true, opacity:0.04, depthWrite:false }));
     } else if(style === 'xray'){
-      m = new THREE.MeshStandardMaterial(Object.assign({}, base,
-        { transparent:true, opacity:0.18, depthWrite:false, roughness:1, metalness:0 }));
+      // Lambert, not Standard: at 18% opacity over heavy overdraw a full PBR
+      // shader costs a great deal and shows nothing for it.
+      m = new THREE.MeshLambertMaterial(Object.assign({}, base,
+        { transparent:true, opacity:0.18, depthWrite:false }));
     } else if(style === 'realistic'){
       m = new THREE.MeshStandardMaterial(Object.assign({}, base,
         { roughness:fam === 'steel' ? 0.45 : 0.85, metalness:fam === 'steel' ? 0.35 : 0.02 }));
@@ -4522,7 +4576,15 @@ const View = (() => {
     else if(key === 'style'){ state.style = val; Realize.disposeCaches(); Bus.emit('view:rebuild'); }
     else if(key === 'explode'){ state.explode = Util.clamp(val, 0, 1); applyExplode(); }
     else if(key === 'camera'){ state.camera = val; Render.setCamera(val); }
-    else if(key === 'section'){ Object.assign(state.section, val); refreshClipping(); Render.invalidate(); }
+    else if(key === 'section'){
+      // Turning the box on or off changes which side of every face is drawn, so
+      // the materials have to be rebuilt. Dragging the three extent sliders does
+      // not, and must stay on the cheap path - it fires continuously.
+      const toggled = val && val.on !== undefined && val.on !== state.section.on;
+      Object.assign(state.section, val);
+      if(toggled){ Realize.disposeCaches(); Bus.emit('view:rebuild'); }
+      else { refreshClipping(); Render.invalidate(); }
+    }
     else if(key === 'layer'){ state.layers[val.i] = val.on; applyVisibility(); }
     else if(key === 'part'){ state.parts[val.k] = val.on; applyVisibility(); }
     else if(key === 'labels'){ Object.assign(state.labels, val); Bus.emit('view:rebuild'); }
@@ -5337,16 +5399,21 @@ const Tour = (() => {
     { sel:'#sizing-card', title:'The rule, not just the answer',
       text:'This is the span-to-depth rule doing its work. A 7.5 m composite beam divided by ' +
            '23.5 gives 319 mm, so the app picks an IPE 330. The arithmetic stays on screen.' },
-    { sel:'#seg-detail', title:'Three levels of detail',
+    { sel:'#seg-detail-vp', title:'Three levels of detail',
       text:'<b>Diagram</b> is sticks and planes. <b>Members</b> gives real cross-sections. ' +
            '<b>Full assembly</b> draws every stud, joist and layer of the build-up.' },
     { sel:'#explode-ctl', title:'Take it apart',
       text:'The explode slider lifts each layer clear of the one below, in the order it gets ' +
            'built. This is the exploded axonometric you are asked to draw by hand.' },
     { sel:'#layer-card', title:'Every layer, measured',
+      prep(){
+        const w = Gen.plans.find(x => x.role === 'wall') ||
+                  Gen.plans.find(x => x.buildUp);
+        if(w){ Store.select([w.addr]); Dock.mode = 'element'; }
+      },
       text:'Click any wall or floor and its build-up is drawn beside the model, with real ' +
            'thicknesses. Change the insulation and the drawing and the 3D model move together.' },
-    { sel:'#copyright', title:'Export your work',
+    { sel:'#q-png', title:'Export your work',
       text:'<b>Export image</b> writes a PNG with the labels, a title block and the credit line — ' +
            'ready for a crit board or a report.' }
   ];
@@ -5357,15 +5424,32 @@ const Tour = (() => {
     i = 0; host.classList.add('open'); render();
     IO.prefs({ tourSeen:true });
   }
-  function stop(){ host.classList.remove('open'); }
+  function stop(){
+    host.classList.remove('open');
+    // hand the app back the way it was found, not mid-demonstration
+    Store.clearSelection();
+    Dock.mode = 'building';
+    LayerDiagram.hide();
+  }
 
+  const warned = new Set();
   function render(){
     const s = steps[i];
+    if(s.prep) try { s.prep(); } catch(e){ /* a demo step must never break the tour */ }
     const t = $(s.sel);
-    const r = t ? t.getBoundingClientRect() : { left:innerWidth/2-120, top:innerHeight/2-60, width:240, height:120 };
+    // A step whose selector matches nothing silently spotlights the middle of the
+    // screen, which looks deliberate and hides the mistake. Say so instead.
+    if((!t || !t.getClientRects().length) && !warned.has(s.sel)){
+      warned.add(s.sel);
+      console.warn(`Tour step ${i+1} ("${s.title}") targets ${s.sel}, which is not on screen.`);
+    }
+    const r = t && t.getClientRects().length ? t.getBoundingClientRect()
+            : { left:innerWidth/2-120, top:innerHeight/2-60, width:240, height:120 };
     const pad = 6;
-    spot.style.left = (r.left-pad)+'px'; spot.style.top = (r.top-pad)+'px';
-    spot.style.width = (r.width+pad*2)+'px'; spot.style.height = (r.height+pad*2)+'px';
+    const sx = Math.max(0, r.left-pad), sy = Math.max(0, r.top-pad);
+    spot.style.left = sx+'px'; spot.style.top = sy+'px';
+    spot.style.width = Math.min(r.width+pad*2, innerWidth-sx)+'px';
+    spot.style.height = Math.min(r.height+pad*2, innerHeight-sy)+'px';
 
     bubble.textContent = '';
     bubble.append(
@@ -5588,7 +5672,12 @@ const Dock = (() => {
     if(!mine.length) return null;
     const rank = { secondary:0, joist:0, panel:0, plank:0, slab:1, primary:2, truss:0,
                    rafter:0, wall:0, column:3, pad:0, strip:0, raft:0 };
-    mine.sort((a,b) => (rank[a.role] ?? 5) - (rank[b.role] ?? 5));
+    // Within the chosen role, show the member that GOVERNS. Columns are sized one
+    // by one from their own tributary area, so without this the readout reports a
+    // corner column - a quarter bay - which is the least of them, not the size the
+    // student needs to see.
+    const worst = m => m.meta.N ?? m.meta.depth ?? 0;
+    mine.sort((a,b) => (rank[a.role] ?? 5) - (rank[b.role] ?? 5) || worst(b) - worst(a));
     return mine[0].meta;
   }
 
@@ -5626,7 +5715,7 @@ const Dock = (() => {
           Store.touch('edits');
         } }, ['Discard them'])])
     ]);
-    return card('orphans', `${orphans.length} change${orphans.length>1?'s':''} no longer apply`,
+    return card('orphans', `${orphans.length} change${orphans.length>1?'s no longer apply':' no longer applies'}`,
                 '', body, 'i-trash', null, true);
   }
 
