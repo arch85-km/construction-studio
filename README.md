@@ -28,7 +28,8 @@ architects already use in SketchUp. There is no analysis in it, deliberately.
 | **Connections** | The joints are derived, not chosen: a steel column on concrete gets a base plate and holding-down bolts, a concrete one gets starter bars, a timber post gets a galvanised shoe. Click any of them and it explains what it has to do. |
 | **Sizing** | Preliminary depths from span rules of thumb, with the arithmetic shown: `7.50 m ÷ 23.5 = 319 mm → IPE 330`. A green / amber / red flag says whether the span suits the system. |
 | **Detail** | Diagram (centre lines) · Members (real sections) · Full assembly (every stud at 400 mm, and each wall built as its real stack of layers). |
-| **View** | Exploded — layers rise on a shared vertical axis while each wall's leaves slide apart along its own normal · shaded / realistic / wireframe / x-ray · layer isolation · section box. Explode and section box compose. |
+| **View** | Exploded — layers rise on a shared vertical axis while each wall's leaves slide apart along its own normal · Open — swings the enclosure aside to show the structure inside · shaded / realistic / wireframe / x-ray · layer isolation · section box. |
+| **Load path** | Follow the weight down: a sleeve around every column that widens and warms in colour as the load accumulates, the number at each storey, and the takedown as a table. Gravity by tributary area — the hand calculation, not an analysis. |
 | **Teaching** | Live sizing readout · build-sequence animation · labelled build-up diagram with a dimension chain · side-by-side comparison on one shared camera. |
 | **Import** | DXF as a traceable underlay or measured into grid lines, OBJ as ghosted site context, and a plan image scaled by two-point calibration. |
 | **Export** | PNG with labels, a title block and the copyright. |
@@ -147,11 +148,12 @@ offers to walk you through. After that:
 
 | | |
 |---|---|
-| **Build** | Grid, bays, spans, storeys, and the four part cards. **Change** opens the system picker. |
-| **Detail** | Diagram / Members / Full assembly, and what each level of detail draws. |
-| **View** | Explode, display style, layer and part isolation, section box. |
+| **Build** | Grid, bays, spans, storeys, and the five part cards. **Change** opens the system picker. |
+| **Detail** | Diagram / Members / Full assembly, connections on or off, and what each level of detail draws. |
+| **View** | Explode, Open, display style, layer and part isolation, section box. |
 | **Teach** | Build sequence, build-up diagram, system comparison. |
 | **Context** | DXF, OBJ and image import; underlay opacity; PNG export. |
+| **Analysis** | The load path from roof to foundation, and the building's use class. |
 
 Click any element to see what it is, why it is that size, and to change or
 delete it. Edits are remembered **by position**, so they survive a change to
@@ -184,7 +186,7 @@ literature:
 
 ## Technical notes
 
-Roughly 7,600 lines in one file. Nothing is minified; it is meant to be read.
+Roughly 8,000 lines in one file. Nothing is minified; it is meant to be read.
 
 - **Plans, then geometry.** A system's `build()` emits plain-data plans, never
   three.js objects. A repeating group — 216 studs — is a *single* plan, so
@@ -206,6 +208,9 @@ Roughly 7,600 lines in one file. Nothing is minified; it is meant to be read.
   junctions are read off the plans and resolved from the pair of materials
   meeting there. A new system inherits the right joints the moment it declares
   its material.
+- **The takedown has an invariant.** The loads on every support must add up to
+  the loads on every floor — nothing may be lost on the way down. The test
+  suite asserts it, in the browser and out of it.
 - WebGL context-loss recovery, label budgeting, and an on-demand render loop
   that pauses when the iframe scrolls out of view.
 
@@ -216,8 +221,9 @@ column rule produces, not just its load); the generator exercised across every
 system, every cross-part combination, edits, orphaned edits and scale; and the
 app driven in real Chromium for picking, explode reversibility, detail
 round-trips, save round-trips, undo, export, all three importers, orbit
-behaviour, wall assembly order and three viewport widths plus an iframe
-(26 checks). Every guided-tour step is asserted to spotlight a real, on-screen
+behaviour, wall assembly order, the load path and three viewport widths plus an
+iframe (32 checks), and the load takedown checked against hand arithmetic
+(11 checks). Every guided-tour step is asserted to spotlight a real, on-screen
 element, and every band of every build-up drawing is asserted either to pick
 out real geometry or to say plainly that it is not modelled. Console clean
 throughout.

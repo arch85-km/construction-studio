@@ -667,6 +667,14 @@ svg.buildup text.scap{font-size:6.4px;font-weight:700;letter-spacing:.7px;fill:v
 #layer-card .within{margin-top:6px;display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--ink-3)}
 #layer-card .hint{margin-top:6px;font-size:10px;color:var(--ink-3)}
 
+/* the load path */
+#cmd .stat{font-size:11px;color:var(--ink-2);white-space:nowrap;padding:0 2px}
+#cmd .stat b{font-family:var(--mono);font-size:12px;color:var(--ink-0);font-weight:640}
+table.loads{font-size:10.5px;width:100%}
+table.loads td,table.loads th{padding:3px 7px}
+table.loads td.num{font-family:var(--mono)}
+table.loads tbody tr:last-child td{font-weight:640;color:var(--ink-0)}
+
 /* a connection's explanation, in the property sheet */
 .joint{border:1px solid var(--accent-dim);border-left:3px solid var(--accent);
   border-radius:var(--r-m);background:var(--accent-ghost);padding:9px 11px;margin-bottom:11px}
@@ -676,12 +684,13 @@ svg.buildup text.scap{font-size:6.4px;font-weight:700;letter-spacing:.7px;fill:v
 .joint p{margin:0;font-size:11.5px;line-height:1.55;color:var(--ink-1)}
 
 /* comparison */
-#cmp-panel{position:absolute;left:50%;transform:translateX(-50%);bottom:46px;z-index:8;
+#cmp-panel{position:absolute;left:50%;transform:translateX(-50%);bottom:10px;z-index:8;
   background:rgba(20,26,34,.9);border:1px solid var(--line);border-radius:var(--r-m);
   padding:8px;backdrop-filter:blur(8px);max-width:min(520px,92%);box-shadow:var(--shadow-2)}
 html[data-theme="light"] #cmp-panel{background:rgba(255,255,255,.94)}
 #cmp-panel[hidden]{display:none}
-table.cmp{font-size:11px}
+table.cmp{font-size:10.5px}
+table.cmp td,table.cmp th{padding:2px 8px}
 table.cmp td:first-child{color:var(--ink-2)}
 #cmp-panel::after{content:"A          |          B";position:absolute;top:-19px;left:50%;
   transform:translateX(-50%);font-size:10px;color:var(--ink-2);font-family:var(--mono)}
@@ -817,6 +826,7 @@ window.__csBooted = false;
   <button class="tab" role="tab" data-tab="view"    aria-selected="false">View</button>
   <button class="tab" role="tab" data-tab="teach"   aria-selected="false">Teach</button>
   <button class="tab" role="tab" data-tab="context" aria-selected="false">Context</button>
+  <button class="tab" role="tab" data-tab="analysis" aria-selected="false">Analysis</button>
  </nav>
  <div id="cmd" role="toolbar" aria-label="Commands"></div>
 
@@ -847,6 +857,10 @@ window.__csBooted = false;
    <div class="pill" id="explode-ctl"><label for="vp-explode">Explode</label>
      <input type="range" id="vp-explode" min="0" max="1" step="0.01" value="0" style="width:86px">
      <b id="vp-explode-val">0%</b></div>
+   <div class="pill" id="open-ctl" title="Swing the walls aside to see the structure inside">
+     <label for="vp-open">Open</label>
+     <input type="range" id="vp-open" min="0" max="1" step="0.01" value="0" style="width:86px">
+     <b id="vp-open-val">0%</b></div>
   </div>
 
   <div id="cmp-panel" hidden></div>
@@ -4072,6 +4086,110 @@ const Gen = (() => {
     clearCache(){ CACHE.clear(); }
   };
 })();
+/* ==========================================================================
+   11b  LOADS - where the weight goes
+   ==========================================================================
+   A student can name every part of a building and still not be able to answer
+   the question the whole thing exists to answer: what holds this up? Gravity
+   load starts spread over the roof, is collected by the floors, gathers into
+   columns or walls, grows at every storey it passes, and arrives at the ground
+   as a few very large numbers.
+
+   This is a TAKEDOWN, not an analysis. Each support takes the load on the area
+   nearest to it - its tributary area - and there is no frame action, no
+   continuity, no moment anywhere. That is exactly the calculation done by hand
+   at the start of a project, and it is the one worth being able to do.
+
+   The arithmetic has an invariant worth stating: the loads on all the supports
+   must add up to the loads on all the floors. Nothing may be lost on the way
+   down. The test suite asserts it.
+   ========================================================================== */
+const Loads = (() => {
+
+  /**
+   * Works out what every support carries, level by level, from the roof down.
+   * Pure data: no geometry, no three.js, so it can be checked without a browser.
+   */
+  function compute(doc){
+    const grid   = Model.makeGrid(doc.grid);
+    const levels = Model.makeLevels(doc.levels);
+    const wFloor = SIZING.LOADING[doc.use] ?? 11;
+    const wRoof  = SIZING.LOADING.roof ?? 5;
+
+    /* 1. what lands on each level, top down. The roof is lighter than a floor:
+          nobody stands on it and there is no screed or partition allowance. */
+    const rows = [];
+    for(let i = levels.length - 1; i >= 1; i--){
+      const L = levels[i];
+      const w = L.isRoof ? wRoof : wFloor;
+      rows.push({ id:L.id, name:L.name, y:L.y, isRoof:L.isRoof,
+                  area:grid.area, w, load:grid.area*w });
+    }
+    let run = 0;
+    for(const r of rows){ run += r.load; r.cumulative = run; }
+    const total = run;
+
+    /* 2. how the supports share it. Walls take load per metre run; columns take
+          it per node, in proportion to the floor area nearest to each. */
+    const base = doc.slots.vertical && SYSTEMS[doc.slots.vertical.sys];
+    const onWalls = base && base.provides === 'lines';
+    const supports = [];
+
+    if(onWalls){
+      // perimeter of the footprint - what a bearing-wall building stands on
+      const runLen = 2*(grid.W + grid.D);
+      for(const r of rows){
+        // load from this level and everything above it, spread along the walls
+        supports.push({ kind:'line', level:r.id, name:r.name, y:r.y,
+                        length:runLen, perMetre:r.cumulative/runLen, N:r.cumulative });
+      }
+      return { rows, supports, total, onWalls, grid, levels,
+               runLen, perMetre:total/runLen, wFloor, wRoof };
+    }
+
+    const nodes = [];
+    for(let i = 0; i < grid.nx; i++)
+      for(let j = 0; j < grid.nz; j++)
+        nodes.push({ i, j, x:grid.xs[i], z:grid.zs[j], trib:grid.tribArea(i, j),
+                     ref:grid.ref(i, j) });
+
+    // Each node's share of a level is its tributary area times that level's load.
+    for(const nd of nodes){
+      let acc = 0;
+      const perLevel = [];
+      for(const r of rows){
+        acc += nd.trib*r.w;
+        perLevel.push({ level:r.id, name:r.name, y:r.y, N:acc });
+      }
+      supports.push({ kind:'point', i:nd.i, j:nd.j, x:nd.x, z:nd.z, ref:nd.ref,
+                      trib:nd.trib, perLevel, N:acc });
+    }
+
+    const worst = supports.reduce((a, b) => b.N > a.N ? b : a, supports[0] || { N:0 });
+    return { rows, supports, total, onWalls:false, grid, levels, nodes,
+             worst, maxN:worst ? worst.N : 0, wFloor, wRoof };
+  }
+
+  /** A colour ramp for load: pale where it is light, deep red where it is heavy. */
+  function colourFor(t){
+    const stops = [[0.00, 0x8fb8e8], [0.35, 0x7fc9a6], [0.60, 0xe8c463],
+                   [0.82, 0xe58b4a], [1.00, 0xd6453f]];
+    t = Util.clamp(t, 0, 1);
+    for(let i = 1; i < stops.length; i++){
+      if(t <= stops[i][0]){
+        const [t0, c0] = stops[i-1], [t1, c1] = stops[i];
+        const k = (t - t0)/(t1 - t0 || 1);
+        const mix = (a, b) => Math.round(a + (b - a)*k);
+        return (mix((c0>>16)&255, (c1>>16)&255) << 16) |
+               (mix((c0>>8)&255,  (c1>>8)&255)  << 8) |
+                mix(c0&255,       c1&255);
+      }
+    }
+    return stops[stops.length-1][1];
+  }
+
+  return { compute, colourFor };
+})();
 
 /* ==========================================================================
    10  RENDER - one renderer, one scene, on-demand drawing
@@ -4198,7 +4316,7 @@ const Render = (() => {
     labelRenderer.domElement.style.top = '0';
     labelRenderer.domElement.style.pointerEvents = 'none';
 
-    for(const k of ['env','ref','underlay','context','build','overlay']){
+    for(const k of ['env','ref','underlay','context','build','loads','overlay']){
       groups[k] = new THREE.Group(); groups[k].name = k; scene.add(groups[k]);
     }
 
@@ -4308,7 +4426,7 @@ const Render = (() => {
     const w = stage.clientWidth || 1, h = stage.clientHeight || 1;
     renderer.setSize(w, h, false);
     labelRenderer.setSize(w, h);
-    persp.aspect = w/h; persp.updateProjectionMatrix();
+    persp.aspect = (w/h)*aspectScale; persp.updateProjectionMatrix();
     fitOrtho(w/h);
     scene.traverse(o => { if(o.material && o.material.isLineMaterial) o.material.resolution.set(w,h); });
     dirty = true;
@@ -4367,8 +4485,12 @@ const Render = (() => {
      and the perspective camera's distance, so switching between the two does
      not change how big the building looks. */
   let orthoZoom = 12;
+  /* The comparison view draws two scenes into half-width scissor regions. The
+     camera is shared, so its frustum has to be narrowed to match the pane it is
+     drawn into - otherwise both models are squashed to half their width. */
+  let aspectScale = 1;
   function fitOrtho(aspect){
-    const a = aspect || ((stage?.clientWidth || 1)/(stage?.clientHeight || 1));
+    const a = (aspect || ((stage?.clientWidth || 1)/(stage?.clientHeight || 1)))*aspectScale;
     ortho.left = -orthoZoom*a; ortho.right = orthoZoom*a;
     ortho.top = orthoZoom; ortho.bottom = -orthoZoom;
     ortho.updateProjectionMatrix();
@@ -4381,7 +4503,7 @@ const Render = (() => {
    */
   function fitOrthoTo(box, pad){
     if(camMode !== 'ortho') return;
-    const a = (stage?.clientWidth || 1)/(stage?.clientHeight || 1);
+    const a = ((stage?.clientWidth || 1)/(stage?.clientHeight || 1))*aspectScale;
     ortho.updateMatrixWorld(true);
     const inv = new THREE.Matrix4().copy(ortho.matrixWorld).invert();
     const ctr = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
@@ -4394,7 +4516,8 @@ const Render = (() => {
       mx = Math.max(mx, Math.abs(v.x)); my = Math.max(my, Math.abs(v.y));
     }
     orthoZoom = Math.max(my, mx/a, 0.5)*pad;
-    fitOrtho(a);
+    fitOrtho();          // no argument: fitOrtho applies aspectScale itself
+
   }
   function setCamera(mode){
     if(mode === camMode) return;
@@ -4547,6 +4670,8 @@ const Render = (() => {
            init, resize, start, stop, invalidate, setOnScreen, renderNow,
            fit, standardView, bounds, label, budgetLabels, clearGroup, disposeCaches,
            applyTheme,
+           get aspectScale(){ return aspectScale },
+           set aspectScale(v){ aspectScale = v || 1; resize(); },
            set renderHook(fn){ renderHook = fn; }, get renderHook(){ return renderHook },
            profileGeometry, sectionShape, material, familyColour, C, pickables,
            get camMode(){ return camMode }, setCamera,
@@ -4873,16 +4998,19 @@ const Realize = (() => {
       if(pl.hidden) continue;
       const fam = famOf(pl);
       const layer = pl.layer ?? 3;
-      // Wall layers are keyed by which layer they are AND which way the wall
-      // faces, because the explode moves each one along its own normal.
-      const w = pl.kind === 'wallLayer'
-        ? `|${pl.sub}|${pl.normal[0].toFixed(2)},${pl.normal[1].toFixed(2)}` : '';
+      // Walls are keyed by which way they face - and layered walls also by which
+      // layer - because both the Open control and the explode move them along
+      // their own outward normal, and objects in one batch can only move together.
+      const nrm = pl.kind === 'wallLayer' ? pl.normal
+                : pl.kind === 'wall' ? Geom.normalOf(pl.a, pl.b) : null;
+      const w = nrm
+        ? `|${pl.sub || ''}|${nrm[0].toFixed(2)},${nrm[1].toFixed(2)}` : '';
       const key = `${pl.part}|${pl.level}|${pl.role}|${fam}|${layer}${w}`;
       let b = batches.get(key);
       if(!b){ b = new Batch(key, layer, fam); b.part = pl.part; b.role = pl.role;
               b.level = pl.level;
-              if(pl.kind === 'wallLayer')
-                b.wall = { i:pl.subIndex, n:pl.subCount, nx:pl.normal[0], nz:pl.normal[1] };
+              if(nrm) b.wall = { i:pl.subIndex ?? 0, n:pl.subCount ?? 1,
+                                 nx:nrm[0], nz:nrm[1] };
               batches.set(key, b); }
       feed(b, pl, detail);
       byAddr.set(pl.addr, pl);
@@ -5030,8 +5158,9 @@ const View = (() => {
     detail:'members',                 // diagram | members | full
     style:'shaded',                   // shaded | realistic | wireframe | xray
     explode:0,                        // 0..1
+    open:0,                           // 0..1  swings the enclosure aside
     explodeGap:1.4,                   // metres between layers when fully exploded
-    wallGap:0.28,                     // metres between the layers WITHIN a wall
+    wallGap:0.5,                      // metres between the layers WITHIN a wall
     layers:Object.fromEntries(LAYERS.map(l => [l.i, true])),
     parts:{ foundation:true, vertical:true, floor:true, roof:true },
     section:{ on:false, x:[0,1], y:[0,1], z:[0,1], cap:true },
@@ -5088,21 +5217,31 @@ const View = (() => {
   }
 
   /* --- explode ------------------------------------------------------------- */
+  /**
+   * Explode lifts each layer up its shared vertical axis. Open swings the
+   * enclosure aside along each wall's own outward normal, so the structure and
+   * floors inside can be seen without hiding anything - which is what you
+   * actually want when the question is "what is behind that wall?".
+   *
+   * Both move `object.position` only, never vertices, so returning either
+   * slider to zero puts the building back exactly where it was.
+   */
   function applyExplode(){
     const f = state.explode, gap = state.explodeGap, wgap = state.wallGap;
-    // A wall comes apart the way it is drawn: its layers slide along the wall's
-    // own normal, outward from the middle of the stack, while the wall as a whole
-    // still rises with its layer. Suppressed while the section box is on, because
-    // the clip planes are per layer and cannot follow each leaf sideways - and a
-    // cut through a wall that has moved would be a cut in the wrong place.
-    const spread = f > 0 && !state.section.on;
+    // Wide enough to clear the building it came off, whatever the building's size.
+    const sz = bbox.getSize(new THREE.Vector3());
+    const swing = Math.max(1.5, Math.min(sz.x, sz.z)*0.45)*state.open;
+    // Sideways movement is suppressed while the section box is cutting: the clip
+    // planes are per layer and cannot follow each leaf, so a cut through a wall
+    // that had moved would be a cut in the wrong place.
+    const sideways = !state.section.on;
     for(const o of Realize.groups){
       const l = o.userData.layer ?? 3;
       const w = o.userData.wall;
       let x = 0, z = 0;
-      if(w && spread){
-        // layer 0 is the outside face, so it is the one that flies outward
-        const d = ((w.n - 1)/2 - w.i)*wgap*f;
+      if(w && sideways){
+        // layer 0 is the outside face, so it is the one that flies furthest out
+        const d = ((w.n - 1)/2 - w.i)*wgap*f + swing;
         x = w.nx*d; z = w.nz*d;
       }
       o.position.set(x, l*gap*f, z);
@@ -5142,6 +5281,7 @@ const View = (() => {
     if(key === 'detail'){ state.detail = val; Bus.emit('view:rebuild'); }
     else if(key === 'style'){ state.style = val; Realize.disposeCaches(); Bus.emit('view:rebuild'); }
     else if(key === 'explode'){ state.explode = Util.clamp(val, 0, 1); applyExplode(); }
+    else if(key === 'open'){ state.open = Util.clamp(val, 0, 1); applyExplode(); }
     else if(key === 'camera'){ state.camera = val; Render.setCamera(val); }
     else if(key === 'section'){
       // Turning the box on or off changes which side of every face is drawn, so
@@ -6084,6 +6224,11 @@ const Dock = (() => {
     }
     if(d && d.orphans && d.orphans.length) wrap.appendChild(orphanCard(d.orphans));
 
+    // the load path, when it is on, above everything - it is about the whole
+    // building rather than any one part of it
+    const lp = LoadPath.card();
+    if(lp) wrap.appendChild(lp);
+
     // and the part a note names is flagged, so the panel and the note agree
     const flagged = new Set((d && d.notes || []).filter(n => n.part).map(n => n.part));
     wrap.appendChild(gridCard(doc));
@@ -6790,12 +6935,15 @@ const Compare = (() => {
     groupsB = Realize.groups.slice();
     for(const o of groupsB) hostB.add(o);
     Store.load(saved);
+    Render.aspectScale = 0.5;        // each scene now gets half the width
     Bus.emit('compare', { on, part, metricsA, metricsB });
     App.rebuild();
+    Render.fit();
   }
 
   function close(){
     on = false; sceneB = null; groupsB = [];
+    Render.aspectScale = 1;
     Bus.emit('compare', { on:false });
     App.rebuild();
   }
@@ -6837,6 +6985,178 @@ const Compare = (() => {
   return { open, close, render, table, metrics,
            get on(){ return on }, get part(){ return part },
            get metricsA(){ return metricsA }, get metricsB(){ return metricsB } };
+})();
+/* ==========================================================================
+   19b  LOAD PATH - the takedown, drawn
+   ==========================================================================
+   Loads.compute does the arithmetic; this draws it. Around every column stands
+   a translucent sleeve, one segment per storey, that widens and warms in colour
+   as the load accumulates on the way down. The shape is the point: a student
+   can see the load being collected floor by floor and arriving at the ground
+   as something several times larger than it started.
+
+   The sleeve's cross-section is proportional to the load, not its width, so a
+   column carrying four times as much looks four times as heavy rather than
+   sixteen times.
+   ========================================================================== */
+const LoadPath = (() => {
+  let on = false, data = null;
+
+  const MAT = new Map();
+  function mat(hex){
+    if(MAT.has(hex)) return MAT.get(hex);
+    // depthTest off: a load diagram is of no use hidden inside the cladding it
+    // is trying to explain, so the sleeves read through the building like an
+    // overlay on a drawing.
+    const m = new THREE.MeshBasicMaterial({ color:hex, transparent:true, opacity:0.42,
+      depthWrite:false, depthTest:false, side:THREE.DoubleSide });
+    MAT.set(hex, m);
+    return m;
+  }
+
+  const box = (() => { let g; return () => (g || (g = new THREE.BoxGeometry(1,1,1))); })();
+
+  function clear(){
+    Render.clearGroup(Render.groups.loads);
+    Render.invalidate();
+  }
+
+  function build(){
+    const g = Render.groups.loads;
+    Render.clearGroup(g);
+    if(!on) return;
+    const doc = Store.doc;
+    data = Loads.compute(doc);
+    const levels = data.levels;
+    const groundY = levels[0].y;
+
+    if(data.onWalls){
+      /* A wall gathers load along its whole length, so the sleeve is a band that
+         thickens storey by storey rather than a stack of boxes. */
+      const grid = data.grid;
+      const segs = [[[0,0],[grid.W,0]], [[grid.W,0],[grid.W,grid.D]],
+                    [[grid.W,grid.D],[0,grid.D]], [[0,grid.D],[0,0]]];
+      const maxPM = data.perMetre || 1;
+      for(let k = 0; k < data.rows.length; k++){
+        const r = data.rows[k];
+        const below = levels[levels.length - 1 - k - 1] || levels[0];
+        const t = r.cumulative/data.total;
+        /* A band wrapped round the building at each level, sticking OUT from the
+           wall by an amount proportional to the load it carries. Making the load
+           the projection rather than the height keeps the diagram beside the
+           building instead of painting over it - and a bar you read outward is
+           easier to compare storey to storey than a block of colour. */
+        const H = 0.3, proj = 0.12 + 0.9*Math.sqrt(t);
+        const y = below.y + (r.y - below.y)*0.12;
+        for(const [a, b] of segs){
+          const L = Math.hypot(b[0]-a[0], b[1]-a[1]);
+          const ang = Math.atan2(b[1]-a[1], b[0]-a[0]);
+          const n = Geom.normalOf(a, b);
+          const off = 0.12 + proj/2;
+          const m = new THREE.Mesh(box(), mat(Loads.colourFor(t)));
+          m.scale.set(L, H, proj);
+          m.position.set((a[0]+b[0])/2 + n[0]*off, y, (a[1]+b[1])/2 + n[1]*off);
+          m.rotation.y = -ang;
+          m.renderOrder = 900;
+          g.add(m);
+        }
+        g.add(Render.label(`${U.fx(r.cumulative/data.runLen, 0)} kN/m`,
+          new THREE.Vector3(-0.3 - proj, y, grid.D/2), 'val', 10));
+      }
+    } else {
+      const maxN = data.maxN || 1;
+      for(const sp of data.supports){
+        const per = sp.perLevel;
+        for(let k = 0; k < per.length; k++){
+          const here = per[k];
+          const belowY = per[k+1] ? per[k+1].y : groundY;
+          const t = here.N/maxN;
+          const side = 0.3 + 1.0*Math.sqrt(t);
+          const m = new THREE.Mesh(box(), mat(Loads.colourFor(t)));
+          m.scale.set(side, Math.max(0.05, here.y - belowY), side);
+          m.position.set(sp.x, (here.y + belowY)/2, sp.z);
+          m.renderOrder = 900;
+          g.add(m);
+        }
+        // the number that matters: what arrives at the foundation
+        g.add(Render.label(`${U.fx(sp.N, 0)} kN`,
+          new THREE.Vector3(sp.x, groundY + 0.35, sp.z), 'val',
+          sp.N >= maxN*0.999 ? 12 : 8));
+      }
+      // and, on the worst column, the load at every storey it passes
+      const w = data.worst;
+      if(w) for(const s of w.perLevel)
+        g.add(Render.label(`${U.fx(s.N, 0)} kN`,
+          new THREE.Vector3(w.x + 0.6, s.y - 0.4, w.z + 0.6), 'val', 11));
+    }
+    Render.invalidate();
+  }
+
+  /* --- the takedown, as a table ------------------------------------------- */
+  function card(){
+    if(!on) return null;
+    const d = data || Loads.compute(Store.doc);
+    const body = el('div', { class:'body' });
+
+    body.appendChild(el('div', { class:'note info', html:
+      'Every square metre of floor is carried by the support nearest to it. ' +
+      'Follow one column down and watch the number grow — that is the load path.' }));
+
+    const rows = d.rows.map(r => [
+      r.name, `${U.fx(r.w,0)}`, `${U.fx(r.load,0)}`, `${U.fx(r.cumulative,0)}`]);
+    const t = el('table', { class:'tbl loads' }, [
+      el('thead', {}, [el('tr', {}, ['Level','kN/m²','This level','Running']
+        .map(h => el('th', { text:h })))]),
+      el('tbody', {}, rows.map(r => el('tr', {}, r.map((c, i) =>
+        el('td', { class:i ? 'num' : '', text:c })))))
+    ]);
+    body.appendChild(el('div', { class:'tbl-wrap' }, [t]));
+    body.appendChild(el('div', { class:'hint',
+      text:`Each level is ${U.fx(d.grid.area,0)} m², and every figure is in kN.` }));
+
+    if(d.onWalls){
+      body.appendChild(el('div', { class:'sizing ok' }, [
+        el('div', { class:'head' }, [el('span', { class:'ttl', text:'At the foundation' })]),
+        el('div', { class:'formula',
+          text:`${U.fx(d.total,0)} kN ÷ ${U.fx(d.runLen,1)} m of wall = ${U.fx(d.perMetre,1)} kN/m` }),
+        el('div', { class:'advice',
+          text:'A wall spreads its load along its whole length, which is why it needs ' +
+               'only a narrow strip footing under it.' })
+      ]));
+    } else {
+      const w = d.worst;
+      body.appendChild(el('div', { class:'sizing ok' }, [
+        el('div', { class:'head' }, [
+          el('span', { class:'ttl', text:`Worst column — ${w ? w.ref : '—'}` })]),
+        el('div', { class:'formula', text: w
+          ? `${U.fx(w.trib,2)} m² × ${d.rows.length} levels = ${U.fx(w.N,0)} kN` : '—' }),
+        el('div', { class:'advice',
+          text:'An interior column takes a whole bay; a corner takes a quarter of one. ' +
+               'That is the whole difference between them.' })
+      ]));
+      body.appendChild(el('div', { class:'note',
+        html:`<b>${U.fx(d.total,0)} kN</b> reaches the ground across ` +
+             `<b>${d.supports.length}</b> columns.` }));
+    }
+
+    body.appendChild(el('div', { class:'hint',
+      text:'Gravity only, by tributary area — no frame action, no wind. This is the ' +
+           'hand calculation done at the start of a project, not a structural analysis.' }));
+
+    const det = el('details', { class:'card-sect alert', open:true });
+    det.appendChild(el('summary', {}, [icon('i-load'),
+      el('span', { class:'t', text:'Load path' }),
+      el('span', { class:'s', text:`${U.fx(d.total,0)} kN to the ground` })]));
+    det.appendChild(body);
+    return det;
+  }
+
+  return {
+    get on(){ return on },
+    set on(v){ on = !!v; build(); },
+    get data(){ return data },
+    build, clear, card
+  };
 })();
 
 /* ==========================================================================
@@ -6905,6 +7225,7 @@ const App = (() => {
     if(View.state.section.on) View.refreshClipping();
     Seq.build(r.plans, r.diag.levels || Model.makeLevels(doc.levels));
 
+    if(LoadPath.on) LoadPath.build();
     highlightSelection();
     Render.invalidate();
     refreshChrome();
@@ -6941,10 +7262,12 @@ const App = (() => {
       b.setAttribute('aria-pressed', String(b.dataset.v === View.state.detail)));
     $$('#seg-style button, #seg-style-vp button').forEach(b =>
       b.setAttribute('aria-pressed', String(b.dataset.v === View.state.style)));
-    const ex = $('#vp-explode'), exv = $('#vp-explode-val');
-    if(ex && document.activeElement !== ex){
-      ex.value = String(View.state.explode);
-      if(exv) exv.textContent = `${Math.round(View.state.explode*100)}%`;
+    for(const k of ['explode','open']){
+      const sl = $('#vp-' + k), out = $(`#vp-${k}-val`);
+      if(sl && document.activeElement !== sl){
+        sl.value = String(View.state[k]);
+        if(out) out.textContent = `${Math.round(View.state[k]*100)}%`;
+      }
     }
 
     Dock.render();
@@ -7200,8 +7523,8 @@ const Ribbon = (() => {
   function build(tab, doc){
     const host = UI.dom.ribbon;
     host.textContent = '';
-    for(const g of ({ build:tBuild, detail:tDetail, view:tView,
-                      teach:tTeach, context:tContext }[tab] || tBuild)(doc)) host.appendChild(g);
+    for(const g of ({ build:tBuild, detail:tDetail, view:tView, teach:tTeach,
+                      context:tContext, analysis:tAnalysis }[tab] || tBuild)(doc)) host.appendChild(g);
   }
 
   /* ---- Build ---- */
@@ -7298,6 +7621,9 @@ const Ribbon = (() => {
       grp('Explode', [
         UI.slider(s.explode, 0, 1, 0.01, v => View.set('explode', v), v => `${Math.round(v*100)}%`)
       ], 'explode-ctl'),
+      grp('Open', [
+        UI.slider(s.open, 0, 1, 0.01, v => View.set('open', v), v => `${Math.round(v*100)}%`)
+      ], 'open-ctl'),
       grp('Layers', [
         el('div', { class:'chips' }, View.LAYERS.map(l =>
           el('button', { class:'chip-btn', 'aria-pressed':String(s.layers[l.i] !== false),
@@ -7314,6 +7640,43 @@ const Ribbon = (() => {
             UI.slider(s.section[ax][1], 0, 1, 0.01,
               v => View.set('section', { [ax]:[s.section[ax][0], v] }),
               v => `${Math.round(v*100)}%`)])) : [])
+      ])
+    ];
+  }
+
+  /* ---- Analysis ---- */
+  function tAnalysis(doc){
+    const d = LoadPath.on ? (LoadPath.data || Loads.compute(doc)) : null;
+    return [
+      grp('Load path', [
+        btn(LoadPath.on ? 'Load path on' : 'Show load path', 'i-load',
+          () => { LoadPath.on = !LoadPath.on; App.refreshChrome(); Dock.render(); },
+          { 'aria-pressed':String(LoadPath.on),
+            title:'Follow the weight from the roof, through every floor, into the ' +
+                  'columns or walls, and down to the foundations' }),
+        LoadPath.on ? btn('Fit', 'i-eye', () => Render.fit()) : null
+      ].filter(Boolean)),
+      grp('What it shows', [
+        el('div', { class:'hintbox', title:
+          'A sleeve stands around each column, one segment per storey. It widens and ' +
+          'warms in colour as the load builds up on the way down.',
+          html: LoadPath.on
+            ? 'The sleeve around each column widens as the load builds up on the way down.'
+            : 'Turn it on to see where the weight of the building actually goes.' })
+      ], null, 'prose'),
+      ...(d ? [grp('Totals', [
+        el('span', { class:'stat' }, [
+          el('b', { text:U.fx(d.total, 0) }), ' kN to the ground']),
+        el('span', { class:'stat' }, [
+          el('b', { text:U.fx(d.rows[0].w, 0) }), ' kN/m² roof']),
+        el('span', { class:'stat' }, [
+          el('b', { text:U.fx(d.wFloor, 0) }), ' kN/m² floors'])
+      ])] : []),
+      grp('Use', [
+        UI.select(Object.keys(SIZING.LOADING).filter(k => k !== 'roof')
+            .map(k => ({ value:k, label:k[0].toUpperCase()+k.slice(1) })),
+          doc.use, v => { Store.begin('Use'); doc.use = v; Store.touch('param');
+                          LoadPath.build(); App.refreshChrome(); Dock.render(); })
       ])
     ];
   }
@@ -7422,12 +7785,15 @@ const Ribbon = (() => {
     const v = b.dataset.view;
     if(v === 'fit') Render.fit(); else Render.standardView(v);
   });
-  $('#vp-explode').oninput = e => {
-    App.dragging = true;
-    View.set('explode', parseFloat(e.target.value));
-    $('#vp-explode-val').textContent = `${Math.round(e.target.value*100)}%`;
-  };
-  $('#vp-explode').onchange = () => { App.dragging = false; };
+  for(const k of ['explode','open']){
+    const sl = $('#vp-' + k), out = $(`#vp-${k}-val`);
+    sl.oninput = e => {
+      App.dragging = true;
+      View.set(k, parseFloat(e.target.value));
+      out.textContent = `${Math.round(e.target.value*100)}%`;
+    };
+    sl.onchange = () => { App.dragging = false; };
+  }
 
   /* --- pointer ----------------------------------------------------------- */
   let down = null, moved = false;
@@ -7590,7 +7956,7 @@ const Ribbon = (() => {
   addEventListener('beforeunload', e => { if(Store.isDirty){ e.preventDefault(); e.returnValue = ''; } });
   window.ConstructionStudio = { Store, Model, Gen, Realize, View, SYSTEMS, SIZING, BUILDUPS,
                                 LIB, App, Render, Seq, Compare, Dock, LayerDiagram, Pick,
-                                Draft, Import, IO, UI, Tour };
+                                Draft, Import, IO, UI, Tour, Loads, LoadPath, Connect };
 })();
 </script>
 </body>
