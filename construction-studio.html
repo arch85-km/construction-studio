@@ -139,7 +139,13 @@ button,input,select,textarea{font:inherit;color:inherit}
   min-width:0; white-space:nowrap
 }
 #cmd::-webkit-scrollbar{height:5px}
-#cmd .grp{display:flex;align-items:center;gap:5px;padding:0 9px;position:relative;flex:none}
+#cmd .grp{display:flex;align-items:center;gap:5px;padding:0 9px;position:relative;flex:none;min-width:0}
+/* A prose group is the one thing in the bar that has no natural width, so it
+   is the one thing allowed to shrink - otherwise the sentence runs on under
+   whatever sits to its right. */
+#cmd .grp.prose{flex:0 1 auto;overflow:hidden}
+#cmd .hintbox{font-size:11px;color:var(--ink-2);line-height:1.35;
+  max-width:38ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #cmd .grp + .grp::before{
   content:"";position:absolute;left:0;top:5px;bottom:5px;width:1px;background:var(--line-soft)
 }
@@ -655,8 +661,19 @@ svg.buildup .lyr{cursor:pointer}
 svg.buildup .lyr:hover rect{stroke-width:2}
 svg.buildup .lyr.on rect{stroke:var(--accent);stroke-width:2.2}
 svg.buildup .lyr.struct text.lab{font-weight:640;fill:var(--ink-0)}
+svg.buildup .lyr.struct rect{fill-opacity:1}
+svg.buildup .sbrk{stroke:var(--accent)}
+svg.buildup text.scap{font-size:6.4px;font-weight:700;letter-spacing:.7px;fill:var(--accent)}
 #layer-card .within{margin-top:6px;display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--ink-3)}
 #layer-card .hint{margin-top:6px;font-size:10px;color:var(--ink-3)}
+
+/* a connection's explanation, in the property sheet */
+.joint{border:1px solid var(--accent-dim);border-left:3px solid var(--accent);
+  border-radius:var(--r-m);background:var(--accent-ghost);padding:9px 11px;margin-bottom:11px}
+.joint .jh{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.joint .jh svg{width:14px;height:14px;color:var(--accent)}
+.joint .jh b{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--accent)}
+.joint p{margin:0;font-size:11.5px;line-height:1.55;color:var(--ink-1)}
 
 /* comparison */
 #cmp-panel{position:absolute;left:50%;transform:translateX(-50%);bottom:46px;z-index:8;
@@ -1965,10 +1982,49 @@ const SIZING = (() => {
    ========================================================================== */
 const BUILDUPS = {
 
+  /* --- ground floors: everything below the slab is about the ground ------- */
+
+  'ground.concrete.slab':{ dir:'up', label:'Ground-bearing slab', layers:[
+    { k:'finish', label:'Floor finish',              t:15,  mat:'timber' },
+    { k:'screed', label:'Screed',                    t:75,  mat:'concrete' },
+    { k:'insul',  label:'Rigid insulation',          t:120, mat:'insul' },
+    { k:'dpm',    label:'Damp-proof membrane',       t:1,   mat:'board' },
+    { k:'struct', role:'slab', label:'Ground-bearing slab', t:150, mat:'concrete', struct:true },
+    { k:'sand',   label:'Sand blinding',             t:25,  mat:'insul' },
+    { k:'hard',   label:'Compacted hardcore',        t:150, mat:'masonry' }
+  ]},
+
+  'ground.concrete.beamBlock':{ dir:'up', label:'Beam and block ground floor', layers:[
+    { k:'finish', label:'Floor finish',              t:15,  mat:'timber' },
+    { k:'screed', label:'Screed',                    t:65,  mat:'concrete' },
+    { k:'insul',  label:'Rigid insulation',          t:120, mat:'insul' },
+    { k:'dpm',    label:'Damp-proof membrane',       t:1,   mat:'board' },
+    { k:'struct', role:'slab', label:'Precast beams and blocks', t:150, mat:'concrete', struct:true },
+    { k:'void',   label:'Ventilated void',           t:300, mat:'void' },
+    { k:'over',   label:'Oversite concrete',         t:50,  mat:'concrete' }
+  ]},
+
+  'ground.concrete.suspended':{ dir:'up', label:'Suspended RC ground slab', layers:[
+    { k:'finish', label:'Floor finish',              t:15,  mat:'timber' },
+    { k:'screed', label:'Screed',                    t:75,  mat:'concrete' },
+    { k:'insul',  label:'Rigid insulation',          t:100, mat:'insul' },
+    { k:'struct', role:'slab', label:'Suspended reinforced slab', t:200, mat:'concrete', struct:true },
+    { k:'void',   label:'Void below',                t:150, mat:'void' }
+  ]},
+
+  'ground.timber.suspended':{ dir:'up', label:'Suspended timber ground floor', layers:[
+    { k:'finish', label:'Floor finish',              t:15,  mat:'timber' },
+    { k:'deck',   role:'deck', label:'Floorboards',  t:22,  mat:'timber' },
+    { k:'struct', role:'joist', label:'Joists at 400 mm centres', t:220, mat:'timber', struct:true },
+    { k:'insul',  label:'Insulation between joists', t:150, mat:'insul', within:'struct' },
+    { k:'void',   label:'Ventilated void',           t:300, mat:'void' },
+    { k:'over',   label:'Oversite concrete',         t:50,  mat:'concrete' }
+  ]},
+
   'floor.timber.joist':{ dir:'up', label:'Timber joisted floor', layers:[
     { k:'finish', label:'Floor finish',              t:18,   mat:'timber' },
-    { k:'deck',   label:'OSB subfloor',              t:18,   mat:'board' },
-    { k:'struct', label:'Joists at 400 mm centres',  t:220,  mat:'timber', struct:true },
+    { k:'deck',   label:'OSB subfloor',              t:18,   mat:'board', role:'deck' },
+    { k:'struct', label:'Joists at 400 mm centres',  t:220,  mat:'timber', struct:true, role:'joist' },
     { k:'insul',  label:'Mineral wool between joists', t:100, mat:'insul', within:'struct' },
     { k:'bar',    label:'Resilient bar',             t:16,   mat:'metal' },
     { k:'lining', label:'Plasterboard ceiling',      t:12.5, mat:'board' }
@@ -1976,46 +2032,46 @@ const BUILDUPS = {
 
   'floor.timber.clt':{ dir:'up', label:'CLT floor', layers:[
     { k:'finish',  label:'Floor finish',             t:15,  mat:'timber' },
-    { k:'topping', label:'Acoustic screed',          t:70,  mat:'concrete' },
+    { k:'topping', label:'Acoustic screed',          t:70,  mat:'concrete', role:'topping' },
     { k:'resil',   label:'Resilient layer',          t:20,  mat:'insul' },
-    { k:'struct',  label:'CLT panel, 5-ply',         t:175, mat:'timber', struct:true },
+    { k:'struct',  label:'CLT panel, 5-ply',         t:175, mat:'timber', struct:true, role:'panel' },
     { k:'svc',     label:'Service void',             t:150, mat:'void' }
   ]},
 
   'floor.steel.composite':{ dir:'up', label:'Composite steel floor', layers:[
     { k:'raised', label:'Raised access floor',       t:150, mat:'void' },
-    { k:'slab',   label:'Composite slab on deck',    t:140, mat:'concrete', struct:true },
-    { k:'struct', label:'Secondary beams at 3 m',    t:400, mat:'steel', struct:true },
+    { k:'slab',   label:'Composite slab on deck',    t:140, mat:'concrete', struct:true, role:'slab' },
+    { k:'struct', label:'Secondary beams at 3 m',    t:400, mat:'steel', struct:true, role:'secondary' },
     { k:'svc',    label:'Services within the beams', t:375, mat:'void', within:'struct' },
     { k:'ceil',   label:'Suspended ceiling',         t:25,  mat:'board' }
   ]},
 
   'floor.concrete.oneWay':{ dir:'up', label:'RC slab and beams', layers:[
     { k:'finish', label:'Screed and finish',         t:75,  mat:'concrete' },
-    { k:'slab',   label:'One-way slab',              t:200, mat:'concrete', struct:true },
-    { k:'struct', label:'Downstand beams',           t:500, mat:'concrete', struct:true },
+    { k:'slab',   label:'One-way slab',              t:200, mat:'concrete', struct:true, role:'slab' },
+    { k:'struct', label:'Downstand beams',           t:500, mat:'concrete', struct:true, role:'primary' },
     { k:'svc',    label:'Services under the beams',  t:300, mat:'void' },
     { k:'ceil',   label:'Suspended ceiling',         t:25,  mat:'board' }
   ]},
 
   'floor.concrete.flatSlab':{ dir:'up', label:'RC flat slab', layers:[
     { k:'finish', label:'Screed and finish',         t:50,  mat:'concrete' },
-    { k:'struct', label:'Flat slab',                 t:250, mat:'concrete', struct:true },
+    { k:'struct', label:'Flat slab',                 t:250, mat:'concrete', struct:true, role:'slab' },
     { k:'svc',    label:'Services zone',             t:350, mat:'void' },
     { k:'ceil',   label:'Suspended ceiling',         t:25,  mat:'board' }
   ]},
 
   'floor.concrete.waffle':{ dir:'up', label:'Waffle slab', layers:[
     { k:'finish', label:'Screed and finish',         t:50,  mat:'concrete' },
-    { k:'top',    label:'Structural topping',        t:100, mat:'concrete', struct:true },
-    { k:'struct', label:'Ribs on a 900 mm module',   t:350, mat:'concrete', struct:true },
+    { k:'top',    label:'Structural topping',        t:100, mat:'concrete', struct:true, role:'topping' },
+    { k:'struct', label:'Ribs on a 900 mm module',   t:350, mat:'concrete', struct:true, role:'rib' },
     { k:'svc',    label:'Services between the ribs', t:300, mat:'void', within:'struct' }
   ]},
 
   'floor.precast.hollowcore':{ dir:'up', label:'Precast hollowcore', layers:[
     { k:'finish', label:'Screed and finish',         t:50,  mat:'concrete' },
-    { k:'top',    label:'Structural topping',        t:75,  mat:'concrete', struct:true },
-    { k:'struct', label:'Hollowcore plank, 1200 wide', t:250, mat:'concrete', struct:true },
+    { k:'top',    label:'Structural topping',        t:75,  mat:'concrete', struct:true, role:'topping' },
+    { k:'struct', label:'Hollowcore plank, 1200 wide', t:250, mat:'concrete', struct:true, role:'plank' },
     { k:'svc',    label:'Services zone',             t:300, mat:'void' },
     { k:'ceil',   label:'Suspended ceiling',         t:25,  mat:'board' }
   ]},
@@ -2067,7 +2123,7 @@ const BUILDUPS = {
   'roof.timber.truss':{ dir:'up', label:'Trussed rafter roof', layers:[
     { k:'cover',  label:'Concrete tiles on battens', t:60,  mat:'masonry' },
     { k:'felt',   label:'Breather membrane',         t:1,   mat:'board' },
-    { k:'struct', label:'Trussed rafters at 600 mm', t:200, mat:'timber', struct:true },
+    { k:'struct', role:'truss', label:'Trussed rafters at 600 mm', t:200, mat:'timber', struct:true },
     { k:'insul',  label:'Insulation at ceiling level', t:300, mat:'insul' },
     { k:'lining', label:'Plasterboard ceiling',      t:12.5, mat:'board' }
   ]},
@@ -2076,8 +2132,8 @@ const BUILDUPS = {
     { k:'memb',   label:'Single-ply membrane',       t:2,   mat:'board' },
     { k:'insul',  label:'Rigid insulation',          t:150, mat:'insul' },
     { k:'vcl',    label:'Vapour control layer',      t:1,   mat:'board' },
-    { k:'deck',   label:'Profiled metal deck',       t:60,  mat:'metal', struct:true },
-    { k:'struct', label:'Purlins',                   t:200, mat:'steel', struct:true }
+    { k:'deck',   role:'deck',  label:'Profiled metal deck',       t:60,  mat:'metal', struct:true },
+    { k:'struct', role:'purlin', label:'Purlins',                   t:200, mat:'steel', struct:true }
   ]},
 
   'roof.concrete.slab':{ dir:'up', label:'Warm flat roof on concrete', layers:[
@@ -2085,7 +2141,7 @@ const BUILDUPS = {
     { k:'memb',    label:'Waterproof membrane',      t:5,   mat:'board' },
     { k:'insul',   label:'Rigid insulation',         t:180, mat:'insul' },
     { k:'screed',  label:'Screed to falls',          t:75,  mat:'concrete' },
-    { k:'struct',  label:'Concrete slab',            t:250, mat:'concrete', struct:true }
+    { k:'struct',  role:'slab', label:'Concrete slab',t:250, mat:'concrete', struct:true }
   ]}
 };
 
@@ -2112,9 +2168,13 @@ const LAYER_MAT = {
    adapt" possible at all.
    ========================================================================== */
 const DOC_VERSION = 1;
-const PARTS = ['foundation','vertical','floor','roof'];
-const PART_LABEL = { foundation:'Foundation', vertical:'Wall & Structure',
-                     floor:'Floor', roof:'Roof' };
+/* Ching's four parts, with the ground floor separated out. It behaves nothing
+   like an upper floor - it sits on the ground rather than spanning, and the
+   choice between a ground-bearing slab and a suspended one is one of the first
+   a student has to make - so it earns its own slot. */
+const PARTS = ['foundation','groundFloor','vertical','floor','roof'];
+const PART_LABEL = { foundation:'Foundation', groundFloor:'Ground floor',
+                     vertical:'Wall & Structure', floor:'Floor', roof:'Roof' };
 
 const Model = (() => {
 
@@ -2129,6 +2189,7 @@ const Model = (() => {
       soil:{ qAllow:150 },
       slots:{
         foundation:{ sys:'foundation.concrete.pad',  p:{} },
+        groundFloor:{ sys:'ground.concrete.slab',    p:{} },
         vertical:  { sys:'vertical.steel.moment',   p:{} },
         floor:     { sys:'floor.steel.composite',    p:{} },
         roof:      { sys:'roof.steel.deck',          p:{} }
@@ -2216,6 +2277,18 @@ const Model = (() => {
     return out;
   }
 
+  /**
+   * Fills in any slot a document is missing. Templates, older saved files and
+   * anything built by hand all come through here, so adding a part to PARTS
+   * can never again leave a document half-populated.
+   */
+  function fillSlots(doc){
+    const base = emptyDoc();
+    doc.slots = doc.slots || {};
+    for(const part of PARTS) if(!doc.slots[part]) doc.slots[part] = base.slots[part];
+    return doc;
+  }
+
   /* --- (de)serialisation ------------------------------------------------- */
   const serialize = doc => Object.assign(Util.clone(doc),
     { savedAt:new Date().toISOString(), version:DOC_VERSION });
@@ -2244,7 +2317,7 @@ const Model = (() => {
   const sec = id => LIB.SEC[id] || LIB.SECTIONS[0];
   const mat = id => LIB.MAT[id] || LIB.MATERIALS[0];
 
-  return { emptyDoc, makeGrid, makeLevels, serialize, deserialize, sec, mat,
+  return { emptyDoc, fillSlots, makeGrid, makeLevels, serialize, deserialize, sec, mat,
            PARTS, PART_LABEL, DOC_VERSION };
 })();
 
@@ -2310,7 +2383,7 @@ const Store = (() => {
 
     load(newDoc){
       past.length = 0; future.length = 0; assets.clear();
-      doc = newDoc; selection.clear(); dirty = false;
+      doc = Model.fillSlots(newDoc); selection.clear(); dirty = false;
       Bus.emit('doc:loaded', doc); Bus.emit('doc:changed', 'load');
     },
 
@@ -2523,6 +2596,135 @@ def({
           addr:ctx.A('pile', pt.i, pt.j, k), round:true });
       }
     }
+  }
+});
+
+/* ==========================================================================
+   GROUND FLOOR  -  the slab you stand on, which is not an upper floor
+   ==========================================================================
+   An upper floor spans between supports. A ground floor may not span at all:
+   a ground-bearing slab is carried by the earth under it. That difference -
+   and the damp-proofing and insulation that come with being in contact with
+   the ground - is why this is its own choice.
+   ========================================================================== */
+
+/** Every ground floor covers the footprint; only the make-up differs. */
+function groundSlab(ctx, thk, mat, z, label, buildUp, extra = {}){
+  const { grid, level } = ctx;
+  panel(ctx, 'slab', grid.outline, level.y - thk, thk, mat,
+    Object.assign({ addr:ctx.A('slab'), meta:z, label, buildUp,
+                    over:z ? { struct:z.depth } : null }, extra));
+}
+
+def({
+  id:'ground.concrete.slab', part:'groundFloor', material:'concrete',
+  label:'Ground-bearing slab', tectonic:'solid',
+  blurb:'A concrete slab cast straight onto compacted hardcore, carried by the ground ' +
+        'itself rather than spanning. The cheapest ground floor, and the usual one.',
+  bears:'either', spans:'none',
+  span:{ min:0, ok:[0, 99], max:99 },
+  params:[
+    { k:'thk',   label:'Slab thickness', type:'num', unit:'mm', def:150, min:100, max:300, step:10 },
+    { k:'insul', label:'Insulation', type:'num', unit:'mm', def:120, min:50, max:250, step:10 },
+    { k:'ufh',   label:'Underfloor heating in the screed', type:'check', def:false }
+  ],
+  sizing:{}, buildUp:'ground.concrete.slab', layer:1, seq:10,
+  build(ctx){
+    const { p } = ctx;
+    groundSlab(ctx, p.thk/1000, 'C30', null,
+      `${Math.round(p.thk)} mm ground-bearing slab`, 'ground.concrete.slab',
+      { over:{ struct:p.thk, insul:p.insul } });
+  }
+});
+
+def({
+  id:'ground.concrete.beamBlock', part:'groundFloor', material:'concrete',
+  label:'Beam and block', tectonic:'solid',
+  blurb:'Precast inverted-T beams with blocks dropped between them, spanning wall to wall ' +
+        'over a ventilated void. Used where the ground is poor or made up.',
+  bears:'lines', spans:'oneWay',
+  span:{ min:2, ok:[3, 5.5], max:6 },
+  params:[
+    { k:'void',  label:'Ventilated void', type:'num', unit:'m', def:0.3, min:0.15, max:0.9, step:0.05 },
+    { k:'insul', label:'Insulation', type:'num', unit:'mm', def:120, min:50, max:250, step:10 }
+  ],
+  sizing:{ beam:'precast.hollowcore' }, buildUp:'ground.concrete.beamBlock', layer:1, seq:10,
+  build(ctx){
+    const { grid, level, size, p } = ctx;
+    const L = Math.min(grid.sx, grid.sz);
+    const z = size('precast.hollowcore', { L });
+    const t = z.depth/1000;
+    groundSlab(ctx, t, 'C40', z, `Beam and block, ${Math.round(z.depth)} mm deep`,
+      'ground.concrete.beamBlock', { over:{ struct:z.depth, insul:p.insul } });
+    // the void below, drawn so the student can see the floor is not on the ground
+    ctx.out({ kind:'panel', role:'void', layer:1, level:level.id,
+      poly:grid.outline, y:level.y - t - p.void, thk:0.02, mat:'MAS10',
+      addr:ctx.A('oversite'), label:`Oversite concrete, ${U.fx(p.void,2)} m void over` });
+  }
+});
+
+def({
+  id:'ground.concrete.suspended', part:'groundFloor', material:'concrete',
+  label:'Suspended RC slab', tectonic:'solid',
+  blurb:'A reinforced slab spanning between ground beams, clear of the ground. What you ' +
+        'use on shrinkable clay, over fill, or wherever the ground cannot be trusted.',
+  bears:'either', spans:'twoWay',
+  span:{ min:3, ok:[4, 8], max:10 },
+  params:[
+    { k:'void',  label:'Void below', type:'num', unit:'m', def:0.15, min:0, max:0.6, step:0.05 },
+    { k:'insul', label:'Insulation', type:'num', unit:'mm', def:100, min:50, max:250, step:10 }
+  ],
+  sizing:{ slab:'rc.slab1way' }, buildUp:'ground.concrete.suspended', layer:1, seq:10,
+  build(ctx){
+    const { grid, size, p } = ctx;
+    const z = size('rc.slab1way', { L:Math.min(grid.sx, grid.sz), cont:'both' });
+    groundSlab(ctx, z.depth/1000, 'C30', z,
+      `Suspended slab, ${Math.round(z.depth)} mm`, 'ground.concrete.suspended',
+      { over:{ struct:z.depth, insul:p.insul } });
+  }
+});
+
+def({
+  id:'ground.timber.suspended', part:'groundFloor', material:'timber',
+  label:'Suspended timber floor', tectonic:'filigree',
+  blurb:'Joists on sleeper walls over a ventilated void, boarded over. The ground floor of ' +
+        'every older house, and still the warmest to walk on.',
+  bears:'lines', spans:'oneWay',
+  span:{ min:2, ok:[2.5, 4.5], max:5 },
+  params:[
+    { k:'centres', label:'Joist centres', type:'seg', opts:[400,450,600], def:400, unit:'mm' },
+    { k:'void',    label:'Ventilated void', type:'num', unit:'m', def:0.3, min:0.15, max:0.9, step:0.05 },
+    { k:'insul',   label:'Insulation', type:'num', unit:'mm', def:150, min:50, max:250, step:10 }
+  ],
+  sizing:{ joist:'timber.joist' }, buildUp:'ground.timber.suspended', layer:1, seq:10,
+  build(ctx){
+    const { grid, level, size, p, detail } = ctx;
+    const L = Math.min(grid.sx, grid.sz);
+    const dir = grid.sx <= grid.sz ? 'x' : 'z';
+    const z = size('timber.joist', { L, spacing:p.centres/1000 });
+    const t = z.depth/1000;
+    const y = level.y - 0.022 - t/2;                       // under the boarding
+
+    if(detail === 'diagram'){
+      panel(ctx, 'deck', grid.outline, level.y - 0.022, 0.022, 'C24',
+        { addr:ctx.A('deck'), meta:z, label:'Boarded floor',
+          buildUp:'ground.timber.suspended', over:{ struct:z.depth, insul:p.insul } });
+    } else {
+      const across = dir === 'x' ? grid.D : grid.W;
+      const n = Math.max(2, Math.round(across/(p.centres/1000)) + 1);
+      const sp = across/(n-1);
+      const a = dir === 'x' ? [0, y, 0] : [0, y, 0];
+      const bb = dir === 'x' ? [grid.W, y, 0] : [0, y, grid.D];
+      runOf(ctx, 'joist', a, bb, n, dir === 'x' ? [0,0,sp] : [sp,0,0],
+        z.sectionId, 'C24',
+        { addr:ctx.A('joist'), meta:z, label:`Joists at ${Math.round(p.centres)} mm centres` });
+      panel(ctx, 'deck', grid.outline, level.y - 0.022, 0.022, 'C24',
+        { addr:ctx.A('deck'), label:'Boarded floor',
+          buildUp:'ground.timber.suspended', over:{ struct:z.depth, insul:p.insul } });
+    }
+    ctx.out({ kind:'panel', role:'void', layer:1, level:level.id,
+      poly:grid.outline, y:level.y - t - p.void - 0.05, thk:0.02, mat:'MAS10',
+      addr:ctx.A('oversite'), label:`Oversite, ${U.fx(p.void,2)} m ventilated void over` });
   }
 });
 
@@ -3319,7 +3521,7 @@ def({
 });
 
 /* --- indexes and the compatibility rule --------------------------------- */
-const SYS_BY_PART = { foundation:[], vertical:[], floor:[], roof:[] };
+const SYS_BY_PART = { foundation:[], groundFloor:[], vertical:[], floor:[], roof:[] };
 for(const s of Object.values(SYSTEMS)) SYS_BY_PART[s.part].push(s);
 for(const k in SYS_BY_PART) SYS_BY_PART[k].sort((a,b) => a.material.localeCompare(b.material));
 
@@ -3337,6 +3539,266 @@ function compatible(vert, horiz){
 function suggestFor(part, span){
   return SYS_BY_PART[part].filter(s => s.span && span >= s.span.ok[0] && span <= s.span.ok[1]);
 }
+/* ==========================================================================
+   8b  CONNECTIONS - how one system is joined to the next
+   ==========================================================================
+   A student can choose a steel frame and a timber floor and see both drawn,
+   and still have no idea what happens where they meet. That junction is where
+   most of the difficulty of building actually lives, and it is the thing
+   drawings in a lecture spend the most time on.
+
+   Connections are not a system and cannot be chosen. They are DERIVED: once
+   the parts are built, the junctions are read off the plans and each one is
+   resolved from the pair of materials meeting there. Steel on concrete is a
+   base plate and holding-down bolts; concrete on concrete is starter bars;
+   timber on concrete is a galvanised shoe. Three rules, no special cases, and
+   a new system inherits the right joints the moment it declares its material.
+
+   Every joint carries `how` - a sentence explaining what the connection has to
+   do - which the property panel shows when the student clicks it.
+   ========================================================================== */
+const Connect = (() => {
+
+  const R = m => ({ steel:'steel', concrete:'concrete', masonry:'masonry',
+                    timber:'timber' }[m] || 'steel');
+
+  /* --- the joints -------------------------------------------------------- */
+  const JOINTS = {
+
+    /* --- a column landing on its foundation ----------------------------- */
+    'base.steel':{
+      label:'Bolted base plate',
+      how:'Steel bearing on concrete has to be spread out: a plate welded to the ' +
+          'foot of the column turns a small, very high stress into one the concrete ' +
+          'can take. Four holding-down bolts cast into the pad hold it down and keep ' +
+          'the column upright while the frame goes up.',
+      build(ctx, o){
+        const B = Math.max(0.32, o.w*2.2), t = 0.028;
+        vol(ctx, 'base', o.p, B, t, o.y - t, 'S355',
+            { addr:o.A('base'), label:`Base plate ${Math.round(B*1000)} mm square`, how:this.how });
+        const e = B/2 - 0.055;
+        for(let k = 0; k < 4; k++){
+          const dx = (k & 1 ? 1 : -1)*e, dz = (k & 2 ? 1 : -1)*e;
+          vol(ctx, 'bolt', [o.p[0]+dx, o.p[1]+dz], 0.028, 0.09, o.y - 0.062, 'S355',
+              { addr:o.A('bolt', k), label:'Holding-down bolt, cast in' });
+        }
+      }
+    },
+
+    'base.concrete':{
+      label:'Cast-in starter bars',
+      how:'Concrete on concrete is not really a joint at all — the bars are what ' +
+          'is continuous. Starters are cast into the foundation and left projecting, ' +
+          'the column steel is lapped onto them, and the column is poured off a short ' +
+          'kicker so the shutter has something to seal against.',
+      build(ctx, o){
+        vol(ctx, 'kicker', o.p, o.w + 0.05, 0.075, o.y, 'C30',
+            { addr:o.A('kicker'), label:'75 mm kicker', how:this.how });
+        const e = o.w/2 - 0.045;
+        for(let k = 0; k < 4; k++){
+          const dx = (k & 1 ? 1 : -1)*e, dz = (k & 2 ? 1 : -1)*e;
+          ctx.out({ kind:'member', role:'rebar', layer:ctx.layer, level:o.level,
+            a:[o.p[0]+dx, o.y - 0.25, o.p[1]+dz], b:[o.p[0]+dx, o.y + 0.55, o.p[1]+dz],
+            sectionId:LIB.synth('RC', 0.025, 0.025, 'C30').id, mat:'C30', roll:0,
+            addr:o.A('bar', k), label:'Starter bar, lapped into the column' });
+        }
+      }
+    },
+
+    'base.timber':{
+      label:'Galvanised post base',
+      how:'Timber must never sit on concrete: the concrete stays damp and the post ' +
+          'rots from the end. A galvanised shoe lifts the post clear of the surface ' +
+          'and is bolted down, so water can drain away underneath it.',
+      build(ctx, o){
+        vol(ctx, 'shoe', o.p, o.w + 0.02, 0.006, o.y + 0.05, 'S355',
+            { addr:o.A('shoe'), label:'Galvanised post base', how:this.how });
+        for(const sgn of [-1, 1])
+          vol(ctx, 'cheek', [o.p[0] + sgn*(o.w/2 + 0.004), o.p[1]], 0.008, 0.22,
+              o.y + 0.056, 'S355', { addr:o.A('cheek', sgn > 0 ? 1 : 0),
+                                     label:'Bolted side cheek' }, o.w);
+        vol(ctx, 'pin', o.p, 0.024, 0.05, o.y, 'S355',
+            { addr:o.A('pin'), label:'Cast-in dowel' });
+      }
+    },
+
+    'base.masonry':{
+      label:'Damp-proof course',
+      how:'A wall carries its load straight into the footing, so nothing is needed ' +
+          'to transfer it. What is needed is a barrier: a DPC bedded at least 150 mm ' +
+          'above the ground stops water rising through the masonry by capillary action.',
+      build(ctx, o){
+        ctx.out({ kind:'wall', role:'dpc', layer:ctx.layer, level:o.level,
+          a:o.a, b:o.b, y:o.y, h:0.012, thk:o.thk + 0.01, mat:'MAS10',
+          addr:o.A('dpc'), label:'Damp-proof course', how:this.how });
+      }
+    },
+
+    /* --- a horizontal system landing on a wall -------------------------- */
+    'bearing.plate':{
+      label:'Wall plate',
+      how:'Joists and rafters cannot bear on masonry one at a time — each would ' +
+          'punch into it. A timber plate bedded along the top of the wall spreads ' +
+          'them into a line, gives something to nail to, and is strapped down so ' +
+          'wind cannot lift the roof off.',
+      build(ctx, o){
+        ctx.out({ kind:'member', role:'plate', layer:ctx.layer, level:o.level,
+          a:[o.a[0], o.y, o.a[1]], b:[o.b[0], o.y, o.b[1]], roll:0,
+          sectionId:LIB.synth('SAWN', 0.047, Math.min(0.15, o.thk), 'C24').id,
+          mat:'C24', addr:o.A('plate'), label:'Wall plate, strapped down', how:this.how });
+      }
+    },
+
+    'bearing.pad':{
+      label:'Padstone',
+      how:'A beam landing on masonry concentrates its whole load on a few hundred ' +
+          'millimetres of wall, which will crush. A padstone — a block of dense ' +
+          'concrete built into the wall — spreads that load over enough of it.',
+      build(ctx, o){
+        vol(ctx, 'padstone', o.p, Math.max(0.215, o.w*1.6), 0.14, o.y - 0.14, 'C40',
+            { addr:o.A('pad'), label:'Padstone', how:this.how });
+      }
+    },
+
+    /* --- a beam meeting a column ---------------------------------------- */
+    'beam.steel':{
+      label:'Bolted end plate',
+      how:'The beam arrives with a plate welded across its end, and that plate is ' +
+          'bolted to the column in the air. Everything difficult is done in the ' +
+          'fabricator’s shop; the site connection is eight bolts and a spanner.',
+      build(ctx, o){
+        vol(ctx, 'endplate', o.p, Math.max(0.18, o.w*1.1), 0.02, o.y - o.d/2, 'S355',
+            { addr:o.A('ep'), label:'Bolted end plate', how:this.how }, o.d);
+      }
+    },
+
+    'beam.timber':{
+      label:'Joist hanger',
+      how:'A galvanised hanger nailed to the supporting timber carries the joist ' +
+          'on a folded steel seat. It keeps the top of the floor flat instead of ' +
+          'dropping the joist onto a beam below it.',
+      build(ctx, o){
+        vol(ctx, 'hanger', o.p, 0.06, o.d*0.8, o.y - o.d*0.4, 'S355',
+            { addr:o.A('hanger'), label:'Joist hanger', how:this.how }, o.w + 0.01);
+      }
+    }
+  };
+
+  /** A small rectangular solid, centred on `p`, `sx` wide and (optionally) `sz` deep. */
+  function vol(ctx, role, p, sx, h, y, mat, o, sz){
+    const b = sz || sx;
+    ctx.out(Object.assign({
+      kind:'volume', role, layer:ctx.layer, level:ctx.level.id,
+      poly:Geom.rect(p[0]-sx/2, p[1]-b/2, p[0]+sx/2, p[1]+b/2),
+      y, h, mat, connection:true
+    }, o));
+  }
+
+  /* --- reading the junctions off the plans -------------------------------- */
+
+  /** Half the width of a section, in metres. */
+  const halfW = id => { const s = Model.sec(id); return (s && (s.b || s.h)) || 0.3; };
+  const depthOf = id => { const s = Model.sec(id); return (s && s.h) || 0.3; };
+
+  /**
+   * Emits every joint in the building. Called once, after the parts are built,
+   * with the finished plan list - so it never has to guess at geometry that a
+   * system has already worked out.
+   */
+  function build(ctx, plans, M, grid, levels, base, vertSys, foundSys, detail){
+    if(detail === 'diagram') return;          // the diagram is about the idea, not the joint
+    const mat = vertSys ? R(vertSys.material) : null;
+    let n = 0;
+    const CAP = 400;
+
+    /* 1. every column where it lands on its foundation.
+
+          A footing is founded below the frost line - a metre or more down - while
+          the frame starts at ground level, so there is a real gap between them
+          that something has to fill. On site that something is a pedestal cast
+          on the pad, or the foundation wall under a load-bearing wall. Without
+          it the building floats above its own foundations, which is both wrong
+          and the first thing a student notices. */
+    const ground = levels[0];
+    const tops = plans.filter(p => p.part === 'foundation' && p.kind === 'volume' &&
+                                   p.role !== 'pile').map(p => p.y + p.h);
+    const foundTop = tops.length ? Math.max(...tops) : null;
+    const gapTo = y => (foundTop == null ? 0 : y - foundTop);
+
+    const cols = plans.filter(p => p.part === 'vertical' && p.level === ground.id &&
+                                  (p.role === 'column' || p.role === 'post'));
+    const J = JOINTS['base.' + mat];
+    if(J && foundSys) for(const c of cols){
+      if(n++ > CAP) break;
+      const w = halfW(c.sectionId)*2;
+      const p = [c.a[0], c.a[2]];
+      const g = gapTo(c.a[1]);
+      if(g > 0.15)
+        vol(ctx, 'pedestal', p, Math.max(w + 0.16, 0.35), g, foundTop, 'C30',
+            { addr:ctx.A('pedestal', c.addr.split('/').pop()),
+              label:`Pedestal, ${U.fx(g,2)} m`,
+              how:'The footing is founded well below ground and the frame starts at ' +
+                  'ground level. A pedestal cast on the pad carries the column down ' +
+                  'to it, and gives the holding-down bolts something to be cast into.' });
+      J.build(ctx, { p, y:c.a[1], w, level:ground.id,
+                     A:(r, ...b) => ctx.A('base-' + r, ...b, c.addr.split('/').pop()) });
+    }
+
+    /* 2. a bearing wall gets its foundation wall, a DPC, and a plate at the top */
+    if(base.kind === 'lines' && base.lines.length){
+      const dpc = JOINTS['base.masonry'];
+      for(const [i, ln] of base.lines.entries()){
+        if(n++ > CAP) break;
+        const g = gapTo(ground.y);
+        if(g > 0.15)
+          ctx.out({ kind:'wall', role:'fdnwall', layer:ctx.layer, level:ground.id,
+            a:ln.a, b:ln.b, y:foundTop, h:g, thk:(ln.thk || 0.3),
+            mat:'MAS10', connection:true,
+            addr:ctx.A('fdnwall', i), label:`Foundation wall, ${U.fx(g,2)} m`,
+            how:'Below ground the cavity is filled and the wall is built in dense ' +
+                'blockwork off the footing, up to the damp-proof course. It is the ' +
+                'same wall, doing the same job, in a material that does not mind ' +
+                'being wet.' });
+        dpc.build(ctx, { a:ln.a, b:ln.b, y:ground.y + 0.15, thk:ln.thk || 0.3,
+                         level:ground.id, A:(r, ...b) => ctx.A(r, ...b, i) });
+      }
+      // and a plate under whatever the walls carry, at every level above the ground
+      const plate = JOINTS['bearing.plate'];
+      for(const lv of levels.slice(1)){
+        for(const [i, ln] of base.lines.entries()){
+          if(n++ > CAP) break;
+          plate.build(ctx, { a:ln.a, b:ln.b, y:lv.y - 0.03, thk:ln.thk || 0.15,
+                             level:lv.id, A:(r, ...b) => ctx.A(r, ...b, lv.id, i) });
+        }
+      }
+    }
+
+    /* 3. beams meeting columns, at Full assembly only - there are a lot of them */
+    if(detail === 'full' && (mat === 'steel' || mat === 'timber')){
+      const J2 = JOINTS['beam.' + (mat === 'steel' ? 'steel' : 'timber')];
+      const beams = plans.filter(p => p.kind === 'member' &&
+        (p.role === 'primary' || p.role === 'secondary') && p.part !== 'foundation');
+      const nodes = new Set(plans.filter(p => p.role === 'column' || p.role === 'post')
+        .map(p => `${p.a[0].toFixed(2)},${p.a[2].toFixed(2)}`));
+      for(const bm of beams){
+        for(const end of [bm.a, bm.b]){
+          if(!nodes.has(`${end[0].toFixed(2)},${end[2].toFixed(2)}`)) continue;
+          if(n++ > CAP) break;
+          const d = depthOf(bm.sectionId);
+          const dir = Math.abs(bm.b[0]-bm.a[0]) > Math.abs(bm.b[2]-bm.a[2]) ? 'x' : 'z';
+          const sgn = end === bm.a ? 1 : -1;
+          const p = dir === 'x' ? [end[0] + sgn*0.06, end[2]] : [end[0], end[2] + sgn*0.06];
+          J2.build(ctx, { p, y:end[1], w:halfW(bm.sectionId)*2, d,
+                          level:bm.level,
+                          A:(r, ...b) => ctx.A(r, ...b, bm.addr.split('/').pop(), sgn > 0 ? 'a' : 'b') });
+        }
+      }
+    }
+    return n;
+  }
+
+  return { build, JOINTS };
+})();
 
 /* ==========================================================================
    9  GEN - parameters in, plans out
@@ -3463,6 +3925,20 @@ const Gen = (() => {
       if(!c.ok) notes.push({ sev:'warn', text:c.why, part:'roof' });
     }
 
+    /* 3b. the ground floor, which sits on the ground rather than spanning */
+    const gsel = pick('groundFloor', levels[0].id);
+    if(gsel){
+      const { ctx, out, notes:n } =
+        makeCtx('groundFloor', gsel.sys, levels[0], grid, levels, M, detail,
+                { kind:base.kind, points:base.points, lines:base.lines }, base);
+      ctx.p = gsel.p;
+      try { gsel.sys.build(ctx); } catch(e){ n.push({ sev:'error', text:`${gsel.sys.label}: ${e.message}` }); }
+      all.push(...out); notes.push(...n);
+      // a suspended ground floor has to land on something, exactly as an upper one does
+      const c = compatible(vsel && vsel.sys, gsel.sys);
+      if(!c.ok) notes.push({ sev:'warn', text:c.why, part:'groundFloor' });
+    }
+
     /* 4. foundations, on whatever the ground storey left behind */
     const fsel = pick('foundation');
     if(fsel){
@@ -3477,6 +3953,18 @@ const Gen = (() => {
           text: fsel.sys.needs === 'points'
             ? `${fsel.sys.label} sit under columns, and this building stands on walls. Try strip footings or a raft.`
             : `${fsel.sys.label} follow walls, and this building stands on columns. Try pad foundations.` });
+    }
+
+    /* 4b. the joints between all of it - derived, never chosen */
+    if(M.connections !== false){
+      const { ctx, out, notes:n } =
+        makeCtx('connection', { id:'connection', layer:2, seq:25 },
+                levels[0], grid, levels, M, detail, { kind:base.kind }, base);
+      try {
+        Connect.build(ctx, all, M, grid, levels, base,
+                      vsel && vsel.sys, fsel && fsel.sys, detail);
+      } catch(e){ n.push({ sev:'error', text:`Connections: ${e.message}` }); }
+      all.push(...out); notes.push(...n);
     }
 
     /* 5. anything the student drew stays exactly as they left it */
@@ -4228,7 +4716,9 @@ const Realize = (() => {
   }
 
   /* --- turn one plan into batch entries ------------------------------------ */
-  function feed(batch, pl, detail){
+  /** `onlySub` narrows a layered wall to a single build-up layer, which is how
+      the layer diagram picks one band out of the model. */
+  function feed(batch, pl, detail, onlySub){
     const sec = pl.sectionId ? Model.sec(pl.sectionId) : null;
 
     if(pl.kind === 'member' || pl.kind === 'run'){
@@ -4258,10 +4748,26 @@ const Realize = (() => {
       return;
     }
 
+    if(pl.kind === 'wallLayer'){
+      const L = Geom.dist(pl.a, pl.b);
+      if(L < 1e-6) return;
+      const ang = Math.atan2(pl.b[1]-pl.a[1], pl.b[0]-pl.a[0]);
+      const cx = (pl.a[0]+pl.b[0])/2 + pl.normal[0]*pl.off;
+      const cz = (pl.a[1]+pl.b[1])/2 + pl.normal[1]*pl.off;
+      const m = new THREE.Matrix4()
+        .makeTranslation(cx, pl.y + pl.h/2, cz)
+        .multiply(new THREE.Matrix4().makeRotationY(-ang))
+        .multiply(new THREE.Matrix4().makeScale(L, pl.h, Math.max(pl.thk, 0.002)));
+      batch.add(box111(), m, pl.addr);
+      return;
+    }
+
     if(pl.kind === 'wall'){
       const L = Geom.dist(pl.a, pl.b);
       if(L < 1e-6) return;
-      const layers = (detail === 'full' && pl.buildUp && BUILDUPS[pl.buildUp])
+      // Asking for one layer forces the layered path, so a band can be picked out
+      // of the model at any level of detail, not only Full assembly.
+      const layers = ((detail === 'full' || onlySub) && pl.buildUp && BUILDUPS[pl.buildUp])
         ? BUILDUPS[pl.buildUp].layers.filter(l => !l.within) : null;
       const n = Geom.normalOf(pl.a, pl.b);
       const ang = Math.atan2(pl.b[1]-pl.a[1], pl.b[0]-pl.a[0]);
@@ -4276,11 +4782,11 @@ const Realize = (() => {
       if(!layers){ mk(pl.thk, 0, pl.addr); return; }
       const over = pl.over || {};
       const total = layers.reduce((s,l) => s + ((over[l.k] ?? l.t)), 0)/1000;
-      let run = -total/2;
+      let run = total/2;                       // outside-in, as above
       for(const l of layers){
         const t = (over[l.k] ?? l.t)/1000;
-        mk(t, run + t/2, pl.addr + '~' + l.k);
-        run += t;
+        if(!onlySub || onlySub === l.k) mk(t, run - t/2, pl.addr + '~' + l.k);
+        run -= t;
       }
       return;
     }
@@ -4316,6 +4822,43 @@ const Realize = (() => {
     return g;
   }
 
+  /**
+   * At Full assembly a wall is a real stack of layers. Drawn as one object they
+   * can only move together, so the exploded wall detail - the drawing that
+   * separates cladding from cavity from insulation from lining - is impossible.
+   * Expanding the stack here, before batching, gives every layer its own object,
+   * its own place in the explode, and its own material colour, so the 3D wall
+   * and the layer diagram finally agree on more than thickness.
+   */
+  function expandWalls(plans, detail){
+    if(detail !== 'full') return plans;
+    const out = [];
+    for(const pl of plans){
+      const B = pl.kind === 'wall' && pl.buildUp && BUILDUPS[pl.buildUp];
+      if(!B){ out.push(pl); continue; }
+      const layers = B.layers.filter(l => !l.within);
+      if(!layers.length){ out.push(pl); continue; }
+      const over = pl.over || {};
+      const total = layers.reduce((sum, l) => sum + (over[l.k] ?? l.t), 0)/1000;
+      // Geom.normalOf points away from the building, and a wall build-up is
+      // written outside-in, so the FIRST layer belongs at the far positive end
+      // of the normal and the stack works inward from there. Getting this
+      // backwards builds the wall inside out - plasterboard weathering the rain.
+      const n = Geom.normalOf(pl.a, pl.b);
+      let run = total/2;
+      layers.forEach((l, i) => {
+        const t = (over[l.k] ?? l.t)/1000;
+        out.push(Object.assign({}, pl, {
+          kind:'wallLayer', sub:l.k, subIndex:i, subCount:layers.length,
+          subMat:l.mat, thk:t, off:run - t/2, normal:n,
+          addr:pl.addr + '~' + l.k, label:l.label
+        }));
+        run -= t;
+      });
+    }
+    return out;
+  }
+
   /* --- build the whole scene ----------------------------------------------- */
   function build(plans, detail, style){
     const t0 = performance.now();
@@ -4326,14 +4869,21 @@ const Realize = (() => {
     // one batch per (part, level, role, material family) - keeps draw calls low
     // while leaving every group independently hideable and explodable
     const batches = new Map();
-    for(const pl of plans){
+    for(const pl of expandWalls(plans, detail)){
       if(pl.hidden) continue;
       const fam = famOf(pl);
       const layer = pl.layer ?? 3;
-      const key = `${pl.part}|${pl.level}|${pl.role}|${fam}|${layer}`;
+      // Wall layers are keyed by which layer they are AND which way the wall
+      // faces, because the explode moves each one along its own normal.
+      const w = pl.kind === 'wallLayer'
+        ? `|${pl.sub}|${pl.normal[0].toFixed(2)},${pl.normal[1].toFixed(2)}` : '';
+      const key = `${pl.part}|${pl.level}|${pl.role}|${fam}|${layer}${w}`;
       let b = batches.get(key);
       if(!b){ b = new Batch(key, layer, fam); b.part = pl.part; b.role = pl.role;
-              b.level = pl.level; batches.set(key, b); }
+              b.level = pl.level;
+              if(pl.kind === 'wallLayer')
+                b.wall = { i:pl.subIndex, n:pl.subCount, nx:pl.normal[0], nz:pl.normal[1] };
+              batches.set(key, b); }
       feed(b, pl, detail);
       byAddr.set(pl.addr, pl);
     }
@@ -4344,7 +4894,7 @@ const Realize = (() => {
       if(!m) continue;
       const mesh = new THREE.Mesh(m.geometry, material(b.fam, style, b.layer));
       mesh.userData = { batch:true, ranges:m.ranges, layer:b.layer, part:b.part,
-                        role:b.role, level:b.level, fam:b.fam };
+                        role:b.role, level:b.level, fam:b.fam, wall:b.wall };
       mesh.userData.home = new THREE.Vector3(0,0,0);
       mesh.castShadow = mesh.receiveShadow = (style === 'realistic');
       host.add(mesh);
@@ -4354,7 +4904,8 @@ const Realize = (() => {
       if(style === 'shaded' || style === 'wireframe' || style === 'xray'){
         const eg = new THREE.EdgesGeometry(m.geometry, 20);
         const el = new THREE.LineSegments(eg, edgeMaterial(b.layer));
-        el.userData = { edges:true, layer:b.layer, part:b.part, role:b.role, level:b.level };
+        el.userData = { edges:true, layer:b.layer, part:b.part, role:b.role,
+                        level:b.level, wall:b.wall };
         el.userData.home = new THREE.Vector3(0,0,0);
         host.add(el);
         groups.push(el);
@@ -4367,6 +4918,7 @@ const Realize = (() => {
   }
 
   function famOf(pl){
+    if(pl.kind === 'wallLayer') return pl.subMat || 'board';
     if(pl.role === 'cladding' || pl.role === 'cover') return 'board';
     const m = LIB.MAT[pl.mat];
     return m ? m.family : 'steel';
@@ -4419,7 +4971,8 @@ const Realize = (() => {
         one.a = [pl.a[0]+pl.step[0]*rep, pl.a[1]+pl.step[1]*rep, pl.a[2]+pl.step[2]*rep];
         one.b = [pl.b[0]+pl.step[0]*rep, pl.b[1]+pl.step[1]*rep, pl.b[2]+pl.step[2]*rep];
       }
-      feed(b, one, View.state.detail);
+      const sub = a.includes('~') ? a.split('~')[1] : null;
+      feed(b, one, View.state.detail, sub);
     }
     const m = b.merge();
     if(!m) return;
@@ -4478,6 +5031,7 @@ const View = (() => {
     style:'shaded',                   // shaded | realistic | wireframe | xray
     explode:0,                        // 0..1
     explodeGap:1.4,                   // metres between layers when fully exploded
+    wallGap:0.28,                     // metres between the layers WITHIN a wall
     layers:Object.fromEntries(LAYERS.map(l => [l.i, true])),
     parts:{ foundation:true, vertical:true, floor:true, roof:true },
     section:{ on:false, x:[0,1], y:[0,1], z:[0,1], cap:true },
@@ -4535,10 +5089,23 @@ const View = (() => {
 
   /* --- explode ------------------------------------------------------------- */
   function applyExplode(){
-    const f = state.explode, gap = state.explodeGap;
+    const f = state.explode, gap = state.explodeGap, wgap = state.wallGap;
+    // A wall comes apart the way it is drawn: its layers slide along the wall's
+    // own normal, outward from the middle of the stack, while the wall as a whole
+    // still rises with its layer. Suppressed while the section box is on, because
+    // the clip planes are per layer and cannot follow each leaf sideways - and a
+    // cut through a wall that has moved would be a cut in the wrong place.
+    const spread = f > 0 && !state.section.on;
     for(const o of Realize.groups){
       const l = o.userData.layer ?? 3;
-      o.position.set(0, l*gap*f, 0);
+      const w = o.userData.wall;
+      let x = 0, z = 0;
+      if(w && spread){
+        // layer 0 is the outside face, so it is the one that flies outward
+        const d = ((w.n - 1)/2 - w.i)*wgap*f;
+        x = w.nx*d; z = w.nz*d;
+      }
+      o.position.set(x, l*gap*f, z);
     }
     // grid and level references stay put; underlays and context do too
     if(state.section.on) refreshClipping();
@@ -4970,6 +5537,9 @@ const Draft = (() => {
       if(withLabels) drawLabels(c, W, H, scale);
 
       if(titleBlock){
+        // drawLabels centres its text; without resetting, the title block would
+        // be centred on x = pad*0.35 and its left half would fall off the canvas.
+        c.textAlign = 'left';
         c.fillStyle = dark ? '#1f242d' : '#ffffff';
         c.fillRect(0, H, W, pad);
         c.strokeStyle = dark ? '#39424f' : '#c8d1dc';
@@ -5023,6 +5593,7 @@ const Draft = (() => {
   }
 
   function drawLabels(c, W, H, scale){
+    c.save();                       // this routine changes font, baseline and align
     const cam = Render.camera;
     const v = new THREE.Vector3();
     const fs = Math.round(10.5*scale);
@@ -5048,6 +5619,7 @@ const Draft = (() => {
                   : (dark ? '#eef2f7' : '#141a22');
       c.fillText(txt, x, y);
     });
+    c.restore();
   }
 
   /* --- printable sheet ------------------------------------------------------ */
@@ -5601,7 +6173,7 @@ const Dock = (() => {
         [icon('i-table'), `Build-up — ${Math.round(buildUpTotal(sys.buildUp, overridesFor(doc, part)))} mm`])]));
 
     return card(part, Model.PART_LABEL[part], sys.label, body,
-                { foundation:'i-footing', vertical:'i-wall', floor:'i-slab', roof:'i-beam' }[part],
+                { foundation:'i-footing', groundFloor:'i-slab', vertical:'i-wall', floor:'i-slab', roof:'i-beam' }[part],
                 sys.material, alert);
   }
 
@@ -5821,7 +6393,7 @@ const Dock = (() => {
 
     wrap.appendChild(el('div', { class:'crumb' }, [
       el('button', { class:'link', onclick:() => { Store.clearSelection(); } }, ['‹ Building']),
-      el('span', { text:` / ${Model.PART_LABEL[pl.part]} / ${pl.level} / ${pl.label || pl.role}` })
+      el('span', { text:` / ${Model.PART_LABEL[pl.part] || 'Connection'} / ${pl.level} / ${pl.label || pl.role}` })
     ]));
 
     const body = el('div', { class:'body' });
@@ -5831,6 +6403,12 @@ const Dock = (() => {
       edit ? el('span', { class:'pin', title:'Changed by hand', text:'edited' }) : null,
       pl.manual ? el('span', { class:'pin manual', text:'yours' }) : null
     ].filter(Boolean)));
+
+    // A connection's whole point is the explanation, so it goes first.
+    if(pl.how) body.appendChild(el('div', { class:'joint' }, [
+      el('div', { class:'jh' }, [icon('i-brace'), el('b', { text:'Why it is like this' })]),
+      el('p', { text:pl.how })
+    ]));
 
     if(pl.kind === 'member' || pl.kind === 'run'){
       const L = Math.hypot(pl.b[0]-pl.a[0], pl.b[1]-pl.a[1], pl.b[2]-pl.a[2]);
@@ -5867,7 +6445,7 @@ const Dock = (() => {
       'than quietly forgetting.'));
 
     wrap.appendChild(card('element', sys ? sys.label : 'Element', '', body,
-      { foundation:'i-footing', vertical:'i-wall', floor:'i-slab', roof:'i-beam' }[pl.part]));
+      { foundation:'i-footing', groundFloor:'i-slab', vertical:'i-wall', floor:'i-slab', roof:'i-beam' }[pl.part]));
 
     if(sys && sys.buildUp && (pl.kind === 'wall' || pl.kind === 'panel'))
       LayerDiagram.show(sys.buildUp, overridesFor(doc, pl.part), a.split('~')[1]);
@@ -5967,7 +6545,7 @@ const LayerDiagram = (() => {
     // The label gutter has to hold the longest name in the catalogue
     // ("Studs at 400 mm centres"), or the text runs off the left of the
     // viewBox. Long names wrap to a second line rather than shrink.
-    const LX = 6, LW = 124, DX = LX + LW + 12, RW = 74;
+    const LX = 6, LW = 120, DX = LX + LW + 22, RW = 74;
     const DIMX = DX + RW + 6, CHX = DX + RW + 36, W = CHX + 20;
 
     const g = [];
@@ -5980,15 +6558,35 @@ const LayerDiagram = (() => {
       grp.appendChild(svg('rect', { x:DX, y, width:74, height:r.h, fill:isVoid ? 'none' : fill,
         stroke:'currentColor', 'stroke-width':r.l.struct ? 1.4 : 0.8,
         'stroke-dasharray':isVoid ? '3 2' : null, 'fill-opacity':isVoid ? 0 : 0.85 }));
-      grp.appendChild(svg('line', { x1:DX-6, y1:y + r.h/2, x2:DX, y2:y + r.h/2,
+      grp.appendChild(svg('line', { x1:DX-16, y1:y + r.h/2, x2:DX, y2:y + r.h/2,
         stroke:'currentColor', 'stroke-width':0.6, opacity:0.4 }));
-      grp.appendChild(wrapped(r.l.label, DX-9, y + r.h/2));
+      grp.appendChild(wrapped(r.l.label, DX-19, y + r.h/2));
       const dim = svg('text', { x:DIMX, y:y + r.h/2 + 3.2, class:'dim' });
       dim.textContent = U.fx(t(r.l), t(r.l) % 1 ? 1 : 0);
       grp.appendChild(dim);
-      grp.addEventListener('click', () => Bus.emit('layer:pick', { key, sub:r.l.k }));
+      grp.addEventListener('click', () => Bus.emit('layer:pick',
+        { key, sub:r.l.k, label:r.l.label, struct:!!r.l.struct }));
       g.push(grp);
       y += r.h;
+    }
+
+    // A bracket beside the structural rows. The heavier outline alone was too
+    // quiet to answer the one question the drawing exists to answer: which part
+    // of this carries the load?
+    let sy = null, ey = null, y2 = 22;
+    for(const r of rows){
+      if(r.l.struct){ if(sy == null) sy = y2; ey = y2 + r.h; }
+      y2 += r.h;
+    }
+    if(sy != null){
+      const bx = DX - 5;
+      g.push(svg('path', { class:'sbrk',
+        d:`M ${bx+3} ${sy} L ${bx} ${sy} L ${bx} ${ey} L ${bx+3} ${ey}`,
+        fill:'none', 'stroke-width':1.6 }));
+      const cap = svg('text', { class:'scap', x:bx - 3, y:(sy+ey)/2,
+        transform:`rotate(-90 ${bx-3} ${(sy+ey)/2})`, 'text-anchor':'middle' });
+      cap.textContent = 'STRUCTURE';
+      g.push(cap);
     }
 
     // the dimension chain down the right
@@ -6012,6 +6610,9 @@ const LayerDiagram = (() => {
 
     if(inner.length) host.appendChild(el('div', { class:'within' },
       inner.map(l => el('span', { text:`${l.label} ${U.fx(t(l),0)} mm, within the structure` }))));
+    if(shown.some(l => l.struct)) host.appendChild(el('div', { class:'hint',
+      html:'The bracketed band is the <b>structure</b> — the part that carries load. ' +
+           'Everything else is carried by it.' }));
     host.appendChild(el('div', { class:'hint',
       text:'Click a layer to pick it out in the model.' }));
   }
@@ -6368,10 +6969,11 @@ const App = (() => {
         Object.assign(d.grid, { bx:3, bz:3, sx:7.5, sz:7.5 });
         Object.assign(d.levels, { storeys:4, height:3.9 });
         d.use = 'office';
-        d.slots = { foundation:{sys:'foundation.concrete.pad',p:{}},
+        Object.assign(d.slots, { foundation:{sys:'foundation.concrete.pad',p:{}},
+                    groundFloor:{sys:'ground.concrete.slab',p:{}},
                     vertical:{sys:'vertical.steel.moment',p:{}},
                     floor:{sys:'floor.steel.composite',p:{}},
-                    roof:{sys:'roof.steel.deck',p:{}} };
+                    roof:{sys:'roof.steel.deck',p:{}} });
         return d; } },
     { id:'house', name:'Timber frame house', icon:'i-wall',
       desc:'Platform frame walls on strip footings, joisted floors and a trussed roof.',
@@ -6379,10 +6981,11 @@ const App = (() => {
         Object.assign(d.grid, { bx:2, bz:2, sx:4.2, sz:4.8 });
         Object.assign(d.levels, { storeys:2, height:2.7 });
         d.use = 'residential';
-        d.slots = { foundation:{sys:'foundation.masonry.strip',p:{}},
+        Object.assign(d.slots, { foundation:{sys:'foundation.masonry.strip',p:{}},
+                    groundFloor:{sys:'ground.timber.suspended',p:{}},
                     vertical:{sys:'vertical.timber.platform',p:{}},
                     floor:{sys:'floor.timber.joist',p:{}},
-                    roof:{sys:'roof.timber.truss',p:{}} };
+                    roof:{sys:'roof.timber.truss',p:{}} });
         return d; } },
     { id:'masonry', name:'Masonry and timber', icon:'i-footing',
       desc:'Load-bearing cavity walls carrying timber floors — the terraced house section.',
@@ -6390,10 +6993,11 @@ const App = (() => {
         Object.assign(d.grid, { bx:2, bz:2, sx:4.8, sz:4.8 });
         Object.assign(d.levels, { storeys:3, height:2.8 });
         d.use = 'residential';
-        d.slots = { foundation:{sys:'foundation.masonry.strip',p:{}},
+        Object.assign(d.slots, { foundation:{sys:'foundation.masonry.strip',p:{}},
+                    groundFloor:{sys:'ground.concrete.beamBlock',p:{}},
                     vertical:{sys:'vertical.masonry.cavity',p:{}},
                     floor:{sys:'floor.timber.joist',p:{}},
-                    roof:{sys:'roof.timber.rafter',p:{}} };
+                    roof:{sys:'roof.timber.rafter',p:{}} });
         return d; } },
     { id:'rc', name:'Concrete flat slab', icon:'i-slab',
       desc:'RC frame on a 7.2 m grid with a flat slab — the residential tower floor.',
@@ -6401,10 +7005,11 @@ const App = (() => {
         Object.assign(d.grid, { bx:3, bz:3, sx:7.2, sz:7.2 });
         Object.assign(d.levels, { storeys:5, height:3.0 });
         d.use = 'residential';
-        d.slots = { foundation:{sys:'foundation.concrete.piles',p:{}},
+        Object.assign(d.slots, { foundation:{sys:'foundation.concrete.piles',p:{}},
+                    groundFloor:{sys:'ground.concrete.suspended',p:{}},
                     vertical:{sys:'vertical.concrete.frame',p:{}},
                     floor:{sys:'floor.concrete.flatSlab',p:{}},
-                    roof:{sys:'roof.concrete.slab',p:{}} };
+                    roof:{sys:'roof.concrete.slab',p:{}} });
         return d; } },
     { id:'clt', name:'Mass timber', icon:'i-brace',
       desc:'CLT walls and floors on a raft — solid construction in timber.',
@@ -6412,10 +7017,11 @@ const App = (() => {
         Object.assign(d.grid, { bx:3, bz:2, sx:6, sz:6 });
         Object.assign(d.levels, { storeys:4, height:3.2 });
         d.use = 'residential';
-        d.slots = { foundation:{sys:'foundation.concrete.raft',p:{}},
+        Object.assign(d.slots, { foundation:{sys:'foundation.concrete.raft',p:{}},
+                    groundFloor:{sys:'ground.concrete.slab',p:{}},
                     vertical:{sys:'vertical.timber.clt',p:{}},
                     floor:{sys:'floor.timber.clt',p:{}},
-                    roof:{sys:'roof.timber.clt',p:{}} };
+                    roof:{sys:'roof.timber.clt',p:{}} });
         return d; } },
     { id:'shed', name:'Portal frame shed', icon:'i-beam',
       desc:'A 25 m clear span with haunched rafters — the warehouse.',
@@ -6423,10 +7029,11 @@ const App = (() => {
         Object.assign(d.grid, { bx:4, bz:1, sx:6, sz:25 });
         Object.assign(d.levels, { storeys:1, height:7 });
         d.use = 'industrial';
-        d.slots = { foundation:{sys:'foundation.concrete.pad',p:{}},
+        Object.assign(d.slots, { foundation:{sys:'foundation.concrete.pad',p:{}},
+                    groundFloor:{sys:'ground.concrete.slab',p:{}},
                     vertical:{sys:'vertical.steel.portal',p:{eaves:7}},
                     floor:{sys:'floor.concrete.flatSlab',p:{}},
-                    roof:{sys:'roof.steel.portal',p:{}} };
+                    roof:{sys:'roof.steel.portal',p:{}} });
         return d; } }
   ];
 
@@ -6586,7 +7193,8 @@ const Ribbon = (() => {
   const btn = (label, ic, onclick, attrs) =>
     el('button', Object.assign({ class:'btn', onclick, title:attrs?.title || label }, attrs || {}),
        [ic ? icon(ic) : null, label].filter(Boolean));
-  const grp = (label, kids, id) => el('div', { class:'grp', id },
+  /** `cls` marks a group as prose, which is the only kind allowed to shrink. */
+  const grp = (label, kids, id, cls) => el('div', { class:'grp' + (cls ? ' ' + cls : ''), id },
     [...kids.filter(Boolean), label ? el('span', { class:'grp-label', text:label }) : null].filter(Boolean));
 
   function build(tab, doc){
@@ -6642,12 +7250,27 @@ const Ribbon = (() => {
           View.state.detail, v => View.set('detail', v), { id:'seg-detail' })
       ]),
       grp('What that means', [
-        el('div', { class:'hintbox', html:
+        el('div', { class:'hintbox', title:
+          View.state.detail === 'diagram'
+            ? 'Centre lines and planes only — the structural idea, with nothing to distract from it.'
+            : View.state.detail === 'members'
+            ? 'Real cross-sections at the sizes the span rules produced.'
+            : 'Every stud, joist and plate, plus the floor and wall build-ups drawn as real layers.',
+          html:
           View.state.detail === 'diagram'
             ? 'Centre lines and planes only — the structural idea, with nothing to distract from it.'
             : View.state.detail === 'members'
             ? 'Real cross-sections at the sizes the span rules produced.'
             : 'Every stud, joist and plate, plus the floor and wall build-ups drawn as real layers.' })
+      ], null, 'prose'),
+      grp('Connections', [
+        btn(doc.connections === false ? 'Show joints' : 'Joints shown', 'i-brace',
+          () => { Store.begin('Connections');
+                  doc.connections = doc.connections === false;
+                  Store.touch('param'); App.refreshChrome(); },
+          { 'aria-pressed':String(doc.connections !== false),
+            title:'Base plates, starter bars, wall plates and the rest — how one ' +
+                  'system is actually joined to the next' })
       ]),
       grp('Labels', [
         ...['grid','level','tag','size'].map(k => btn(
@@ -6911,10 +7534,33 @@ const Ribbon = (() => {
     if(l) l.textContent = s.at == null ? `${s.steps.length} steps`
       : `${s.at+1}/${s.steps.length}  ${(s.step || {}).title || ''}` +
         ((s.step && s.step.note) ? `  —  ${s.step.note}` : ''); });
-  Bus.on('layer:pick', ({ sub }) => {
-    const want = [...Realize.byAddr.keys()].filter(a => a.endsWith('~' + sub));
-    if(want.length) Realize.highlight(want, 0xf0b23c);
-    UI.toast(`Showing the ${sub} layer.`, 'ok', 2500);
+  /* Picking a band out of the layer drawing. Two things can draw a layer: a
+     wall, which is built as a real stack of layers and so has a `~layer`
+     sub-address, or a member whose role the layer names (joists, purlins, a
+     slab). A layer that is neither - a raised access floor, a suspended ceiling -
+     is real construction this app does not model, and saying so is better than
+     a toast claiming something happened. */
+  Bus.on('layer:pick', ({ key, sub, label }) => {
+    const walls = Gen.plans.filter(p => p.buildUp === key && p.kind === 'wall');
+    let want = walls.map(p => p.addr + '~' + sub);
+
+    if(!want.length){
+      const B = BUILDUPS[key];
+      const L = B && B.layers.find(l => l.k === sub);
+      const mine = new Set(Object.values(SYSTEMS)
+        .filter(x => x.buildUp === key).map(x => x.id));
+      if(L && L.role)
+        want = Gen.plans.filter(p => mine.has(p.system) && p.role === L.role).map(p => p.addr);
+    }
+
+    if(!want.length){
+      UI.toast(`${label || sub} is part of the drawing only — this app does not ` +
+               `model it in 3D.`, 'warn', 4000);
+      Realize.highlight([]);
+      return;
+    }
+    Realize.highlight(want, 0xf0b23c);
+    UI.toast(`${want.length} element${want.length>1?'s':''} — ${label || sub}.`, 'ok', 2500);
   });
   Bus.on('compare', c => {
     const t = $('#cmp-panel');

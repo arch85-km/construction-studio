@@ -24,10 +24,11 @@ architects already use in SketchUp. There is no analysis in it, deliberately.
 
 | | |
 |---|---|
-| **Four choices** | Foundation · Wall & Structure · Floor · Roof. Twenty-six systems across the four materials. Change one and the whole building rebuilds. |
+| **Five choices** | Foundation · Ground floor · Wall & Structure · Floor · Roof. Thirty systems across the four materials. Change one and the whole building rebuilds. |
+| **Connections** | The joints are derived, not chosen: a steel column on concrete gets a base plate and holding-down bolts, a concrete one gets starter bars, a timber post gets a galvanised shoe. Click any of them and it explains what it has to do. |
 | **Sizing** | Preliminary depths from span rules of thumb, with the arithmetic shown: `7.50 m ÷ 23.5 = 319 mm → IPE 330`. A green / amber / red flag says whether the span suits the system. |
-| **Detail** | Diagram (centre lines) · Members (real sections) · Full assembly (every stud at 400 mm, and the build-up as stacked layers). |
-| **View** | Exploded along the vertical axis · shaded / realistic / wireframe / x-ray · layer isolation · section box. Explode and section box compose. |
+| **Detail** | Diagram (centre lines) · Members (real sections) · Full assembly (every stud at 400 mm, and each wall built as its real stack of layers). |
+| **View** | Exploded — layers rise on a shared vertical axis while each wall's leaves slide apart along its own normal · shaded / realistic / wireframe / x-ray · layer isolation · section box. Explode and section box compose. |
 | **Teaching** | Live sizing readout · build-sequence animation · labelled build-up diagram with a dimension chain · side-by-side comparison on one shared camera. |
 | **Import** | DXF as a traceable underlay or measured into grid lines, OBJ as ghosted site context, and a plan image scaled by two-point calibration. |
 | **Export** | PNG with labels, a title block and the copyright. |
@@ -41,17 +42,21 @@ crisp black edges, in an orthographic axonometric by default.
 
 ## The systems
 
-| Foundation | Wall & Structure | Floor | Roof |
-|---|---|---|---|
-| Pad foundations | Steel moment frame | Composite steel floor | Insulated metal deck |
-| Strip footings | Steel braced frame | RC slab on beams | Portal frame rafters |
-| Raft slab | Steel portal frame | RC flat slab | Trussed rafter roof |
-| Piles and caps | Reinforced concrete frame | Waffle slab | Cut rafter roof |
-| | RC walls and core | Precast hollowcore | Concrete flat roof |
-| | Cavity masonry wall | Timber joisted floor | CLT flat roof |
-| | Timber platform frame | CLT floor panels | |
-| | Timber post and beam | | |
-| | CLT wall panels | | |
+| Foundation | Ground floor | Wall & Structure | Floor | Roof |
+|---|---|---|---|---|
+| Pad foundations | Ground-bearing slab | Steel moment frame | Composite steel floor | Insulated metal deck |
+| Strip footings | Beam and block | Steel braced frame | RC slab on beams | Portal frame rafters |
+| Raft slab | Suspended RC slab | Steel portal frame | RC flat slab | Trussed rafter roof |
+| Piles and caps | Suspended timber floor | Reinforced concrete frame | Waffle slab | Cut rafter roof |
+| | | RC walls and core | Precast hollowcore | Concrete flat roof |
+| | | Cavity masonry wall | Timber joisted floor | CLT flat roof |
+| | | Timber platform frame | CLT floor panels | |
+| | | Timber post and beam | | |
+| | | CLT wall panels | | |
+
+The ground floor is its own choice because it behaves nothing like an upper
+floor: a ground-bearing slab does not span at all, and everything about damp
+and insulation changes once the floor is in contact with the earth.
 
 Systems do not know about each other. Each declares only what it offers or
 needs: a vertical system `provides` either continuous lines of support or
@@ -179,7 +184,7 @@ literature:
 
 ## Technical notes
 
-Roughly 6,900 lines in one file. Nothing is minified; it is meant to be read.
+Roughly 7,600 lines in one file. Nothing is minified; it is meant to be read.
 
 - **Plans, then geometry.** A system's `build()` emits plain-data plans, never
   three.js objects. A repeating group — 216 studs — is a *single* plan, so
@@ -195,6 +200,12 @@ Roughly 6,900 lines in one file. Nothing is minified; it is meant to be read.
   correctly instead of slicing an exploded stack in the wrong place.
 - **One source of truth for build-ups.** The same `layers` array draws the 3D
   wall and the SVG layer diagram, so the drawing and the model cannot disagree.
+  A wall really is built as that stack — outside in, each layer its own object
+  in its own material — which is what lets the explode pull it apart.
+- **Connections are derived, never chosen.** Once the parts are built, the
+  junctions are read off the plans and resolved from the pair of materials
+  meeting there. A new system inherits the right joints the moment it declares
+  its material.
 - WebGL context-loss recovery, label budgeting, and an on-demand render loop
   that pauses when the iframe scrolls out of view.
 
@@ -205,5 +216,8 @@ column rule produces, not just its load); the generator exercised across every
 system, every cross-part combination, edits, orphaned edits and scale; and the
 app driven in real Chromium for picking, explode reversibility, detail
 round-trips, save round-trips, undo, export, all three importers, orbit
-behaviour and three viewport widths plus an iframe (22 checks). Every guided-tour
-step is asserted to spotlight a real, on-screen element. Console clean throughout.
+behaviour, wall assembly order and three viewport widths plus an iframe
+(26 checks). Every guided-tour step is asserted to spotlight a real, on-screen
+element, and every band of every build-up drawing is asserted either to pick
+out real geometry or to say plainly that it is not modelled. Console clean
+throughout.
