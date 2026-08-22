@@ -221,6 +221,22 @@ Roughly 8,300 lines in one file. Nothing is minified; it is meant to be read.
   literally reallocated the drawing buffer twice per notch of the scroll wheel —
   the flashing. Now the drop waits to see whether the gesture lasts, and the
   redraw happens in the same task as the resize, never a frame later.
+- **The orthographic depth range is fitted to the model, every frame.** An
+  orthographic camera spreads its depth buffer evenly between near and far, so
+  a range fixed at 6000 units — as it was — gives 0.36 mm of depth resolution on
+  a 24-bit buffer and 9 cm on a 16-bit one. Wall build-ups stack layers 1 mm
+  thick, so on a low-precision buffer neighbouring leaves are within a step or
+  two of each other and swap places as the camera turns: that is the tearing.
+  The range is now measured from the camera along the way it is looking, over
+  the model's corners *and* the label positions, which brings it to about 25
+  units — a couple of microns per step.
+- **A single-storey system is honest about it.** A portal frame spans the full
+  width in one go, so it builds one storey however many are asked for. The
+  level list every other part of the app reads — datums, sequence, takedown,
+  comparison — is now the list that was actually built, and the Storeys field
+  locks itself and says why rather than accepting a number it will discard. The
+  document keeps the number the student typed, so switching back to a moment
+  frame restores it.
 - WebGL context-loss recovery, label budgeting, and an on-demand render loop
   that pauses when the iframe scrolls out of view.
 
@@ -232,10 +248,18 @@ system, every cross-part combination, edits, orphaned edits and scale; and the
 app driven in real Chromium for picking, explode reversibility, detail
 round-trips, save round-trips, undo, export, all three importers, orbit
 behaviour, wall assembly order, the load path and its three directions, and
-three viewport widths plus an iframe (37 checks); the load takedown checked
+three viewport widths plus an iframe (53 checks); the load takedown checked
 against hand arithmetic in both directions, including the eaves thrust
 (18 checks); and the orbit measured for buffer reallocations so the flashing
-cannot come back. Every guided-tour step is asserted to spotlight a real, on-screen
+cannot come back. The depth range is asserted to be fitted to the model and to
+clip nothing — not the geometry, not the labels — through a full orbit and at
+full explode and open, which is measured rather than assumed: an empty viewport
+passes every scene-graph test there is. A separate sweep drives the range from
+25 units to 1.5 million and shows tearing appearing as the depth step passes a
+few millimetres, which is the evidence that the range is the lever. What a
+single-storey system builds is asserted too, in and out of the browser: two
+levels from four, two datums, nothing planned above the roof, the field locked
+with a reason, and four storeys back when a frame is chosen instead. Every guided-tour step is asserted to spotlight a real, on-screen
 element, and every band of every build-up drawing is asserted either to pick
 out real geometry or to say plainly that it is not modelled. Console clean
 throughout.

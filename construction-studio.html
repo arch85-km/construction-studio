@@ -2521,8 +2521,7 @@ def({
   ],
   sizing:{ pad:'found.pad' }, layer:0, seq:0,
   build(ctx){
-    const { grid, p, size, base, M } = ctx;
-    const storeys = M.levels.storeys;
+    const { grid, p, size, base, M, storeys } = ctx;
     const pts = base.points.length ? base.points
               : grid.outline.map((q,i) => ({ p:q, i, j:0 }));
     for(const pt of pts){
@@ -2555,7 +2554,7 @@ def({
   sizing:{ strip:'found.strip' }, layer:0, seq:0,
   build(ctx){
     const { p, size, base, M } = ctx;
-    const wLine = 12 * Math.max(1, M.levels.storeys);      // kN/m, rough wall line load
+    const wLine = 12 * Math.max(1, ctx.storeys);      // kN/m, rough wall line load
     const z = size('found.strip', { wLine, qAllow:M.soil.qAllow });
     const B = z.B || 0.6;
     base.lines.forEach((ln, i) => {
@@ -2606,7 +2605,7 @@ def({
   build(ctx){
     const { grid, p, size, base, M } = ctx;
     for(const pt of base.points){
-      const z = size('found.pile', { Atrib:grid.tribArea(pt.i, pt.j), storeys:M.levels.storeys,
+      const z = size('found.pile', { Atrib:grid.tribArea(pt.i, pt.j), storeys:ctx.storeys,
                                      w:SIZING.LOADING[M.use], pileDia:p.dia });
       const cap = Math.max(1.2, 0.9 + (z.n-1)*0.6);
       ctx.out({ kind:'volume', role:'cap', layer:0, level:'L0',
@@ -2762,7 +2761,7 @@ def({
 /** Frames share one builder: columns on every grid node, optional bracing. */
 function frameBuild(ctx, colRule, matId, opts = {}){
   const { grid, level, p, size, M } = ctx;
-  const storeysAbove = M.levels.storeys - level.idx;
+  const storeysAbove = ctx.storeys - level.idx;
   grid.forEachNode((q, i, j) => {
     const z = size(colRule, { Atrib:grid.tribArea(i,j), storeys:Math.max(1, storeysAbove),
                               w:SIZING.LOADING[M.use], h:level.storey });
@@ -2931,7 +2930,7 @@ def({
     const tef = (2/3)*(p.outerT + p.innerT);
     const z = size('masonry.slender', { h:level.storey*1000, tef,
                                         minLeaf:Math.min(p.outerT, p.innerT),
-                                        storeys:M.levels.storeys });
+                                        storeys:ctx.storeys });
     const t = (p.outerT + p.cavity + p.insul + p.innerT + 37.5)/1000;
     grid.perimeterSegs().forEach((seg, i) => {
       wallOf(ctx, 'wall', seg.a, seg.b, level.y, level.storey, t, 'wall.masonry.cavity', 'MAS10',
@@ -3861,6 +3860,10 @@ const Gen = (() => {
     const reg = { points:[], lines:[] };
     const ctx = {
       M, grid, level, levels, detail, part, sys,
+      /* Storeys ACTUALLY built, which is not always the number the document
+         asks for - see levelsFor. Sizing rules must load a column with the
+         storeys that exist above it, not with the ones that were typed. */
+      storeys: levels.length - 1,
       layer: sys.layer ?? 3,
       p: {},                     // filled by the caller
       support, base,
@@ -3880,11 +3883,45 @@ const Gen = (() => {
     return { ctx, out, notes, reg };
   }
 
+  /**
+   * The level list a document actually builds, which is not always the level
+   * list it asks for. A portal frame spans the full width in one go - that is
+   * the whole point of it - so it is a single-storey structure by definition,
+   * and a document that says four storeys still builds two levels, ground and
+   * roof. Everything downstream must agree with what was built rather than
+   * with what was typed: the datums, the sequence, the load takedown, the
+   * comparison. Otherwise the model sprouts levels with nothing on them, which
+   * is exactly the "I changed the number and nothing happened" complaint.
+   *
+   * The document itself is left alone. Switching back to a moment frame must
+   * restore the number the student had set, not a number we clamped behind
+   * their back.
+   */
+  function levelsFor(M){
+    const v = M.slots && M.slots.vertical && SYSTEMS[M.slots.vertical.sys];
+    const n = v && v.singleStorey ? 1 : M.levels.storeys;
+    return Model.makeLevels(n === M.levels.storeys
+      ? M.levels : Object.assign({}, M.levels, { storeys:n }));
+  }
+
+  /**
+   * Why the storey count is locked, or null if it is not. The control asks
+   * this so it can explain itself: a field that accepts a number and then
+   * throws it away is worse than one that will not accept it at all.
+   */
+  function storeyLock(M){
+    const v = M.slots && M.slots.vertical && SYSTEMS[M.slots.vertical.sys];
+    if(!(v && v.singleStorey)) return null;
+    return `${v.label} is single-storey by nature — it spans the full width in `
+         + `one go, which is the whole point of it. Choose a framed or `
+         + `loadbearing wall system to stack storeys.`;
+  }
+
   /* --- the pipeline -------------------------------------------------------- */
   function plan(M, detail = 'members'){
     const t0 = performance.now();
     const grid = Model.makeGrid(M.grid);
-    const levels = Model.makeLevels(M.levels);
+    const levels = levelsFor(M);
     const all = [];
     const notes = [];
     const support = {};                 // levelId -> { kind, points, lines }
@@ -3907,7 +3944,7 @@ const Gen = (() => {
 
     /* 1. vertical, storey by storey, registering what it holds up */
     const vsel = pick('vertical');
-    const storeys = vsel && vsel.sys.singleStorey ? 1 : M.levels.storeys;
+    const storeys = levels.length - 1;      // levelsFor already honoured singleStorey
     let eaves = null;
     for(let i = 0; i < storeys; i++){
       const sel = pick('vertical', levels[i].id) || vsel;
@@ -3928,7 +3965,7 @@ const Gen = (() => {
     }
 
     /* 2. floors, at every level above the ground and below the roof */
-    const topIdx = vsel && vsel.sys.singleStorey ? 1 : M.levels.storeys;
+    const topIdx = levels.length - 1;
     for(let j = 1; j < topIdx; j++){
       const lv = levels[j];
       const sel = pick('floor', lv.id);
@@ -4098,7 +4135,7 @@ const Gen = (() => {
   }
 
   return {
-    run, plan, applyEdits, estimate, describe, addr,
+    run, plan, applyEdits, estimate, describe, addr, levelsFor, storeyLock,
     get plans(){ return plans }, get diag(){ return diag },
     get index(){ return index }, get ms(){ return lastMs },
     get counts(){ return lastCounts },
@@ -4131,7 +4168,7 @@ const Loads = (() => {
    */
   function compute(doc){
     const grid   = Model.makeGrid(doc.grid);
-    const levels = Model.makeLevels(doc.levels);
+    const levels = Gen.levelsFor(doc);   // what is built, not what was typed
     const wFloor = SIZING.LOADING[doc.use] ?? 11;
     const wRoof  = SIZING.LOADING.roof ?? 5;
 
@@ -4543,6 +4580,7 @@ const Render = (() => {
     labelRenderer.setSize(w, h);
     persp.aspect = (w/h)*aspectScale; persp.updateProjectionMatrix();
     fitOrtho(w/h);
+    updateOrthoDepth();
     scene.traverse(o => { if(o.material && o.material.isLineMaterial) o.material.resolution.set(w,h); });
     dirty = true;
     // setSize cleared the buffer; draw before the browser gets a chance to show it
@@ -4635,6 +4673,7 @@ const Render = (() => {
     try { renderFrame(); } finally { inRender = false; }
   }
   function renderFrame(){
+    updateOrthoDepth();
     if(!(renderHook && renderHook())) renderer.render(scene, camera);
     if(interacting) return;
     labelRenderer.render(scene, camera);
@@ -4681,6 +4720,7 @@ const Render = (() => {
     }
     orthoZoom = Math.max(my, mx/a, 0.5)*pad;
     fitOrtho();          // no argument: fitOrtho applies aspectScale itself
+    updateOrthoDepth();
 
   }
   function setCamera(mode){
@@ -4702,6 +4742,55 @@ const Render = (() => {
   function setOnScreen(v){ onScreen = v; if(v) start(); else stop(); }
 
   /* --- camera helpers ----------------------------------------------------- */
+  /**
+   * An orthographic camera spreads its depth buffer evenly over near..far, so a
+   * range chosen once and never revisited sets the precision for every frame.
+   * The default here was -2000..4000 - six thousand units for a building twenty
+   * metres across, which is about a third of a millimetre of depth resolution.
+   * A wall build-up stacks layers one millimetre thick, so neighbouring leaves
+   * were within a few depth steps of each other and swapped places as the
+   * camera turned. That is the tearing.
+   *
+   * Fitting the range to what is actually on screen is a hundredfold gain and
+   * costs eight point transforms. Symmetric about the orbit target, so it stays
+   * correct through any rotation without being recomputed.
+   */
+  const _dp = new THREE.Vector3();
+  function updateOrthoDepth(){
+    if(!ortho || camera !== ortho) return;
+    /* near and far are measured from the CAMERA, along the way it is looking -
+       not from the orbit target the camera swings around. Getting that wrong
+       clips the entire model away, which is a silent and total failure: the
+       viewport goes empty and every scene-graph test still passes.
+       Depth of a point is therefore its distance along the camera's forward
+       axis, which is the third column of the camera's world matrix, negated. */
+    ortho.updateMatrixWorld();
+    const e = ortho.matrixWorld.elements;
+    const fx = -e[8], fy = -e[9], fz = -e[10];
+    const px = e[12], py = e[13], pz = e[14];
+    const d = (x, y, z) => (x-px)*fx + (y-py)*fy + (z-pz)*fz;
+
+    const box = bounds();
+    const mn = box.min, mx = box.max;
+    let lo = Infinity, hi = -Infinity;
+    const see = v => { if(v < lo) lo = v; if(v > hi) hi = v; };
+    for(let i = 0; i < 8; i++)
+      see(d(i & 1 ? mx.x : mn.x, i & 2 ? mx.y : mn.y, i & 4 ? mx.z : mn.z));
+    /* Labels carry no geometry, so bounds() cannot see them - and a grid bubble
+       stands further out than anything it annotates. Clip one and it vanishes
+       from the DOM entirely. */
+    if(groups.ref) groups.ref.traverse(o => {
+      if(o.isCSS2DObject){ o.getWorldPosition(_dp); see(d(_dp.x, _dp.y, _dp.z)); }
+    });
+    if(!isFinite(lo)) return;
+
+    /* A margin so nothing sits exactly on a plane, and so a small camera move
+       between one fit and the next cannot push anything through it. */
+    const pad = Math.max(1, (hi - lo) * 0.15);
+    ortho.near = lo - pad; ortho.far = hi + pad;
+    ortho.updateProjectionMatrix();
+  }
+
   function bounds(){
     const box = new THREE.Box3();
     for(const k of ['build','ref','context']){
@@ -4747,6 +4836,7 @@ const Render = (() => {
     orthoZoom = d*0.42; fitOrtho();
     camera.updateProjectionMatrix(); controls.update();
     fitOrthoTo(box, 1.12);
+    updateOrthoDepth();
     invalidate();
   }
 
@@ -4798,7 +4888,15 @@ const Render = (() => {
         pri:o.userData.pri || 5 });
     });
     // most important first, nearest first within a priority
-    items.sort((a,b) => b.pri - a.pri || a.d - b.d);
+    /* Hysteresis. Ranking purely by distance means a label that drifts across a
+       cell boundary swaps places with its neighbour and both blink. Among
+       labels of EQUAL priority, one that is already showing keeps its cell;
+       priority still decides everything above that, so an important label is
+       never blocked by an unimportant one that got there first. */
+    items.sort((a,b) => b.pri - a.pri
+                     || (b.o.element.style.display === '' ? 1 : 0)
+                      - (a.o.element.style.display === '' ? 1 : 0)
+                     || a.d - b.d);
     const CX = 30, CY = 20, occ = new Uint8Array(CX*CY);
     let shown = 0;
     for(const it of items){
@@ -4833,7 +4931,7 @@ const Render = (() => {
            get modelDiag(){return modelDiag},
            init, resize, start, stop, invalidate, setOnScreen, renderNow,
            fit, standardView, bounds, label, budgetLabels, clearGroup, disposeCaches,
-           applyTheme,
+           applyTheme, updateOrthoDepth,
            get aspectScale(){ return aspectScale },
            set aspectScale(v){ aspectScale = v || 1; resize(); },
            set renderHook(fn){ renderHook = fn; }, get renderHook(){ return renderHook },
@@ -5416,6 +5514,7 @@ const View = (() => {
     }
     // grid and level references stay put; underlays and context do too
     if(state.section.on) refreshClipping();
+    Render.updateOrthoDepth();   // the model just moved outside its old bounds
     Render.invalidate();
   }
 
@@ -6421,9 +6520,11 @@ const Dock = (() => {
       el('span', { class:'x', text:'×' }),
       UI.num(g.sz, v => commit(() => { g.sz = Util.clamp(v,1.8,60); }, 'Grid'),
              { min:1.8, max:60, step:0.1 })]), null, 'metres between grid lines'));
-    body.appendChild(UI.row('Storeys', UI.num(L.storeys,
+    const slock = Gen.storeyLock(doc);
+    body.appendChild(UI.row('Storeys', UI.num(slock ? 1 : L.storeys,
       v => commit(() => { L.storeys = Util.clamp(Math.round(v),1,12); }, 'Levels'),
-      { min:1, max:12, step:1 })));
+      { min:1, max:12, step:1, disabled:!!slock, title:slock || null }),
+      null, slock || null));
     body.appendChild(UI.row('Storey height', UI.num(L.height,
       v => commit(() => { L.height = Util.clamp(v,2.2,14); }, 'Levels'),
       { min:2.2, max:14, step:0.1 }), null, 'metres, floor to floor'));
@@ -6441,7 +6542,7 @@ const Dock = (() => {
           [`${x} × ${z}`])))));
 
     return card('grid', 'Grid & levels',
-      `${g.bx} × ${g.bz} bays · ${U.fx(g.sx,1)} × ${U.fx(g.sz,1)} m · ${L.storeys} storeys`,
+      `${g.bx} × ${g.bz} bays · ${U.fx(g.sx,1)} × ${U.fx(g.sz,1)} m · ${slock ? 1 : L.storeys} storeys`,
       body, 'i-grid');
   }
 
@@ -6475,6 +6576,10 @@ const Dock = (() => {
     const locked = lockedBy(doc, part);
     if(locked) body.appendChild(el('div', { class:'note info',
       html:`Chosen automatically with <b>${Util.esc(SYSTEMS[locked].label)}</b> — the two are one structure.` }));
+
+    // Say it on the card that caused it, not only on the field it disabled.
+    if(part === 'vertical' && sys.singleStorey) body.appendChild(
+      el('div', { class:'note info', text:Gen.storeyLock(doc) }));
 
     for(const q of sys.params || []) body.appendChild(paramRow(doc, part, sys, q));
 
@@ -7586,14 +7691,14 @@ const App = (() => {
     }
 
     Realize.build(r.plans, detail, View.state.style);
-    Build.refsFor(doc, r.grid || Model.makeGrid(doc.grid), r.diag.levels || Model.makeLevels(doc.levels));
+    Build.refsFor(doc, r.grid || Model.makeGrid(doc.grid), r.diag.levels || Gen.levelsFor(doc));
 
     View.setBounds(Render.bounds());
     View.applyStyle();
     View.applyVisibility();
     View.applyExplode();
     if(View.state.section.on) View.refreshClipping();
-    Seq.build(r.plans, r.diag.levels || Model.makeLevels(doc.levels));
+    Seq.build(r.plans, r.diag.levels || Gen.levelsFor(doc));
 
     if(LoadPath.on) LoadPath.build();
     highlightSelection();
@@ -7921,9 +8026,11 @@ const Ribbon = (() => {
           el('span', { class:'u', text:'m' })])
       ], 'cmd-grid'),
       grp('Levels', [
-        el('label', { class:'inl' }, ['storeys',
-          num(L.storeys, v => set(() => { L.storeys = Util.clamp(Math.round(v),1,12); }, 'Storeys'),
-            { min:1, max:12, step:1, class:'tiny' })]),
+        el('label', { class:'inl', title:Gen.storeyLock(doc) || null }, ['storeys',
+          num(Gen.storeyLock(doc) ? 1 : L.storeys,
+            v => set(() => { L.storeys = Util.clamp(Math.round(v),1,12); }, 'Storeys'),
+            { min:1, max:12, step:1, class:'tiny',
+              disabled:!!Gen.storeyLock(doc), title:Gen.storeyLock(doc) || null })]),
         el('label', { class:'inl' }, ['height',
           num(L.height, v => set(() => { L.height = Util.clamp(v,2.2,14); }, 'Height'),
             { min:2.2, max:14, step:0.1, class:'tiny' }),
