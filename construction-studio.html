@@ -4525,14 +4525,14 @@ const Render = (() => {
     const hemi = new THREE.HemisphereLight(0xdfe8f5, 0x2a3240, 2.1);
     const dir  = new THREE.DirectionalLight(0xffffff, 1.5);
     dir.position.set(24, 40, 18);
-    dir.shadow.mapSize.set(1024,1024);
-    dir.shadow.camera.near = 1; dir.shadow.camera.far = 200;
-    dir.shadow.camera.left = -60; dir.shadow.camera.right = 60;
-    dir.shadow.camera.top = 60; dir.shadow.camera.bottom = -60;
+    dir.shadow.mapSize.set(2048, 2048);
     const fill = new THREE.DirectionalLight(0xbcd0e8, 0.5);
     fill.position.set(-20, 12, -16);
-    groups.env.add(hemi, dir, fill);
+    // the target has to be IN the graph, or moving it does nothing: three reads
+    // its world matrix, and an object outside the scene never gets one
+    groups.env.add(hemi, dir, dir.target, fill);
     groups.env.userData.sun = dir;
+    fitShadow();
 
     const grid = new THREE.GridHelper(120, 120, 0xffffff, 0xffffff);
     grid.material.transparent = true; grid.material.opacity = 0.5;
@@ -4812,6 +4812,7 @@ const Render = (() => {
     const d = (x, y, z) => (x-px)*fx + (y-py)*fy + (z-pz)*fz;
 
     const box = bounds();
+    fitShadow(box);           // same box, and it only does work when it changed
     const mn = box.min, mx = box.max;
     let lo = Infinity, hi = -Infinity;
     const see = v => { if(v < lo) lo = v; if(v > hi) hi = v; };
@@ -4830,6 +4831,55 @@ const Render = (() => {
     const pad = Math.max(1, (hi - lo) * 0.15);
     ortho.near = lo - pad; ortho.far = hi + pad;
     ortho.updateProjectionMatrix();
+  }
+
+  /**
+   * Fits the sun's shadow camera to the model.
+   *
+   * A shadow map is a depth picture taken from the light, and a surface is in
+   * shadow when it is further from the light than that picture says. Spread
+   * 1024 pixels over the 120 metres this used to cover and each pixel stands
+   * for twelve centimetres of building - so a wall compares itself against a
+   * depth measured twelve centimetres away and decides, in stripes, that it is
+   * in its own shadow. That is the dark hatching that appeared across the
+   * walls in Realistic and crawled as the camera turned.
+   *
+   * Three things fix it together: cover the building rather than a field
+   * around it, take the picture at 2048 rather than 1024, and offset the
+   * comparison by what one texel is still worth. The first two are worth about
+   * seven times between them; the bias absorbs the rest.
+   */
+  const _shC = new THREE.Vector3(), _shS = new THREE.Vector3(), _shD = new THREE.Vector3();
+  let _shKey = '';
+  function fitShadow(box){
+    const sun = groups.env && groups.env.userData.sun;
+    if(!sun) return;
+    const b = box || bounds();
+    const key = `${b.min.x},${b.min.y},${b.min.z},${b.max.x},${b.max.y},${b.max.z}`;
+    if(key === _shKey) return;                    // the model has not moved
+    _shKey = key;
+
+    const c = b.getCenter(_shC);
+    const r = Math.max(4, b.getSize(_shS).length()/2 * 1.06);
+    // keep the direction the light came from, stand it off far enough to clear
+    _shD.copy(sun.position).sub(sun.target.position);
+    if(_shD.lengthSq() < 1e-6) _shD.set(24, 40, 18);
+    _shD.normalize();
+    sun.target.position.copy(c);
+    sun.target.updateMatrixWorld();
+    sun.position.copy(c).addScaledVector(_shD, r*2.6);
+    sun.updateMatrixWorld();
+
+    const cam = sun.shadow.camera;
+    cam.left = -r; cam.right = r; cam.top = r; cam.bottom = -r;
+    cam.near = r*0.4; cam.far = r*5;
+    cam.updateProjectionMatrix();
+
+    // one texel of the map, in metres - the scale the bias has to work at
+    const texel = (2*r) / sun.shadow.mapSize.width;
+    sun.shadow.normalBias = Math.max(0.015, texel*2.2);
+    sun.shadow.bias = -Math.min(0.0008, texel*0.0004);
+    sun.shadow.needsUpdate = true;
   }
 
   function bounds(){
@@ -5015,7 +5065,8 @@ const Render = (() => {
            get modelDiag(){return modelDiag},
            init, resize, start, stop, invalidate, setOnScreen, renderNow,
            fit, standardView, bounds, label, budgetLabels, clearGroup, disposeCaches,
-           applyTheme, updateOrthoDepth,
+           applyTheme, updateOrthoDepth, fitShadow,
+           forceShadowRefit(){ _shKey = ''; fitShadow(); },
            get aspectScale(){ return aspectScale },
            set aspectScale(v){ aspectScale = v || 1; resize(); },
            set renderHook(fn){ renderHook = fn; }, get renderHook(){ return renderHook },
@@ -5112,6 +5163,16 @@ const Realize = (() => {
         { roughness:fam === 'steel' ? 0.45 : 0.85, metalness:fam === 'steel' ? 0.35 : 0.02 }));
     } else {
       m = new THREE.MeshLambertMaterial(Object.assign({}, base, { emissive:colour, emissiveIntensity:0.14 }));
+    }
+    /* The edge overlay is generated FROM these faces, so every line it draws is
+       exactly coplanar with the face it outlines. Which of the two a pixel gets
+       is then decided by rasterisation rounding, and it changes as the camera
+       moves - a dark line that stipples and crawls. Pushing the faces back by a
+       fraction of a depth unit settles it: the line is simply in front. */
+    if(style === 'shaded' || style === 'realistic'){
+      m.polygonOffset = true;
+      m.polygonOffsetFactor = 1;
+      m.polygonOffsetUnits = 1;
     }
     if(opts.ghost){ m.transparent = true; m.opacity = 0.12; m.depthWrite = false; }
     m.clippingPlanes = View.clipFor(layer);
@@ -5656,6 +5717,7 @@ const View = (() => {
     const real = state.style === 'realistic';
     if(sun){ sun.castShadow = real; sun.intensity = real ? 2.2 : 1.5; }
     Render.renderer.shadowMap.enabled = real;
+    if(real) Render.forceShadowRefit();   // the map is only fitted while it is used
     Render.renderer.toneMapping = real ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
     Render.renderer.toneMappingExposure = real ? 1.05 : 1;
     const grid = Render.groups.env.getObjectByName('groundgrid');
@@ -8299,7 +8361,7 @@ const Build = (() => {
         lp.push(-lext, L.y, -lext, grid.W + ext, L.y, -lext);
         lp.push(-lext, L.y, -lext, -lext, L.y, grid.D + ext);
         g.add(Render.label(`${L.name}  +${U.fx(L.y,2)}`,
-          new THREE.Vector3(-lext, L.y, grid.D + ext), 'dim', 9));
+          new THREE.Vector3(-lext - 1.2, L.y, grid.D + ext + 1.2), 'dim', 9));
       }
       g.add(segs(lp, 0x4ec98b, 1.0, { transparent:true, opacity:0.32 }));
     }

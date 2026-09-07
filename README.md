@@ -253,6 +253,15 @@ Roughly 8,300 lines in one file. Nothing is minified; it is meant to be read.
   moving. The label layer also stays up through a gesture: at the couple of
   dozen labels a building carries, hiding it saved nothing measurable and cost
   a visible blink on every nudge.
+- **The shadow map is fitted to the building.** A shadow map is a depth picture
+  taken from the light, and a surface is in shadow when it is further from the
+  light than that picture says. Spread 1024 pixels over the 120 metres this
+  used to cover and each pixel stands for twelve centimetres of building — so a
+  wall compares itself against a depth measured twelve centimetres away and
+  decides, in stripes, that it is in its own shadow. That was the black
+  hatching that crawled across the walls in Realistic. Covering the building
+  rather than a field around it, at 2048 rather than 1024, with a bias scaled
+  to what one texel is still worth, takes it from 117 mm per texel to 21.
 - WebGL context-loss recovery, label budgeting, and an on-demand render loop
   that pauses when the iframe scrolls out of view.
 
@@ -281,7 +290,12 @@ rather than sampling settled camera positions — the first version of that
 harness sampled, and reported zero while two labels were visibly taking turns.
 Placing an import is checked end to end: dragged, it follows the pointer to
 within 2 cm; typed, it lands where the numbers say; and both survive undo and a
-save round trip. Every guided-tour step is asserted to spotlight a real, on-screen
+save round trip. Shadow acne is caught by tiling each frame and
+taking the median tile's roughness — a real edge raises a few tiles, acne
+raises nearly all of them, so the median is what separates detail from a
+defect; it reads 3.6–5.8 on a build with the old shadow settings and 0–1.7 on
+this one, holds through an orbit, and the shadow frustum is asserted still to
+contain the whole building, so the acne has not been traded for no shadows. Every guided-tour step is asserted to spotlight a real, on-screen
 element, and every band of every build-up drawing is asserted either to pick
 out real geometry or to say plainly that it is not modelled. Console clean
 throughout.
