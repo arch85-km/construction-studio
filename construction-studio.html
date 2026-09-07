@@ -187,6 +187,14 @@ html[data-theme="light"] .lbl{background:rgba(255,255,255,.86);color:#141a22;bor
 .lbl.tag{color:var(--ok)} .lbl.val{color:var(--warn)}
 .lbl.grid{color:var(--accent);font-weight:600;border-radius:50%;padding:4px 6px;min-width:20px;text-align:center}
 
+/* imported references - one block per import in the dock */
+.imp{border:1px solid var(--line);border-radius:7px;padding:8px 9px;margin:8px 0;background:var(--bg-2)}
+.imp .row{margin:5px 0}
+.imphead{display:flex;align-items:baseline;gap:6px;margin-bottom:6px}
+.imphead b{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.imphead .blurb{font-size:10.5px;color:var(--ink-2);flex:1 1 auto;white-space:nowrap}
+.imphead .btn{flex:0 0 auto;padding:2px 7px}
+
 /* viewport overlays */
 .vp-overlay{position:absolute;z-index:6;pointer-events:none}
 .vp-overlay>*{pointer-events:auto}
@@ -2335,6 +2343,13 @@ const Model = (() => {
     doc.edits  = doc.edits || {};
     doc.manual = doc.manual || [];
     doc.underlays = doc.underlays || [];
+    // older files predate the transform, and a file written by hand may omit
+    // any of it; every import is placeable, so every import gets the numbers
+    for(const u of doc.underlays){
+      const T = u.transform || (u.transform = {});
+      for(const [k, v] of Object.entries({ x:0, y:0, z:0, rot:0, s:1 }))
+        if(typeof T[k] !== 'number') T[k] = v;
+    }
     return doc;
   }
 
@@ -4562,13 +4577,18 @@ const Render = (() => {
     for(const m of matCache.values()) m.dispose();
     geoCache.clear(); matCache.clear();
   }
-  function clearGroup(g){
+  /* `deep` walks into wrappers. A group whose children are themselves groups -
+     an imported drawing carrying its own transform, say - would otherwise
+     leave every mesh inside it allocated. */
+  function clearGroup(g, deep){
     for(let i = g.children.length-1; i >= 0; i--){
       const c = g.children[i];
-      if(c.geometry && !geoCache.has(c.geometry.uuid)) c.geometry.dispose?.();
-      if(c.material && !matCache.has(c.material.uuid)){
-        (Array.isArray(c.material) ? c.material : [c.material]).forEach(m => m.dispose?.());
-      }
+      const drop = o => {
+        if(o.geometry && !geoCache.has(o.geometry.uuid)) o.geometry.dispose?.();
+        if(o.material && !matCache.has(o.material.uuid))
+          (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose?.());
+      };
+      if(deep) c.traverse(drop); else drop(c);
       g.remove(c);
     }
   }
@@ -4631,7 +4651,10 @@ const Render = (() => {
       holdTimer = setTimeout(() => {
         holdTimer = null;
         interacting = true;
-        labelRenderer.domElement.style.visibility = 'hidden';
+        if(countLabels() > LBL_LIVE_MAX){
+          lblSuspended = true;
+          labelRenderer.domElement.style.visibility = 'hidden';
+        }
         applyRatio(1);
       }, HOLD_MS);
       return;
@@ -4640,7 +4663,7 @@ const Render = (() => {
     restoreTimer = setTimeout(() => {
       restoreTimer = null;
       interacting = false;
-      labelRenderer.domElement.style.visibility = '';
+      if(lblSuspended){ lblSuspended = false; labelRenderer.domElement.style.visibility = ''; }
       lastBudget = 0;                      // force one re-budget on release
       applyRatio(fullPixelRatio);
     }, RESTORE_MS);
@@ -4667,6 +4690,18 @@ const Render = (() => {
      re-budgeting sixty times a second. */
   const LBL_MS = 100;
   let lastBudget = 0, inRender = false;
+  /* ...but blanking it is only worth doing when there ARE enough labels for it
+     to cost anything. A student's building carries a couple of dozen: hiding
+     those saves nothing measurable (232.8 ms against 230.2 ms a frame, shaded)
+     and costs a visible blink at the start and end of every gesture - and
+     people orbit in a series of short nudges, so the blink repeats. Above the
+     threshold the trade turns the other way and the layer goes. */
+  const LBL_LIVE_MAX = 150;
+  let lblSuspended = false;
+  const countLabels = () => {
+    let n = 0; (groups.ref || scene).traverse(o => { if(o.isCSS2DObject) n++; });
+    return n;
+  };
   function renderNow(){
     if(inRender) return;                    // resize() may draw, and drawing may resize
     inRender = true;
@@ -4675,8 +4710,14 @@ const Render = (() => {
   function renderFrame(){
     updateOrthoDepth();
     if(!(renderHook && renderHook())) renderer.render(scene, camera);
-    if(interacting) return;
+    if(lblSuspended) return;
     labelRenderer.render(scene, camera);
+    /* Labels follow the model through a gesture, but the decision about WHICH
+       of them to show is not retaken while the camera is moving. Re-deciding
+       ten times a second on a moving camera is how a label ends up blinking;
+       whatever was on screen when the drag began stays on screen, and the
+       budget is retaken once, on release. */
+    if(interacting) return;
     const t = performance.now();
     if(t - lastBudget >= LBL_MS){ lastBudget = t; budgetLabels(); }
   }
@@ -4779,7 +4820,7 @@ const Render = (() => {
     /* Labels carry no geometry, so bounds() cannot see them - and a grid bubble
        stands further out than anything it annotates. Clip one and it vanishes
        from the DOM entirely. */
-    if(groups.ref) groups.ref.traverse(o => {
+    scene.traverse(o => {
       if(o.isCSS2DObject){ o.getWorldPosition(_dp); see(d(_dp.x, _dp.y, _dp.z)); }
     });
     if(!isFinite(lo)) return;
@@ -4862,13 +4903,62 @@ const Render = (() => {
   }
 
   /** Set `display` only when it actually differs - a redundant write still
-      dirties style and forces a recalculation. */
+      dirties style and forces a recalculation. Every change is stamped, so
+      the dwell rule below can see how long a label has held its state. */
   const setShown = (o, on) => {
     const v = on ? '' : 'none';
-    if(o.element.style.display !== v) o.element.style.display = v;
+    if(o.element.style.display === v) return;
+    o.element.style.display = v;
+    o.userData.tFlip = performance.now();
   };
+  const isShown = o => o.element.style.display !== 'none';
+
+  /* Labels are monospace at a known size, so their box can be computed from
+     the text without touching the DOM. One measurement per class, taken from
+     a real element the first time that class appears, keeps it honest if the
+     stylesheet changes; everything after that is arithmetic. */
+  const _lblBox = new Map();
+  function boxOf(o){
+    const cls = o.element.className.replace('lbl', '').trim() || '_';
+    let m = _lblBox.get(cls);
+    if(!m){
+      const r = o.element.getBoundingClientRect();
+      // an element that has never been shown measures zero; fall back to the
+      // stylesheet's own numbers until one of its class is on screen
+      m = r.width > 0 && o.element.textContent.length
+        ? { c:(r.width - 12)/o.element.textContent.length, pad:12, h:r.height }
+        : { c:6.3, pad:12, h:17 };
+      if(r.width > 0) _lblBox.set(cls, m);
+    }
+    return { w:Math.max(20, o.element.textContent.length*m.c + m.pad), h:m.h };
+  }
+
+  /* How much of `a` is covered by `b`, as a fraction of a's own area. */
+  function overlapFrac(a, b){
+    const ox = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+    const oy = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+    if(ox <= 0 || oy <= 0) return 0;
+    return (ox*oy) / Math.max(1, (a.x1-a.x0)*(a.y1-a.y0));
+  }
+
+  /* A label that appears and disappears ten times a second is worse than one
+     that is simply absent, so three rules keep the decision still:
+
+     - labels are compared as the RECTANGLES they actually occupy, not by which
+       cell of a coarse grid their centre lands in. Two labels a few pixels
+       apart used to fall either side of a cell boundary and take turns winning
+       it, which is precisely what "A" and "Ground +0.00" were doing;
+     - the test has a dead band. A label already on screen has to be buried
+       (SUPPRESS) before it goes; one that is hidden has to be nearly clear
+       (REVEAL) before it comes back. Between the two nothing changes, so a
+       label drifting past its neighbour cannot oscillate;
+     - and nothing may change state twice inside DWELL_MS, whatever the camera
+       does in between. */
+  const SUPPRESS = 0.42, REVEAL = 0.12, DWELL_MS = 450;
+
   function budgetLabels(){
     const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
+    const now = performance.now();
     const items = [];
     // Every label in the app is created by Build.refsFor and lives in groups.ref,
     // so there is no reason to walk the whole scene graph twice a frame.
@@ -4883,31 +4973,25 @@ const Render = (() => {
       if(_lblV.z < -1 || _lblV.z > 1 || Math.abs(_lblV.x) > 1.25 || Math.abs(_lblV.y) > 1.25){
         setShown(o, false); return;
       }
-      items.push({ o, d,
-        x:(_lblV.x*0.5 + 0.5)*w, y:(-_lblV.y*0.5 + 0.5)*h,
-        pri:o.userData.pri || 5 });
+      const b = boxOf(o);
+      const x = (_lblV.x*0.5 + 0.5)*w, y = (-_lblV.y*0.5 + 0.5)*h;
+      items.push({ o, d, pri:o.userData.pri || 5,
+                   x0:x - b.w/2, x1:x + b.w/2, y0:y - b.h/2, y1:y + b.h/2 });
     });
     // most important first, nearest first within a priority
-    /* Hysteresis. Ranking purely by distance means a label that drifts across a
-       cell boundary swaps places with its neighbour and both blink. Among
-       labels of EQUAL priority, one that is already showing keeps its cell;
-       priority still decides everything above that, so an important label is
-       never blocked by an unimportant one that got there first. */
-    items.sort((a,b) => b.pri - a.pri
-                     || (b.o.element.style.display === '' ? 1 : 0)
-                      - (a.o.element.style.display === '' ? 1 : 0)
-                     || a.d - b.d);
-    const CX = 30, CY = 20, occ = new Uint8Array(CX*CY);
+    items.sort((a, b) => b.pri - a.pri || a.d - b.d);
+
+    const kept = [];
     let shown = 0;
     for(const it of items){
-      if(shown >= LBL_CAP){ setShown(it.o, false); continue; }
-      const cx = Util.clamp(Math.floor(it.x/w*CX), 0, CX-1);
-      const cy = Util.clamp(Math.floor(it.y/h*CY), 0, CY-1);
-      const k = cy*CX + cx;
-      if(occ[k]){ setShown(it.o, false); continue; }
-      occ[k] = 1;
-      setShown(it.o, true);
-      shown++;
+      let cover = 0;
+      for(const k of kept){ cover += overlapFrac(it, k); if(cover >= 1) break; }
+      const on = isShown(it.o);
+      const held = now - (it.o.userData.tFlip || 0) < DWELL_MS;
+      // over budget is the one verdict nothing argues with
+      const want = shown < LBL_CAP && (held ? on : (on ? cover < SUPPRESS : cover <= REVEAL));
+      setShown(it.o, want);
+      if(want){ kept.push(it); shown++; }
     }
   }
 
@@ -6159,7 +6243,7 @@ const Import = (() => {
       ],
       footer:[
         el('button',{class:'btn ghost',onclick:UI.close},['Cancel']),
-        el('button',{class:'btn primary',onclick:() => { UI.close(); applyDXF(ents, assign, unit); }},
+        el('button',{class:'btn primary',onclick:() => { UI.close(); applyDXF(ents, assign, unit, file); }},
           ['Import'])
       ]
     });
@@ -6171,7 +6255,7 @@ const Import = (() => {
    * sorted along each axis and their spacing read off. Everything else becomes
    * reference line work on the ground plane, to trace over.
    */
-  function applyDXF(ents, assign, unit){
+  function applyDXF(ents, assign, unit, file){
     const doc = Store.doc;
     Store.begin('Import DXF');
     const gridPts = { x:[], z:[] };
@@ -6212,9 +6296,20 @@ const Import = (() => {
     if(gz){ doc.grid.bz = gz.bays; doc.grid.sz = gz.step; }
 
     if(under.length){
+      /* Store the drawing about its own centre and put the centre in the
+         transform. Rotating then turns the plan on the spot instead of
+         swinging it around the model origin, and scaling grows it in place. */
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for(const l of under) for(const q of l){
+        if(q[0] < x0) x0 = q[0]; if(q[0] > x1) x1 = q[0];
+        if(q[1] < z0) z0 = q[1]; if(q[1] > z1) z1 = q[1];
+      }
+      const cx = (x0 + x1)/2, cz = (z0 + z1)/2;
       const id = Util.id('UL');
-      doc.underlays.push({ id, kind:'dxf', opacity:0.6, data:null });
-      Store.assets.set(id, { lines:under, y:0 });
+      doc.underlays.push({ id, kind:'dxf', opacity:0.6, data:null,
+        label:(file && file.name) || 'plan.dxf',
+        transform:{ x:cx, y:0, z:cz, rot:0, s:1, w:x1 - x0, h:z1 - z0 } });
+      Store.assets.set(id, { lines:under, cx, cz });
     }
     Store.touch('import');
     drawUnderlays();
@@ -6228,141 +6323,343 @@ const Import = (() => {
                          : 'Nothing in that DXF could be used.', bits.length ? 'ok' : 'warn', 6000);
   }
 
+  /* --- placing what was imported -------------------------------------------
+     A plan never lands where it should first time. The DXF was drawn about
+     some origin of its own, the photograph has no scale at all, and the OBJ
+     of the neighbouring block was modelled in millimetres facing the wrong
+     way. So everything imported carries the same five numbers - where it is,
+     how high, which way round, and how big - and the same controls change
+     them.
+
+     The geometry is built about its OWN centre and the transform lives on a
+     wrapper above it. That is what makes a rotation turn the drawing rather
+     than swing it around the model origin, and a scale grow it where it
+     stands rather than slide it away from you. */
+  /* Fills in whatever is missing WITHOUT replacing the object. Handing back a
+     fresh object each call would be the same bug twice over: a drag captures
+     the transform when the gesture starts, so swapping it underneath means
+     every move after the first writes to something nothing is reading. */
+  const XF_DEF = { x:0, y:0, z:0, rot:0, s:1 };
+  const XF = u => {
+    const T = u.transform || (u.transform = {});
+    for(const k in XF_DEF) if(typeof T[k] !== 'number') T[k] = XF_DEF[k];
+    return T;
+  };
+
+  function applyXf(obj, u){
+    const T = XF(u);
+    // a hair above its level, so a plan never fights the slab it lies on
+    obj.position.set(T.x || 0, (T.y || 0) + 0.004, T.z || 0);
+    obj.rotation.set(0, (T.rot || 0)*Math.PI/180, 0);
+    obj.scale.setScalar(T.s || 1);
+    obj.updateMatrixWorld(true);
+  }
+
+  const groupFor = id =>
+    Render.groups.underlay.getObjectByName('underlay:' + id) ||
+    Render.groups.context.getObjectByName('underlay:' + id);
+
+  const wrap = (u, obj, into) => {
+    const g = new THREE.Group();
+    g.name = 'underlay:' + u.id;
+    g.userData = { kind:'underlay', id:u.id };
+    g.add(obj);
+    applyXf(g, u);
+    into.add(g);
+    return g;
+  };
+
+  /** Re-applies one item's transform in place. No rebuild: dragging a plan
+      across the model should not reparse it sixty times a second. */
+  function refresh(id){
+    const u = Store.doc.underlays.find(x => x.id === id);
+    const g = u && groupFor(id);
+    if(g) applyXf(g, u);
+    Render.invalidate();
+  }
+
+  /** Sets one item's opacity without touching the others. */
+  function setOpacity(id, v){
+    const u = Store.doc.underlays.find(x => x.id === id);
+    if(u) u.opacity = v;
+    const g = groupFor(id);
+    if(g) g.traverse(o => { if(o.material) o.material.opacity = u.kind === 'obj' ? v*0.45 : v; });
+    Render.invalidate();
+  }
+
   /**
-   * Redraws every stored underlay into the underlay group. Called after an
-   * import and again on load, so reference geometry survives a reopened file.
+   * Redraws every stored underlay into its group. Called after an import and
+   * again on load, so reference geometry survives a reopened file.
    */
   function drawUnderlays(){
-    const g = Render.groups.underlay;
-    Render.clearGroup(g);
+    Render.clearGroup(Render.groups.underlay, true);
+    Render.clearGroup(Render.groups.context, true);
     for(const u of Store.doc.underlays){
       const a = Store.assets.get(u.id);
       if(!a) continue;
-      if(u.kind === 'dxf' && a.lines){
-        const pts = [];
-        for(const line of a.lines)
-          for(let i = 0; i < line.length-1; i++)
-            pts.push(line[i][0], a.y || 0, line[i][1],
-                     line[i+1][0], a.y || 0, line[i+1][1]);
-        if(!pts.length) continue;
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-        const m = new THREE.LineBasicMaterial({ color:0x6f8cb5, transparent:true,
-                                                opacity:u.opacity ?? 0.6 });
-        const o = new THREE.LineSegments(geo, m);
-        o.name = 'underlay:' + u.id;
-        o.userData = { kind:'underlay', id:u.id };
-        g.add(o);
-      } else if(u.kind === 'image' && a.dataURL){
-        placeImage(u, a.dataURL);
-      }
+      if(u.kind === 'dxf' && a.lines)          drawLines(u, a);
+      else if(u.kind === 'image' && a.dataURL) placeImage(u, a.dataURL);
+      else if(u.kind === 'obj' && a.text)      placeObj(u, a);
     }
     Render.invalidate();
   }
 
+  function drawLines(u, a){
+    const pts = [];
+    const cx = a.cx || 0, cz = a.cz || 0;
+    for(const line of a.lines)
+      for(let i = 0; i < line.length-1; i++)
+        pts.push(line[i][0] - cx, 0, line[i][1] - cz,
+                 line[i+1][0] - cx, 0, line[i+1][1] - cz);
+    if(!pts.length) return;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    wrap(u, new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
+      color:0x6f8cb5, transparent:true, opacity:u.opacity ?? 0.6 })),
+      Render.groups.underlay);
+  }
+
   /* --- OBJ ------------------------------------------------------------------ */
-  function obj(text, file){
+  function placeObj(u, a){
     let root;
-    try { root = new OBJLoader().parse(text); }
-    catch(e){ return UI.toast('That OBJ could not be parsed.', 'bad'); }
-    const doc = Store.doc;
-    const g = Render.groups.context;
+    try { root = new OBJLoader().parse(a.text); } catch(e){ return; }
     const mat = new THREE.MeshStandardMaterial({
-      color:0x6f7c8c, transparent:true, opacity:0.28, roughness:0.95,
+      color:0x6f7c8c, transparent:true, opacity:(u.opacity ?? 0.28), roughness:0.95,
       metalness:0, side:THREE.DoubleSide, depthWrite:false });
     root.traverse(o => { if(o.isMesh){ o.material = mat; o.userData = { kind:'context' }; } });
 
-    // normalise into a sensible size if the model is wildly scaled
+    // normalise a model that was clearly built in other units, then stand it
+    // on the ground about its own centre so the transform above behaves
     const box = new THREE.Box3().setFromObject(root);
     const size = box.getSize(new THREE.Vector3());
     let k = 1;
     if(size.length() > 5000) k = 0.001;
     else if(size.length() < 2) k = 1000;
+    const c = box.getCenter(new THREE.Vector3());
     root.scale.setScalar(k);
-    root.position.y -= box.min.y*k;
-    root.name = 'objContext';
-    g.add(root);
-    Render.invalidate(); Render.fit();
-    UI.toast(`Loaded ${file?.name || 'model'} as ghosted context geometry` +
-             (k !== 1 ? ` (scaled ×${k})` : '') + '.', 'ok', 5000);
+    root.position.set(-c.x*k, -box.min.y*k, -c.z*k);
+    a.k = k;
+    wrap(u, root, Render.groups.context);
+  }
+
+  function obj(text, file){
+    try { new OBJLoader().parse(text); }
+    catch(e){ return UI.toast('That OBJ could not be parsed.', 'bad'); }
+    Store.begin('Import OBJ');
+    const id = Util.id('UL');
+    Store.doc.underlays.push({ id, kind:'obj', opacity:0.28, data:null,
+      label:(file && file.name) || 'model.obj',
+      transform:{ x:0, y:0, z:0, rot:0, s:1 } });
+    Store.assets.set(id, { text });
+    Store.touch('import');
+    drawUnderlays();
+    Render.fit();
+    const a = Store.assets.get(id);
+    UI.toast(`Loaded ${(file && file.name) || 'model'} as ghosted context geometry` +
+             (a && a.k !== 1 ? ` (scaled ×${a.k})` : '') +
+             '. Move and size it from the Imports panel.', 'ok', 6000);
   }
 
   /* --- image underlay -------------------------------------------------------
-     A plan image is placed on the active level and then scaled by clicking two
-     points whose real separation the student types in. */
-  /** Lays one image underlay on the ground plane at its stored transform. */
+     A plan image is laid on the ground and then scaled, either by hand or by
+     clicking two points whose real separation the student types in. */
   function placeImage(u, dataURL, then){
     new THREE.TextureLoader().load(dataURL, t => {
-      const T = u.transform || (u.transform = {});
+      const T = XF(u);
       if(!T.w){ const ar = t.image.width/t.image.height; T.w = 20; T.h = 20/ar; }
       const geo = new THREE.PlaneGeometry(T.w, T.h);
       geo.rotateX(-Math.PI/2);
       const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
         map:t, transparent:true, opacity:u.opacity ?? 0.65,
         depthWrite:false, side:THREE.DoubleSide }));
-      mesh.position.set(T.x || 0, (T.y || 0) + 0.004, T.z || 0);
-      mesh.name = 'underlay:' + u.id;
-      mesh.userData = { kind:'underlay', id:u.id };
-      Render.groups.underlay.add(mesh);
+      const g = wrap(u, mesh, Render.groups.underlay);
       Render.invalidate();
-      then && then(mesh);
+      then && then(g);
     });
   }
 
   function image(dataURL, file){
-    const doc = Store.doc;
+    Store.begin('Import image');
     const id = Util.id('UL');
     // Underlays lie on the ground plane: it is the one datum every building
     // in this app shares, and a plan is traced from the ground up.
     const u = { id, kind:'image', opacity:0.65, data:null,
-                transform:{ w:0, h:0, y:0, x:0, z:0 } };
-    doc.underlays.push(u);
+                label:(file && file.name) || 'plan image',
+                transform:{ w:0, h:0, y:0, x:0, z:0, rot:0, s:1 } };
+    Store.doc.underlays.push(u);
     Store.assets.set(id, { dataURL });
-    placeImage(u, dataURL, mesh => calibrate(id, mesh));
+    Store.touch('import');
+    placeImage(u, dataURL, () => calibrate(id));
   }
 
-  function calibrate(id, mesh){
+  function remove(id){
+    Store.begin('Remove import');
+    const i = Store.doc.underlays.findIndex(x => x.id === id);
+    if(i >= 0) Store.doc.underlays.splice(i, 1);
+    Store.assets.delete(id);
+    Store.touch('import');
+    drawUnderlays();
+    Dock.render();
+  }
+
+  /* --- moving it by hand ----------------------------------------------------
+     The panel below has a field for every number, which is how you place
+     something exactly. This is how you place it quickly: pick the thing up
+     and put it down. The pointer is taken off the camera for the duration -
+     see App.setTool - so a drag cannot mean orbit and move at the same time. */
+  function moveTool(id){
+    const u = Store.doc.underlays.find(x => x.id === id);
+    const g = u && groupFor(id);
+    if(!g) return;
+    const T = XF(u);
+    let from = null, base = null, live = false;
+    App.setTool({
+      cursor:'move',
+      hint:`Drag ${u.label || 'the import'} into place — Esc to stop`,
+      down(ev){
+        from = Pick.onGround(ev, T.y || 0);
+        base = { x:T.x || 0, z:T.z || 0 };
+        if(from){ live = true; Store.begin('Move import'); }
+      },
+      move(ev){
+        if(!live) return;
+        const p = Pick.onGround(ev, T.y || 0);
+        if(!p) return;
+        T.x = U.sig(base.x + (p.x - from.x), 6);
+        T.z = U.sig(base.z + (p.z - from.z), 6);
+        applyXf(g, u);
+        Render.invalidate();
+      },
+      up(){
+        if(!live) return;
+        live = false;
+        Store.touch('import');
+        Dock.render();
+      },
+      cancel(){ live = false; }
+    });
+  }
+
+  /**
+   * Two-point scaling. Click two things whose real separation you know and
+   * the image is resized so that they are that far apart.
+   *
+   * This used to listen for a `viewport:click` event that nothing ever sent,
+   * so the dialog offered a calibration that could not happen. It is a tool
+   * now, like moving is.
+   */
+  const pending = { real:6 };
+  function calibrate(id){
+    const u = Store.doc.underlays.find(x => x.id === id);
+    if(!u) return;
     UI.modal({
       title:'Scale the plan', sub:'two-point calibration',
       body:[
         UI.explain('Click <b>two points</b> in the model space whose real distance you know — ' +
           'a grid spacing or a known wall length — then type that distance. ' +
           'The image is rescaled to match.'),
-        UI.row('Known distance', UI.num(6, v => { pending.real = v; }, { step:0.1 }), 'm')
+        UI.row('Known distance', UI.num(pending.real, v => { pending.real = v; }, { step:0.1 }), 'm')
       ],
       footer:[
-        el('button',{class:'btn ghost',onclick:UI.close},['Skip — scale by hand later']),
-        el('button',{class:'btn primary',onclick:() => { UI.close(); startPick(id, mesh); }},
+        el('button',{class:'btn ghost',onclick:UI.close},['Skip — size it by hand']),
+        el('button',{class:'btn primary',onclick:() => { UI.close(); startPick(id); }},
           ['Pick two points'])
       ]
     });
   }
-  const pending = { real:6 };
-  function startPick(id, mesh){
+
+  function startPick(id){
+    const u = Store.doc.underlays.find(x => x.id === id);
+    const g = u && groupFor(id);
+    if(!g) return;
+    const T = XF(u);
     const pts = [];
     UI.toast('Click the first point…', 'ok', 4000);
-    const off = Bus.on('viewport:click', p => {
-      pts.push(p.clone());
-      if(pts.length === 1){ UI.toast('Now the second point…', 'ok', 4000); return; }
-      off();
-      const d = pts[0].distanceTo(pts[1]);
-      if(d < 1e-6) return UI.toast('Those two points are the same.', 'warn');
-      const k = pending.real / d;
-      mesh.scale.multiplyScalar(k);
-      const c = pts[0].clone().add(pts[1]).multiplyScalar(0.5);
-      mesh.position.x = (mesh.position.x - c.x)*k + c.x;
-      mesh.position.z = (mesh.position.z - c.z)*k + c.z;
-      const u = Store.doc.underlays.find(x => x.id === id);
-      if(u){ u.transform.w *= k; u.transform.h *= k;
-             u.transform.x = mesh.position.x; u.transform.z = mesh.position.z; }
-      Render.invalidate();
-      UI.toast(`Scaled by ×${U.fx(k,3)} — the image now measures ${U.fx(pending.real,2)} m across those points.`,
-        'ok', 6000);
+    App.setTool({
+      cursor:'crosshair',
+      hint:'Click two points a known distance apart — Esc to stop',
+      up(ev){
+        const p = Pick.onGround(ev, T.y || 0);
+        if(!p) return;
+        pts.push(p);
+        if(pts.length === 1) return UI.toast('Now the second point…', 'ok', 4000);
+        App.setTool(null);
+        const d = pts[0].distanceTo(pts[1]);
+        if(d < 1e-6) return UI.toast('Those two points are the same.', 'warn');
+        const k = pending.real / d;
+        Store.begin('Scale import');
+        T.s = U.sig((T.s || 1) * k, 6);
+        // scale about the midpoint of what was measured, so the two points
+        // stay where they were pointed at
+        const c = pts[0].clone().add(pts[1]).multiplyScalar(0.5);
+        T.x = U.sig((T.x - c.x)*k + c.x, 6);
+        T.z = U.sig((T.z - c.z)*k + c.z, 6);
+        applyXf(g, u);
+        Store.touch('import');
+        Dock.render();
+        UI.toast(`Scaled by ×${U.fx(k,3)} — those two points are now ` +
+                 `${U.fx(pending.real,2)} m apart.`, 'ok', 6000);
+      }
     });
   }
 
-  return { pick, parseDXF, applyDXF, drawUnderlays,
-           loadDXF:dxf, loadOBJ:obj, loadImage:image, calibrate };
+  /* --- the panel ------------------------------------------------------------
+     One card, one row per import, every number editable. It only appears when
+     something has been imported, so it costs nothing until it is wanted. */
+  const KIND = { dxf:'DXF plan', image:'Plan image', obj:'OBJ model' };
+
+  function card(){
+    const list = Store.doc.underlays || [];
+    if(!list.length) return null;
+    const body = el('div', { class:'body' });
+    body.appendChild(el('div', { class:'note info', html:
+      'Imported drawings are references, not building parts. Move, turn and ' +
+      'size them to sit under what you are modelling.' }));
+
+    for(const u of list){
+      const T = XF(u);
+      const set = (k, v) => { Store.begin('Place import'); T[k] = v;
+                              refresh(u.id); Store.touch('import'); };
+      const item = el('div', { class:'imp' });
+      item.appendChild(el('div', { class:'imphead' }, [
+        el('b', { text:u.label || KIND[u.kind] || 'Import' }),
+        el('span', { class:'blurb', text:KIND[u.kind] || u.kind }),
+        el('button', { class:'btn ghost sm', title:'Drag it into place',
+          onclick:() => moveTool(u.id) }, ['Move']),
+        el('button', { class:'btn ghost sm', title:'Remove this import',
+          onclick:() => remove(u.id) }, ['Remove'])
+      ]));
+      item.appendChild(UI.row('Position', el('div', { class:'pair' }, [
+        UI.num(T.x, v => set('x', v), { step:0.1 }),
+        el('span', { class:'x', text:'×' }),
+        UI.num(T.z, v => set('z', v), { step:0.1 })]), 'm', 'east × north from the model origin'));
+      item.appendChild(UI.row('Height', UI.num(T.y, v => set('y', v), { step:0.1 }), 'm',
+        'lift it to trace an upper floor'));
+      item.appendChild(UI.row('Rotation',
+        UI.num(T.rot || 0, v => set('rot', v), { min:-180, max:180, step:1 }), '°'));
+      item.appendChild(UI.row('Size',
+        UI.num(Math.round((T.s || 1)*100), v => set('s', Util.clamp(v, 1, 2000)/100),
+               { min:1, max:2000, step:1 }), '%',
+        T.w ? `${U.fx(T.w*(T.s||1),2)} × ${U.fx((T.h||0)*(T.s||1),2)} m as placed` : null));
+      item.appendChild(UI.row('Opacity', UI.slider(u.opacity ?? 0.65, 0.05, 1, 0.05,
+        v => setOpacity(u.id, v), v => `${Math.round(v*100)}%`)));
+      if(u.kind === 'image') item.appendChild(el('div', { class:'row wide' }, [
+        el('button', { class:'btn ghost sm', onclick:() => calibrate(u.id) },
+          [icon('i-table'), 'Scale by two known points'])]));
+      body.appendChild(item);
+    }
+
+    const d = el('details', { class:'card-sect', open:true });
+    d.appendChild(el('summary', {}, [icon('i-import'),
+      el('span', { class:'t', text:'Imports' }),
+      el('span', { class:'s', text:`${list.length} reference${list.length === 1 ? '' : 's'}` })]));
+    d.appendChild(body);
+    return d;
+  }
+
+  return { pick, parseDXF, applyDXF, drawUnderlays, card, refresh, setOpacity,
+           moveTool, remove, calibrate, applyXf,
+           loadDXF:dxf, loadOBJ:obj, loadImage:image };
 })();
 /* ==========================================================================
    17  TOUR - the first-run walkthrough
@@ -6495,6 +6792,11 @@ const Dock = (() => {
     // building rather than any one part of it
     const lp = LoadPath.card();
     if(lp) wrap.appendChild(lp);
+
+    // and anything imported, which is a reference the student placed rather
+    // than a part the generator made - so it gets its own card, not a slot
+    const imp = Import.card();
+    if(imp) wrap.appendChild(imp);
 
     // and the part a note names is flagged, so the panel and the note agree
     const flagged = new Set((d && d.notes || []).filter(n => n.part).map(n => n.part));
@@ -7673,6 +7975,21 @@ const App = (() => {
   let tab = 'build';
   let dragging = false;
 
+  /* --- viewport tools ------------------------------------------------------
+     A tool takes the pointer away from the camera for as long as it is armed:
+     dragging an imported plan into place, or picking two points to scale one.
+     Orbit is disabled while a tool holds the pointer, because a drag cannot
+     mean two things at once, and the cursor says which mode you are in. */
+  let tool = null;
+  function setTool(t){
+    if(tool && tool.cancel) tool.cancel();
+    tool = t || null;
+    if(Render.controls) Render.controls.enabled = !tool;
+    if(UI.dom.gl) UI.dom.gl.style.cursor = tool ? (tool.cursor || 'crosshair') : '';
+    if(tool && tool.hint) UI.dom.hint.textContent = tool.hint;
+    else if(!tool) UI.dom.hint.textContent = '';
+  }
+
   /* --- the one rebuild path ------------------------------------------------
      Generate, apply edits, realize, then re-apply whatever the view state
      says. Called on every parameter change; measured at a few tens of
@@ -7930,6 +8247,7 @@ const App = (() => {
 
   return { rebuild, rebuildSoon, refreshChrome, highlightSelection, describeBuilding,
            newBuilding, showTemplates, showHelp, compareDialog, toggleTheme, TEMPLATES,
+           get tool(){ return tool }, setTool,
            get tab(){ return tab }, set tab(v){ tab = v; refreshChrome(); },
            set dragging(v){ dragging = v; }, get dragging(){ return dragging } };
 })();
@@ -7968,14 +8286,20 @@ const Build = (() => {
     if(pts.length) g.add(segs(pts, Render.C.grid, 1.3, { transparent:true, opacity:0.75 }));
 
     if(View.state.labels.level){
-      // Level tags hang off the same near corner the grid bubbles use, so they
-      // need to stand further out or the ground-level tag lands on top of "A1".
+      /* Level tags used to hang off the SAME near corner as the grid bubbles,
+         which put "Ground +0.00" on top of "A" and "1". Two labels a few
+         pixels apart take turns winning the budget as the camera turns, and
+         taking turns at ten passes a second is what the eye reads as flashing.
+         The budget below no longer has that failure mode, but two labels on
+         top of each other still means one of them is hidden, so the tag sits
+         at the far end of its own leader line instead - which is where a
+         drafter would put it anyway, and still inside the framed view. */
       const lext = ext + 1.5, lp = [];
       for(const L of levels){
         lp.push(-lext, L.y, -lext, grid.W + ext, L.y, -lext);
         lp.push(-lext, L.y, -lext, -lext, L.y, grid.D + ext);
         g.add(Render.label(`${L.name}  +${U.fx(L.y,2)}`,
-          new THREE.Vector3(-lext, L.y, -lext), 'dim', 9));
+          new THREE.Vector3(-lext, L.y, grid.D + ext), 'dim', 9));
       }
       g.add(segs(lp, 0x4ec98b, 1.0, { transparent:true, opacity:0.32 }));
     }
@@ -8205,9 +8529,15 @@ const Ribbon = (() => {
       grp('Underlays', [
         el('label', { class:'inl' }, ['opacity',
           UI.slider(0.65, 0.05, 1, 0.05, v => {
-            Render.groups.underlay.traverse(o => { if(o.material) o.material.opacity = v; });
-            Render.groups.context.traverse(o => { if(o.material) o.material.opacity = v*0.45; });
+            // through the document, so it survives a redraw and a save
+            for(const u of Store.doc.underlays) Import.setOpacity(u.id, v);
             Render.invalidate(); }, v => `${Math.round(v*100)}%`)]),
+        btn('Place & size', 'i-move', () => {
+          if(!Store.doc.underlays.length)
+            return UI.toast('Import a plan, an image or a model first.', 'warn');
+          App.tab = 'context'; Dock.mode = 'building'; Dock.render();
+          UI.toast('Every import is listed on the right — move, turn and size it there.',
+                   'ok', 5000); }),
         btn('Clear', 'i-trash', () => {
           // clear the document too, or the next rebuild draws them straight back
           Store.begin('Clear underlays');
@@ -8290,12 +8620,17 @@ const Ribbon = (() => {
   let down = null, moved = false;
   D.gl.addEventListener('pointerdown', ev => {
     if(ev.button !== 0) return;
+    // an armed tool owns the pointer outright - see App.setTool
+    if(App.tool){ ev.preventDefault(); D.gl.setPointerCapture(ev.pointerId);
+                  App.tool.down && App.tool.down(ev); return; }
     down = { x:ev.clientX, y:ev.clientY, t:performance.now() }; moved = false;
   });
   D.gl.addEventListener('pointermove', ev => {
+    if(App.tool){ App.tool.move && App.tool.move(ev); return; }
     if(down && Math.hypot(ev.clientX-down.x, ev.clientY-down.y) > 4) moved = true;
   });
   D.gl.addEventListener('pointerup', ev => {
+    if(App.tool){ App.tool.up && App.tool.up(ev); return; }
     const click = down && !moved && (performance.now() - down.t) < 700;
     down = null;
     if(!click) return;
@@ -8312,7 +8647,11 @@ const Ribbon = (() => {
       UI.dom.hint.textContent = '';
     }
   });
-  D.gl.addEventListener('dblclick', () => Render.fit());
+  D.gl.addEventListener('dblclick', () => { if(!App.tool) Render.fit(); });
+  // Escape puts the pointer back where it belongs
+  window.addEventListener('keydown', ev => {
+    if(ev.key === 'Escape' && App.tool && !UI.isModalOpen()) App.setTool(null);
+  });
 
   /* --- drag and drop ------------------------------------------------------ */
   ['dragover','dragenter'].forEach(t => D.stage.addEventListener(t, e => {

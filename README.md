@@ -237,6 +237,22 @@ Roughly 8,300 lines in one file. Nothing is minified; it is meant to be read.
   locks itself and says why rather than accepting a number it will discard. The
   document keeps the number the student typed, so switching back to a moment
   frame restores it.
+- **Everything imported can be placed.** A DXF plan, an OBJ of the neighbouring
+  block and a photographed drawing all carry the same five numbers — where,
+  how high, which way round, how big — and the same controls change them. The
+  geometry is built about its own centre with the transform on a wrapper above
+  it, so a rotation turns the drawing rather than swinging it around the model
+  origin, and a scale grows it where it stands. Drag it into place or type the
+  numbers; either way it is one undo step and it saves with the file.
+- **Labels do not blink.** Two labels a few pixels apart used to fall either
+  side of a cell boundary in a coarse occupancy grid and take turns winning it
+  — ten times a second, which is what "A" and "Ground +0.00" were doing as the
+  camera turned. They are now compared as the rectangles they actually occupy,
+  the test has a dead band in both directions, nothing may change state twice
+  inside 450 ms, and the decision is not retaken at all while the camera is
+  moving. The label layer also stays up through a gesture: at the couple of
+  dozen labels a building carries, hiding it saved nothing measurable and cost
+  a visible blink on every nudge.
 - WebGL context-loss recovery, label budgeting, and an on-demand render loop
   that pauses when the iframe scrolls out of view.
 
@@ -248,7 +264,7 @@ system, every cross-part combination, edits, orphaned edits and scale; and the
 app driven in real Chromium for picking, explode reversibility, detail
 round-trips, save round-trips, undo, export, all three importers, orbit
 behaviour, wall assembly order, the load path and its three directions, and
-three viewport widths plus an iframe (53 checks); the load takedown checked
+three viewport widths plus an iframe (58 checks); the load takedown checked
 against hand arithmetic in both directions, including the eaves thrust
 (18 checks); and the orbit measured for buffer reallocations so the flashing
 cannot come back. The depth range is asserted to be fitted to the model and to
@@ -259,7 +275,13 @@ passes every scene-graph test there is. A separate sweep drives the range from
 few millimetres, which is the evidence that the range is the lever. What a
 single-storey system builds is asserted too, in and out of the browser: two
 levels from four, two datums, nothing planned above the roof, the field locked
-with a reason, and four storeys back when a frame is chosen instead. Every guided-tour step is asserted to spotlight a real, on-screen
+with a reason, and four storeys back when a frame is chosen instead. Label
+flicker is caught by watching every change to a label's display as it happens
+rather than sampling settled camera positions — the first version of that
+harness sampled, and reported zero while two labels were visibly taking turns.
+Placing an import is checked end to end: dragged, it follows the pointer to
+within 2 cm; typed, it lands where the numbers say; and both survive undo and a
+save round trip. Every guided-tour step is asserted to spotlight a real, on-screen
 element, and every band of every build-up drawing is asserted either to pick
 out real geometry or to say plainly that it is not modelled. Console clean
 throughout.
