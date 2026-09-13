@@ -291,6 +291,15 @@ Roughly 8,300 lines in one file. Nothing is minified; it is meant to be read.
   GPU, depth bits, samples, and the resulting millimetres per depth step — so
   a fault that appears on one machine and not another can be read rather than
   guessed at.
+- **There is an instrument, not just an opinion.** `?diag=1`, or a button in
+  About, opens a rendering diagnostics panel. It *measures* what the machine in
+  front of you can resolve — two surfaces a known distance apart, drawn into
+  the canvas itself and read back, walking down until they tie — and it offers
+  one switch per suspect (push build-up layers apart, outermost layer only,
+  hide the edge outlines, halve the depth range, force a pixel ratio, and
+  `?aa=0` for multisampling). Whichever switch clears a fault names its cause.
+  A rendering fault that happens on one machine and not another cannot be found
+  by reasoning from a screenshot, and pretending otherwise wastes rounds.
 - WebGL context-loss recovery, label budgeting, and an on-demand render loop
   that pauses when the iframe scrolls out of view.
 
@@ -331,5 +340,9 @@ the old one-shot flag made impossible to check, and the whole embed is
 reproduced as reported — the app in an iframe on a page with a Fullscreen
 button — to check that the spotlight follows the dock through going full screen
 and back, and every band of every build-up drawing is asserted either to pick
-out real geometry or to say plainly that it is not modelled. Console clean
+out real geometry or to say plainly that it is not modelled. The depth probe is checked against a control build whose
+depth range is deliberately 256× too wide — arithmetically a 16-bit buffer —
+which `mkcs.sh` emits alongside the real file so it cannot drift: the probe
+must report 0.01 mm on one and 0.5 mm on the other, because an instrument that
+does not respond to a known change is measuring nothing. Console clean
 throughout.

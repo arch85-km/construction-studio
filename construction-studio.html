@@ -227,6 +227,14 @@ html[data-theme="light"] .lbl{background:rgba(255,255,255,.86);color:#141a22;bor
 .lbl.tag{color:var(--ok)} .lbl.val{color:var(--warn)}
 .lbl.grid{color:var(--accent);font-weight:600;border-radius:50%;padding:4px 6px;min-width:20px;text-align:center}
 
+/* rendering diagnostics - only ever seen by someone chasing a fault */
+.diag .row{align-items:flex-start}
+.diag .swrow{display:block;margin:9px 0}
+.diag .swrow .chk{font-size:12px;color:var(--ink-0)}
+.diag .swrow .hint{margin:2px 0 0 20px}
+.diag .formula{margin:6px 0}
+.diag-dump{width:100%;height:140px;margin-top:10px;font-family:var(--mono);font-size:10.5px}
+
 /* imported references - one block per import in the dock */
 .imp{border:1px solid var(--line);border-radius:7px;padding:8px 9px;margin:8px 0;background:var(--bg-2)}
 .imp .row{margin:5px 0}
@@ -4511,8 +4519,12 @@ const Render = (() => {
        without it. Leaving it on made Chrome resolve the multisampled buffer
        into a preserved copy every single frame, which is both a cost and a
        path other browsers do not take. */
+    /* ?aa=0 turns multisampling off. It cannot be switched once the context
+       exists, and the multisample resolve is the most browser-specific step in
+       the pipeline, so it needs a way to be tested at all. */
+    const noAA = /[?&]aa=0/.test(location.search);
     renderer = new THREE.WebGLRenderer({
-      canvas, antialias:true, alpha:false, stencil:true,
+      canvas, antialias:!noAA, alpha:false, stencil:true,
       powerPreference:'high-performance'
     });
     fullPixelRatio = Math.min(devicePixelRatio || 1, 2);
@@ -4649,6 +4661,88 @@ const Render = (() => {
    * of samples. Guessing at it from a screenshot is slow and usually wrong, so
    * the numbers are on screen, in About.
    */
+  /* --- diagnostics ---------------------------------------------------------
+     Switches a reader can turn on to find out which suspect is responsible for
+     a rendering fault, without anyone having to guess from a screenshot. They
+     do nothing unless the panel is open, and the panel does nothing unless it
+     is asked for. */
+  const diag = { on:false, polyOffset:false, outerOnly:false, noEdges:false,
+                 halfDepth:false, forceDpr:0 };
+
+  /**
+   * Can this machine keep two surfaces `mm` millimetres apart in the right
+   * order, at the depth range currently in use?
+   *
+   * The question every theory about this fault has turned on, asked of the
+   * hardware directly instead of inferred from arithmetic. Two quads are drawn
+   * into a small off-screen target at the same place, the second `mm` closer;
+   * if the depth buffer can tell them apart, every pixel comes back the second
+   * quad's colour. Where it cannot, the two interleave and the read-back is a
+   * mixture - which is z-fighting, in miniature, measured rather than argued
+   * about.
+   *
+   * Walks down from 100 mm and returns the smallest separation that still
+   * comes back clean.
+   */
+  function depthProbe(){
+    if(!renderer || !ortho || !canvas) return null;
+    const gl = renderer.getContext();
+    const bits = gl.getParameter(gl.DEPTH_BITS);
+    const range = ortho.far - ortho.near;
+
+    /* Into the CANVAS, not an off-screen target: a render target three.js
+       allocates gets 24-bit depth whatever the canvas has, so probing one
+       would measure the wrong buffer and cheerfully report that all is well.
+       Nothing composites in the middle of a task, so the reader never sees
+       this; the real frame is redrawn before the function returns. */
+    const sc = new THREE.Scene();
+    const mid = (ortho.near + ortho.far)/2;
+    const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, ortho.near, ortho.far);
+    const quad = c => new THREE.Mesh(new THREE.PlaneGeometry(4, 4),
+      new THREE.MeshBasicMaterial({ color:c }));
+    const near = quad(0x00ff00), far = quad(0x0000ff);
+    /* Draw the NEAR one first. Three sorts opaque objects front-to-back, which
+       would make the near quad win every time whether or not the buffer could
+       tell them apart - the test would measure draw order and nothing else.
+       Drawn in this order, the far quad is rejected while the two are
+       distinguishable, and overwrites the moment they are not. */
+    near.renderOrder = 0; far.renderOrder = 1;
+    sc.add(near, far);
+
+    const W = canvas.width, H = canvas.height;
+    const S = Math.min(32, W, H);
+    const x0 = (W - S) >> 1, y0 = (H - S) >> 1;
+    const buf = new Uint8Array(S*S*4);
+    const sorted = renderer.sortObjects;
+    renderer.sortObjects = false;
+
+    const steps = [100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
+    let finest = null;
+    try {
+      for(const mm of steps){
+        near.position.set(0, 0, -mid);
+        far.position.set(0, 0, -mid - mm/1000);
+        renderer.setRenderTarget(null);
+        renderer.clear(true, true, true);
+        renderer.render(sc, cam);
+        gl.readPixels(x0, y0, S, S, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+        // the far quad showing through at all means the two have tied
+        let tied = 0;
+        for(let i = 0; i < S*S; i++) if(buf[i*4+2] > buf[i*4+1]) tied++;
+        if(tied > S*S*0.01) break;
+        finest = mm;
+      }
+    } catch(e){ finest = null; }
+
+    renderer.sortObjects = sorted;
+    near.geometry.dispose(); near.material.dispose();
+    far.geometry.dispose(); far.material.dispose();
+    renderNow();                      // put the real picture back, same task
+
+    return { finestMm:finest, range:+range.toFixed(1), bits,
+             theoryMm:+(range/2**bits*1000).toFixed(4) };
+  }
+
   function glInfo(){
     if(!renderer) return null;
     const gl = renderer.getContext();
@@ -4914,8 +5008,12 @@ const Render = (() => {
 
     /* A margin so nothing sits exactly on a plane, and so a small camera move
        between one fit and the next cannot push anything through it. */
-    const pad = Math.max(1, (hi - lo) * 0.15);
+    let pad = Math.max(1, (hi - lo) * 0.15);
     ortho.near = lo - pad; ortho.far = hi + pad;
+    if(diag.halfDepth){                       // a diagnostic switch, not a setting
+      const m = (ortho.near + ortho.far)/2, h2 = (ortho.far - ortho.near)/4;
+      ortho.near = m - h2; ortho.far = m + h2;
+    }
     ortho.updateProjectionMatrix();
   }
 
@@ -5151,7 +5249,8 @@ const Render = (() => {
            get modelDiag(){return modelDiag},
            init, resize, start, stop, invalidate, setOnScreen, renderNow,
            fit, standardView, bounds, label, budgetLabels, clearGroup, disposeCaches,
-           applyTheme, updateOrthoDepth, fitShadow, glInfo,
+           applyTheme, updateOrthoDepth, fitShadow, glInfo, depthProbe,
+           get diag(){ return diag },
            forceShadowRefit(){ _shKey = ''; fitShadow(); },
            get aspectScale(){ return aspectScale },
            set aspectScale(v){ aspectScale = v || 1; resize(); },
@@ -5226,7 +5325,8 @@ const Realize = (() => {
     // The section box is part of the key because it decides `side` below, and a
     // material cached with the wrong one would survive the toggle.
     const cut = View.state.section.on;
-    const key = `${fam}|${style}|${layer}|${cut ? 'cut' : ''}|${opts.tag || ''}`;
+    const key = `${fam}|${style}|${layer}|${cut ? 'cut' : ''}|${opts.tag || ''}` +
+                `|${Render.diag.polyOffset ? 'po' + opts.wallIndex : ''}`;
     if(MAT.has(key)) return MAT.get(key);
     const colour = LAYER_MAT[fam] ?? Render.C[fam] ?? 0xb8bcc2;
     // Everything here is a closed box, so back faces are never seen and culling
@@ -5259,6 +5359,15 @@ const Realize = (() => {
       m.polygonOffset = true;
       m.polygonOffsetFactor = 1;
       m.polygonOffsetUnits = 1;
+    }
+    /* Diagnostic switch: push each leaf of a build-up apart in the depth
+       buffer by its position in the stack, so neighbouring leaves cannot tie
+       however coarse the buffer is. If this clears the fault, the fault is
+       surfaces tying; if it does not, it is not. */
+    if(Render.diag.polyOffset && opts.wallIndex != null){
+      m.polygonOffset = true;
+      m.polygonOffsetFactor = 1 + opts.wallIndex*2;
+      m.polygonOffsetUnits = 1 + opts.wallIndex*4;
     }
     if(opts.ghost){ m.transparent = true; m.opacity = 0.12; m.depthWrite = false; }
     m.clippingPlanes = View.clipFor(layer);
@@ -5513,7 +5622,10 @@ const Realize = (() => {
     for(const b of batches.values()){
       const m = b.merge();
       if(!m) continue;
-      const mesh = new THREE.Mesh(m.geometry, material(b.fam, style, b.layer));
+      // a build-up leaf knows where it sits in the stack; the diagnostics use it
+      const wi = b.wall ? b.wall.i : null;
+      if(Render.diag.outerOnly && wi != null && wi !== 0) continue;
+      const mesh = new THREE.Mesh(m.geometry, material(b.fam, style, b.layer, { wallIndex:wi }));
       mesh.userData = { batch:true, ranges:m.ranges, layer:b.layer, part:b.part,
                         role:b.role, level:b.level, fam:b.fam, wall:b.wall };
       mesh.userData.home = new THREE.Vector3(0,0,0);
@@ -5522,7 +5634,7 @@ const Realize = (() => {
       groups.push(mesh);
       tris += m.geometry.index.count/3;
 
-      if(style === 'shaded' || style === 'wireframe' || style === 'xray'){
+      if(!Render.diag.noEdges && (style === 'shaded' || style === 'wireframe' || style === 'xray')){
         const eg = new THREE.EdgesGeometry(m.geometry, 20);
         const el = new THREE.LineSegments(eg, edgeMaterial(b.layer));
         el.userData = { edges:true, layer:b.layer, part:b.part, role:b.role,
@@ -8476,7 +8588,11 @@ const App = (() => {
             return el('div', { class:'tbl-wrap' }, [
               el('table', { class:'tbl' }, [el('tbody', {}, rows.map(([k, v]) =>
                 el('tr', {}, [el('td', { text:k }), el('td', { text:v })])))])]);
-          })()
+          })(),
+          el('div', { class:'row wide' }, [
+            el('button', { class:'btn ghost sm',
+              onclick:() => { UI.close(); diagnostics(); } },
+              [icon('i-table'), 'Rendering diagnostics…'])])
         ]),
         UI.section('Credits', null, [UI.explain(
           'Sections follow EN 10365. Span rules are the ones in Allen &amp; Iano’s ' +
@@ -8484,6 +8600,105 @@ const App = (() => {
           'Built with three.js.<br><br><b>© Karam Al-Obaidi</b>')])
       ],
       footer:[el('button', { class:'btn primary', onclick:UI.close }, ['Close'])] });
+  }
+
+  /* --- rendering diagnostics -----------------------------------------------
+     A rendering fault that appears on one machine and not another cannot be
+     found by reasoning from a screenshot; three rounds of that proved it. So
+     the machine that HAS the fault gets the instruments: a measurement of its
+     own depth buffer, and a switch per suspect that can be turned on while
+     watching the picture. Whichever switch clears it names the cause.
+
+     Nobody reaches this by accident - ?diag=1, or a button inside About. */
+  function diagnostics(){
+    const D = Render.diag;
+    D.on = true;
+    const out = { probe:null, tried:{} };
+
+    const body = el('div', { class:'diag' });
+    const probeRow = el('div', { class:'formula', text:'not run yet' });
+
+    const runProbe = () => {
+      const r = Render.depthProbe();
+      out.probe = r;
+      probeRow.textContent = !r ? 'could not run'
+        : r.finestMm == null
+          ? `this machine cannot separate two surfaces even 100 mm apart at the ` +
+            `current range (${r.range} units) — something is very wrong`
+          : `separates surfaces ${r.finestMm} mm apart at the current range ` +
+            `(${r.range} units over ${r.bits} bits, so ${r.theoryMm} mm per step in theory)`;
+    };
+
+    const refresh = () => { Realize.disposeCaches(); rebuild(); Render.invalidate(); };
+    // full width, label on the box: these labels are sentences, not field names
+    const sw = (key, label, why) => el('div', { class:'row wide swrow' }, [
+      UI.check(label, D[key], v => { D[key] = v; out.tried[key] = v; refresh(); }),
+      el('div', { class:'hint', text:why })
+    ]);
+
+    body.appendChild(UI.explain(
+      'Turn these on one at a time and watch the model. <b>Whichever one makes the ' +
+      'fault disappear names its cause.</b> None of them is a setting — they are ' +
+      'here to find out what is wrong, and they reset when you reload.'));
+
+    body.appendChild(UI.section('What this machine can resolve', null, [
+      UI.explain('Two surfaces are drawn a known distance apart and read back. ' +
+        'This is the depth buffer measured rather than assumed.'),
+      probeRow,
+      el('div', { class:'row wide' }, [
+        el('button', { class:'btn ghost sm', onclick:runProbe }, ['Measure again'])])
+    ]));
+
+    body.appendChild(UI.section('Switches', null, [
+      sw('polyOffset', 'Push build-up layers apart',
+         'if this clears it: surfaces are tying in the depth buffer'),
+      sw('outerOnly', 'Draw only the outermost layer',
+         'if this clears it: the layers of a build-up are fighting each other'),
+      sw('noEdges', 'Hide the edge outlines',
+         'if this clears it: the outlines are tying with the faces they trace'),
+      sw('halfDepth', 'Halve the depth range',
+         'if this clears it: depth precision after all'),
+      el('div', { class:'row wide swrow' }, [
+        el('label', { class:'chk', text:'Pixel ratio' })]),
+      UI.row('', UI.select(
+        [{ value:'0', label:'as the screen says' }, { value:'1', label:'force 1' },
+         { value:'2', label:'force 2' }],
+        String(D.forceDpr), v => {
+          D.forceDpr = +v; out.tried.forceDpr = +v;
+          Render.renderer.setPixelRatio(+v || Math.min(devicePixelRatio || 1, 2));
+          Render.resize(); Render.invalidate();
+        }), null, 'if a ratio clears it: resolution or the multisample resolve'),
+      UI.explain('Multisampling is fixed when the page loads and cannot be switched ' +
+        'here. To test it, reload with <b>?aa=0</b> on the address.')
+    ]));
+
+    const report = () => {
+      const V = View.state;
+      const r = {
+        gl: Render.glInfo(), probe: out.probe, switchesTried: out.tried,
+        model: { template:Store.doc.name || '—', style:V.style, detail:V.detail,
+                 open:V.open, explode:V.explode, section:V.section.on },
+        canvas: { w:Render.canvas.clientWidth, h:Render.canvas.clientHeight,
+                  devicePixelRatio },
+        ua: navigator.userAgent
+      };
+      const text = JSON.stringify(r, null, 1);
+      const done = () => UI.toast('Report copied — paste it back.', 'ok', 4000);
+      try { navigator.clipboard.writeText(text).then(done, () => fallback(text)); }
+      catch(e){ fallback(text); }
+      function fallback(t){
+        const ta = el('textarea', { class:'diag-dump' }); ta.value = t;
+        body.appendChild(ta); ta.select(); UI.toast('Select and copy the text below.', 'warn', 6000);
+      }
+    };
+
+    runProbe();
+    UI.modal({ title:'Rendering diagnostics', sub:'for finding a fault that only happens on some machines',
+      wide:true, body:[body],
+      footer:[
+        el('button', { class:'btn ghost', onclick:report }, [icon('i-doc'), 'Copy report']),
+        el('button', { class:'btn primary', onclick:UI.close }, ['Close'])],
+      onClose:() => { D.on = false; } });
   }
 
   function toggleTheme(){
@@ -8496,7 +8711,7 @@ const App = (() => {
   }
 
   return { rebuild, rebuildSoon, refreshChrome, highlightSelection, describeBuilding,
-           newBuilding, showTemplates, showHelp, compareDialog, toggleTheme, TEMPLATES,
+           newBuilding, showTemplates, showHelp, diagnostics, compareDialog, toggleTheme, TEMPLATES,
            get tool(){ return tool }, setTool,
            get tab(){ return tab }, set tab(v){ tab = v; refreshChrome(); },
            set dragging(v){ dragging = v; }, get dragging(){ return dragging } };
@@ -9034,7 +9249,12 @@ const Ribbon = (() => {
 
   // Every launch, unless the reader has said otherwise. ?tour=1 overrides even
   // that, so a link in a lecture handout always opens it.
-  if(params.get('tour') === '1' || Tour.onLaunch) setTimeout(() => Tour.start(), 800);
+  // ?diag=1 for a fault that only happens on some machines; costs nothing
+  // otherwise, and it holds the tour back rather than opening underneath it
+  const diagWanted = params.get('diag') === '1';
+  if(!diagWanted && (params.get('tour') === '1' || Tour.onLaunch))
+    setTimeout(() => Tour.start(), 800);
+  if(diagWanted) setTimeout(() => App.diagnostics(), 900);
   addEventListener('beforeunload', e => { if(Store.isDirty){ e.preventDefault(); e.returnValue = ''; } });
   window.ConstructionStudio = { Store, Model, Gen, Realize, View, SYSTEMS, SIZING, BUILDUPS,
                                 LIB, App, Render, Seq, Compare, Dock, LayerDiagram, Pick,
