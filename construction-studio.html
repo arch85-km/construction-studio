@@ -4494,9 +4494,26 @@ const Render = (() => {
   /* --- lifecycle --------------------------------------------------------- */
   function init(canvasEl, stageEl, labelEl){
     canvas = canvasEl; stage = stageEl;
+    /* Two of these are about the drawing buffer the browser hands back, which
+       is not the same everywhere.
+
+       `stencil` is not asked for because anything here uses a stencil. It is
+       asked for because of what the driver allocates when it is NOT: three.js
+       defaults it off, and ANGLE - which is how Chrome talks to the GPU on
+       Windows - then has the option of a 16-bit depth buffer where asking for
+       a stencil gets the packed 24-bit-plus-8 format instead. Sixteen bits
+       over the range this model needs is under a millimetre of depth
+       resolution, and a wall build-up stacks layers a millimetre thick.
+
+       `preserveDrawingBuffer` was on so the PNG export could read the canvas.
+       It does not need it: the export renders and reads back inside one
+       synchronous block (see cs/21-export.js), which is defined to work
+       without it. Leaving it on made Chrome resolve the multisampled buffer
+       into a preserved copy every single frame, which is both a cost and a
+       path other browsers do not take. */
     renderer = new THREE.WebGLRenderer({
-      canvas, antialias:true, alpha:false,
-      powerPreference:'high-performance', preserveDrawingBuffer:true
+      canvas, antialias:true, alpha:false, stencil:true,
+      powerPreference:'high-performance'
     });
     fullPixelRatio = Math.min(devicePixelRatio || 1, 2);
     renderer.setPixelRatio(fullPixelRatio);
@@ -4624,6 +4641,31 @@ const Render = (() => {
   /* `deep` walks into wrappers. A group whose children are themselves groups -
      an imported drawing carrying its own transform, say - would otherwise
      leave every mesh inside it allocated. */
+  /**
+   * What the browser actually handed back, as opposed to what was asked for.
+   *
+   * Rendering faults that appear on one machine and not another are almost
+   * always this: a different GPU, a different depth format, a different number
+   * of samples. Guessing at it from a screenshot is slow and usually wrong, so
+   * the numbers are on screen, in About.
+   */
+  function glInfo(){
+    if(!renderer) return null;
+    const gl = renderer.getContext();
+    let name = gl.getParameter(gl.RENDERER);
+    try {
+      const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+      if(dbg) name = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
+    } catch(e){ /* some browsers withhold it; the masked name will do */ }
+    return { gpu:String(name),
+             webgl: renderer.capabilities.isWebGL2 ? 2 : 1,
+             depthBits: gl.getParameter(gl.DEPTH_BITS),
+             stencilBits: gl.getParameter(gl.STENCIL_BITS),
+             samples: gl.getParameter(gl.SAMPLES),
+             pixelRatio: renderer.getPixelRatio(),
+             depthRange: ortho ? +(ortho.far - ortho.near).toFixed(1) : null };
+  }
+
   function clearGroup(g, deep){
     for(let i = g.children.length-1; i >= 0; i--){
       const c = g.children[i];
@@ -5109,7 +5151,7 @@ const Render = (() => {
            get modelDiag(){return modelDiag},
            init, resize, start, stop, invalidate, setOnScreen, renderNow,
            fit, standardView, bounds, label, budgetLabels, clearGroup, disposeCaches,
-           applyTheme, updateOrthoDepth, fitShadow,
+           applyTheme, updateOrthoDepth, fitShadow, glInfo,
            forceShadowRefit(){ _shKey = ''; fitShadow(); },
            get aspectScale(){ return aspectScale },
            set aspectScale(v){ aspectScale = v || 1; resize(); },
@@ -8414,6 +8456,28 @@ const App = (() => {
           'Elements follow the parameters. A change to one is remembered by <b>where it sits on the ' +
           'grid</b>, so it survives you altering the building. If its place disappears, the app tells ' +
           'you rather than quietly forgetting. Anything you draw yourself is never regenerated.')]),
+        UI.section('This browser', null, [
+          UI.explain('What your browser handed the app, as opposed to what it asked for. ' +
+            'A rendering fault that shows on one machine and not another is almost always ' +
+            'in these numbers — if something looks wrong, this is what to quote.'),
+          (() => {
+            const g = Render.glInfo();
+            if(!g) return UI.empty('The 3D view has not started.');
+            const rows = [
+              ['Graphics', g.gpu],
+              ['WebGL', String(g.webgl)],
+              ['Depth buffer', `${g.depthBits}-bit` + (g.depthBits < 24 ? '  — low; surfaces may flicker' : '')],
+              ['Stencil', `${g.stencilBits}-bit`],
+              ['Anti-aliasing', g.samples > 1 ? `${g.samples}× multisample` : 'none'],
+              ['Pixel ratio', String(g.pixelRatio)],
+              ['Depth range in use', g.depthRange == null ? '—' :
+                `${g.depthRange} units → ${(g.depthRange/2**g.depthBits*1000).toFixed(3)} mm per step`]
+            ];
+            return el('div', { class:'tbl-wrap' }, [
+              el('table', { class:'tbl' }, [el('tbody', {}, rows.map(([k, v]) =>
+                el('tr', {}, [el('td', { text:k }), el('td', { text:v })])))])]);
+          })()
+        ]),
         UI.section('Credits', null, [UI.explain(
           'Sections follow EN 10365. Span rules are the ones in Allen &amp; Iano’s ' +
           '<i>Architect’s Studio Companion</i> and the standard steel and concrete references. ' +

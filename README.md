@@ -278,6 +278,19 @@ Roughly 8,300 lines in one file. Nothing is minified; it is meant to be read.
   which the tour keeps re-placing itself every frame until the layout stops
   moving: one pass on the event is not enough, because the app's own layout is
   still settling when `resize` fires — measured at 274 px short.
+- **The drawing buffer is asked for explicitly.** A stencil is requested, not
+  because anything draws with one, but because of what the driver allocates
+  when it is not: three.js defaults it off, and ANGLE — how Chrome reaches the
+  GPU on Windows — may then hand back a 16-bit depth buffer where asking for a
+  stencil gets the packed 24-plus-8 instead. Sixteen bits over the range this
+  model needs is under a millimetre of depth resolution, against build-up
+  layers a millimetre thick. `preserveDrawingBuffer` is off: the PNG export
+  renders and reads back inside one synchronous block and never needed it, and
+  leaving it on made Chrome resolve the multisampled buffer into a copy every
+  frame. **About → This browser** shows what the browser actually gave back —
+  GPU, depth bits, samples, and the resulting millimetres per depth step — so
+  a fault that appears on one machine and not another can be read rather than
+  guessed at.
 - WebGL context-loss recovery, label budgeting, and an on-demand render loop
   that pauses when the iframe scrolls out of view.
 
