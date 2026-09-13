@@ -1,0 +1,4 @@
+# Build artefacts — the repository tracks sources and the built page, not
+# archives of them. The upload zip is produced with `git archive HEAD`, so
+# committing it would store a second, stale copy of files already here.
+*.zip
