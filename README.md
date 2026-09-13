@@ -4,7 +4,7 @@ Build and visualise construction systems in timber, concrete, steel and masonry.
 One self-contained HTML file, no build step, no server, no backend.
 
 **© Karam Al-Obaidi** — the app is [MIT](LICENSE) licensed; the documentation
-and teaching material are [CC BY 4.0](LICENSE-docs).
+and teaching material are [CC BY 4.0](DOCS-LICENCE.md).
 
 ---
 
@@ -179,7 +179,7 @@ the file.
 **The documentation and teaching material** — the reference page, screenshots,
 diagrams and exercises — are under
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); see
-[LICENSE-docs](LICENSE-docs). Share and adapt them, with attribution.
+[DOCS-LICENCE.md](DOCS-LICENCE.md). Share and adapt them, with attribution.
 
 **A building made with the tool belongs to whoever made it.** Neither licence
 claims anything over a user's model, drawings, or exported images. The small
@@ -187,7 +187,8 @@ credit drawn in the corner of an exported PNG names the tool that produced the
 drawing; it is not a claim over the drawing.
 
 three.js is a separate copyright under its own MIT licence, reproduced in full
-at the top of the HTML file as that licence requires.
+at the top of the HTML file as that licence requires, and noted in
+[NOTICE](NOTICE).
 
 ### How to cite
 

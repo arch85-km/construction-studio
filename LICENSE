@@ -19,12 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-
----
-
-THIRD-PARTY SOFTWARE
-
-This project loads three.js (https://threejs.org), which is distributed under
-its own MIT License, Copyright (c) 2010-2026 three.js authors. That notice is
-reproduced in full at the top of construction-studio.html, as the licence
-requires. It is a separate copyright from the one above.

@@ -6,9 +6,7 @@ The code in this repository is licensed under the MIT License; see LICENSE.
 Everything that accompanies it and is not code — the documentation pages,
 the reference page, screenshots, diagrams and the student exercises — is
 licensed under the Creative Commons Attribution 4.0 International licence
-(CC BY 4.0):
-
-    https://creativecommons.org/licenses/by/4.0/
+([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)).
 
 You may share and adapt this material for any purpose, including
 commercially, provided you give appropriate credit, link to the licence, and
