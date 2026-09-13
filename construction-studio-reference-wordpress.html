@@ -1,0 +1,473 @@
+<!-- ============================================================
+     Construction Studio — tool reference
+     Paste this whole block into a WordPress "Custom HTML" block.
+     Every style is scoped to .csdoc, so nothing here can affect
+     the rest of your theme.
+     ============================================================ -->
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap");
+
+.csdoc{
+  --paper:#f6f7f8; --surface:#ffffff; --sunk:#eef1f4;
+  --ink:#17212c; --ink-2:#4d5b69; --ink-3:#7b8894;
+  --rule:#d4dbe2; --rule-soft:#e6ebef;
+  --accent:#2f5d8f; --accent-soft:#e7eef6;
+  --absent:#9a4a1e; --absent-soft:#f7ece4;
+  --m-concrete:#bdbab2; --m-timber:#c9a878;
+  --m-insul:#f0d98a; --m-board:#e2e4e6; --m-void:#8892a0;
+  --display:"Archivo",system-ui,sans-serif;
+  --body:"Source Serif 4",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+
+  background:var(--paper); color:var(--ink);
+  font-family:var(--body); font-size:17px; line-height:1.62;
+  padding-block:0; padding-left:20px; padding-right:20px;
+  -webkit-font-smoothing:antialiased;
+}
+@media (prefers-color-scheme:dark){
+  .csdoc{
+    --paper:#11171e; --surface:#171f28; --sunk:#1c252f;
+    --ink:#e4e9ee; --ink-2:#a6b2be; --ink-3:#7b8894;
+    --rule:#2c3844; --rule-soft:#222c36;
+    --accent:#7fb0e0; --accent-soft:#1b2a3a;
+    --absent:#dd9366; --absent-soft:#2d1f16;
+  }
+}
+.csdoc *{box-sizing:border-box}
+.csdoc .wrap{max-width:760px;margin-inline:auto;display:flex;flex-direction:column;gap:0}
+
+/* masthead */
+.csdoc header.mast{padding-block:56px 26px;border-bottom:2px solid var(--ink);margin:0}
+.csdoc .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);margin:0 0 14px;padding:0}
+.csdoc h1{font-family:var(--display);font-weight:700;font-size:clamp(31px,5.4vw,46px);line-height:1.06;letter-spacing:-.02em;margin:0;padding:0;color:var(--ink);text-wrap:balance;border:0}
+.csdoc .sub{font-size:18px;color:var(--ink-2);margin:14px 0 0;max-width:56ch}
+.csdoc .meta{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:22px;font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+.csdoc .meta b{color:var(--ink-2);font-weight:500}
+
+/* the correction */
+.csdoc .alarm{margin-block:30px;padding:22px 24px;background:var(--absent-soft);
+  border-left:4px solid var(--absent);border-radius:0 3px 3px 0}
+.csdoc .alarm h2{font-family:var(--display);font-size:19px;font-weight:600;margin:0 0 10px;padding:0;color:var(--absent);letter-spacing:-.01em;border:0}
+.csdoc .alarm p{margin:0 0 11px;font-size:16px;max-width:none}
+.csdoc .alarm p:last-child{margin-bottom:0}
+.csdoc .alarm code{background:transparent;color:var(--absent);font-weight:500;padding:0}
+
+.csdoc section{padding-block:38px;border-bottom:1px solid var(--rule-soft);margin:0}
+.csdoc section:last-of-type{border-bottom:0}
+.csdoc h2.sec{font-family:var(--display);font-weight:600;font-size:25px;letter-spacing:-.015em;margin:0 0 6px;padding:0;color:var(--ink);text-wrap:balance;border:0}
+.csdoc h2.sec .q{font-family:var(--mono);font-size:12px;color:var(--ink-3);letter-spacing:.1em;display:block;margin-bottom:9px;text-transform:uppercase;font-weight:400}
+.csdoc h3{font-family:var(--display);font-weight:600;font-size:16.5px;margin:28px 0 8px;padding:0;color:var(--ink);letter-spacing:-.005em;border:0}
+.csdoc p{margin:0 0 14px;max-width:66ch;color:inherit}
+.csdoc ul,.csdoc ol{margin:0 0 14px;padding-left:20px;max-width:66ch;list-style-position:outside}
+.csdoc li{margin-bottom:7px;color:inherit}
+.csdoc code{font-family:var(--mono);font-size:.87em;background:var(--sunk);padding:1px 5px;border-radius:3px;color:inherit}
+.csdoc a{color:var(--accent)}
+.csdoc strong,.csdoc b{font-weight:600}
+.csdoc blockquote{margin:0 0 14px;padding:14px 18px;border-left:3px solid var(--rule);
+  color:var(--ink-2);font-size:16px;max-width:66ch;background:transparent;font-style:normal;quotes:none}
+.csdoc blockquote::before,.csdoc blockquote::after{content:none}
+
+/* verdict chips */
+.csdoc .chip{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+  text-transform:uppercase;padding:2px 7px;border-radius:2px;vertical-align:2px}
+.csdoc .chip.no{background:var(--absent-soft);color:var(--absent)}
+
+/* data tables */
+.csdoc .tw{overflow-x:auto;margin:0 0 16px;border:1px solid var(--rule);border-radius:3px;background:var(--surface)}
+.csdoc table{border-collapse:collapse;width:100%;margin:0;font-family:var(--mono);font-size:12.5px;
+  font-variant-numeric:tabular-nums;background:transparent}
+.csdoc th{text-align:left;font-weight:500;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink-3);padding:9px 12px;border:0;border-bottom:1px solid var(--rule);white-space:nowrap;background:var(--sunk)}
+.csdoc td{padding:7px 12px;border:0;border-bottom:1px solid var(--rule-soft);vertical-align:top;color:inherit;background:transparent}
+.csdoc tr{background:transparent}
+.csdoc tr:last-child td{border-bottom:0}
+.csdoc td.num{text-align:right}
+.csdoc caption{caption-side:bottom;text-align:left;font-family:var(--body);font-size:13.5px;
+  color:var(--ink-3);padding:10px 12px;line-height:1.5}
+
+/* the build-up drawing */
+.csdoc figure{margin:22px 0 18px;padding:0}
+.csdoc .stack{display:flex;flex-direction:column;border:1px solid var(--ink);background:var(--surface)}
+.csdoc .lay{display:grid;grid-template-columns:64px 1fr auto;align-items:center;gap:12px;
+  border-bottom:1px solid var(--rule-soft);font-family:var(--mono);font-size:11.5px}
+.csdoc .lay:last-child{border-bottom:0}
+.csdoc .swatch{height:100%;min-height:15px;border-right:1px solid var(--rule)}
+.csdoc .lay .nm{padding:3px 0;color:var(--ink-2)}
+.csdoc .lay .tt{padding:3px 12px 3px 0;color:var(--ink);font-variant-numeric:tabular-nums}
+.csdoc .lay.st .nm{color:var(--ink);font-weight:500}
+.csdoc .lay.st .nm::after{content:" · structural";color:var(--accent);font-weight:400}
+.csdoc .lay.wi{opacity:.78}
+.csdoc .lay.wi .nm::after{content:" · within the studs";color:var(--ink-3)}
+.csdoc figcaption{font-size:13.5px;color:var(--ink-3);margin-top:11px;line-height:1.55;max-width:64ch}
+
+/* formula, as the tool prints it */
+.csdoc .formula{font-family:var(--mono);font-size:13px;background:var(--sunk);
+  border-left:3px solid var(--accent);padding:12px 15px;margin:0 0 8px;
+  overflow-x:auto;white-space:nowrap;max-width:none}
+.csdoc .frule{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin:0 0 18px}
+
+/* absent list */
+.csdoc .absent-list{list-style:none;padding:0;max-width:66ch}
+.csdoc .absent-list li{padding-left:22px;position:relative;margin-bottom:11px}
+.csdoc .absent-list li::before{content:"—";position:absolute;left:0;color:var(--absent);font-family:var(--mono)}
+.csdoc .absent-list b{font-weight:600}
+
+/* exercises */
+.csdoc .ex{border:1px solid var(--rule);border-radius:3px;background:var(--surface);
+  padding:20px 22px;margin-bottom:16px}
+.csdoc .ex h3{margin-top:0;font-size:17px}
+.csdoc .ex .teaches{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--accent);margin:0 0 12px}
+.csdoc .ex ol{margin-bottom:10px}
+.csdoc .ex .look{border-top:1px solid var(--rule-soft);margin-top:14px;padding-top:12px;
+  font-size:15px;color:var(--ink-2)}
+.csdoc .ex .look b{font-family:var(--display);font-size:12px;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:4px}
+
+.csdoc footer{padding-block:30px 60px;font-size:14px;color:var(--ink-3);
+  border-top:2px solid var(--ink);margin-top:8px;background:transparent}
+.csdoc footer p{max-width:66ch;margin-bottom:9px}
+.csdoc footer h3{font-size:14.5px;margin:26px 0 8px}
+.csdoc .cite-ref{max-width:66ch;margin:0 0 12px;padding-left:12px;border-left:2px solid var(--rule,currentColor);color:var(--ink-2,inherit)}
+.csdoc .cite-bib{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:var(--sunk);padding:12px 14px;border-radius:4px;overflow-x:auto;white-space:pre;margin:0 0 12px;color:inherit}
+
+@media (max-width:480px){
+  .csdoc{font-size:16px}
+  .csdoc .lay{grid-template-columns:44px 1fr auto;gap:9px}
+}
+</style>
+
+<div class="csdoc">
+<div class="wrap">
+
+<header class="mast">
+  <p class="eyebrow">Tool reference · read before citing</p>
+  <h1>Construction Studio: what it calculates</h1>
+  <p class="sub">A student's reference to the assemblies, data and arithmetic inside the tool — and an explicit account of what it does not model.</p>
+  <div class="meta">
+    <span><b>5</b> element slots</span>
+    <span><b>30</b> systems</span>
+    <span><b>19</b> build-ups</span>
+    <span><b>15</b> materials</span>
+    <span><b>27</b> sizing rules</span>
+  </div>
+</header>
+
+<div class="alarm">
+  <h2>This is a structural and constructional tool, not a building-physics one</h2>
+  <p>Construction Studio computes <strong>no thermal, hygrothermal or carbon quantity of any kind</strong>. There is no U-value, no R-value, no thermal mass, no decrement delay, no condensation check and no embodied carbon anywhere in the source. There are no surface resistances, because there is no heat-flow calculation for them to belong to.</p>
+  <p>This is not a simplified implementation of BS EN ISO 6946 — it is an absent one. No material in the tool carries a thermal conductivity, a density in kg/m³, a specific heat capacity or a vapour resistivity.</p>
+  <p>Two things in the interface can mislead on this point. A build-up layer labelled <code>Vapour control layer</code> is a <em>name and a thickness</em> (1 mm) used to draw and colour the layer; no vapour resistance is attached to it and nothing reads it. And the material table stores a property called <code>density</code> — but in <strong>kN/m³</strong>, which is self-weight for load calculation, not the kg/m³ a heat-capacity calculation would need.</p>
+</div>
+
+<section>
+  <h2 class="sec"><span class="q">1 — What a student can build</span>Five slots, thirty systems, nineteen fixed build-ups</h2>
+
+  <p>A building is assembled by choosing one system for each of five slots. The slots are fixed; there is no way to add a sixth.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Slot</th><th>Systems</th><th>Examples</th></tr></thead>
+    <tbody>
+      <tr><td>Foundation</td><td class="num">4</td><td>pad, strip, raft, piles and caps</td></tr>
+      <tr><td>Ground floor</td><td class="num">4</td><td>ground-bearing slab, beam and block, suspended RC, suspended timber</td></tr>
+      <tr><td>Wall &amp; Structure</td><td class="num">9</td><td>RC frame, RC shear walls, cavity masonry, steel moment / braced / portal frame, timber platform frame, post and beam, CLT</td></tr>
+      <tr><td>Floor</td><td class="num">7</td><td>RC on beams, flat slab, waffle, hollowcore, composite steel, timber joist, CLT</td></tr>
+      <tr><td>Roof</td><td class="num">6</td><td>concrete flat, insulated metal deck, portal rafters, trussed rafter, cut rafter, CLT flat</td></tr>
+    </tbody>
+    <caption><strong>There is no opening element.</strong> Windows, doors, rooflights and their reveals, lintels and cills are not modelled at all — not as geometry and not as anything else.</caption>
+  </table></div>
+
+  <h3>Assemblies come from presets only</h3>
+  <p>Each system names one of 19 build-ups: a fixed, ordered list of layers, outermost first. <strong>A student cannot add a layer, delete a layer, or reorder the stack.</strong> The build-up you get is the one the system carries.</p>
+
+  <figure>
+    <div class="stack" role="img" aria-label="Timber platform frame wall build-up, 257.5 millimetres overall, nine layers from cladding outside to plasterboard inside">
+      <div class="lay"><span class="swatch" style="background:var(--m-timber)"></span><span class="nm">Cladding on battens</span><span class="tt">44 mm</span></div>
+      <div class="lay"><span class="swatch" style="background:var(--m-void)"></span><span class="nm">Drained cavity</span><span class="tt">25 mm</span></div>
+      <div class="lay"><span class="swatch" style="background:var(--m-board)"></span><span class="nm">Breather membrane</span><span class="tt">1 mm</span></div>
+      <div class="lay"><span class="swatch" style="background:var(--m-board)"></span><span class="nm">OSB sheathing</span><span class="tt">9 mm</span></div>
+      <div class="lay st"><span class="swatch" style="background:var(--m-timber)"></span><span class="nm">Studs at 400 mm centres</span><span class="tt">140 mm</span></div>
+      <div class="lay wi"><span class="swatch" style="background:var(--m-insul)"></span><span class="nm">Mineral wool between studs</span><span class="tt">140 mm</span></div>
+      <div class="lay"><span class="swatch" style="background:var(--m-board)"></span><span class="nm">Vapour control layer</span><span class="tt">1 mm</span></div>
+      <div class="lay"><span class="swatch" style="background:var(--m-void)"></span><span class="nm">Service batten void</span><span class="tt">25 mm</span></div>
+      <div class="lay"><span class="swatch" style="background:var(--m-board)"></span><span class="nm">Plasterboard</span><span class="tt">12.5 mm</span></div>
+    </div>
+    <figcaption>The timber platform frame wall as the tool stores it — 257.5 mm overall. Every layer holds exactly four things: a key, a label, a thickness in millimetres, and a colour family. Nothing else. The insulation is marked <code>within</code> the studs, so it shares their 140 mm rather than adding to the total.</figcaption>
+  </figure>
+
+  <h3>What a student can change about a layer</h3>
+  <p>Only thickness, and only where a system exposes a parameter whose key matches a layer's key. In practice that means:</p>
+  <ul>
+    <li><strong>Insulation thickness</strong> — on every system that has an <code>insul</code> parameter (ranges from 0–200 mm on cavity masonry to 50–250 mm on ground floors).</li>
+    <li><strong>The structural layer</strong> — which normally follows the sizing rule automatically, but is overridden by a <code>thk</code> parameter where one exists (RC wall 180–400 mm, CLT panel, ground slab 100–300 mm).</li>
+    <li><strong>Named build-up dimensions</strong> that a system happens to expose: <code>slabDepth</code>, <code>topping</code>, <code>void</code>, <code>cavity</code>, <code>outerT</code>, <code>innerT</code>.</li>
+  </ul>
+  <p>Every other layer thickness is fixed in the source. A student cannot change a layer's material, cannot substitute one product for another, and cannot mark a layer as ventilated or unventilated.</p>
+
+  <h3>Per-element editing</h3>
+  <p>Clicking a single member opens a sheet where exactly two things can be changed: <strong>its section</strong> (picked from the section library) and <strong>whether it exists</strong> (delete). Edits are keyed to the element's position on the grid so they survive the building being regenerated; an edit whose address no longer exists is reported as an orphan rather than silently dropped.</p>
+  <p>The file format contains an array named <code>manual</code>, described in the source as "elements the student drew: never regenerated" — but <strong>nothing in the interface ever writes to it</strong>. There is no drawing tool. That array is always empty.</p>
+</section>
+
+<section>
+  <h2 class="sec"><span class="q">2 — The materials data</span>Fifteen materials, all of them structural</h2>
+
+  <p>The material library stores six properties per material. All six are structural. This is the complete table as it appears in the source:</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>ID</th><th>Name</th><th>E (MPa)</th><th>ν</th><th>Density (kN/m³)</th><th>f<sub>y</sub> / f<sub>ck</sub> / f<sub>k</sub> (MPa)</th><th>γ<sub>M</sub></th></tr></thead>
+    <tbody>
+      <tr><td>S235</td><td>Steel S235</td><td class="num">210 000</td><td class="num">0.30</td><td class="num">78.5</td><td class="num">235</td><td class="num">1.00</td></tr>
+      <tr><td>S275</td><td>Steel S275</td><td class="num">210 000</td><td class="num">0.30</td><td class="num">78.5</td><td class="num">275</td><td class="num">1.00</td></tr>
+      <tr><td>S355</td><td>Steel S355</td><td class="num">210 000</td><td class="num">0.30</td><td class="num">78.5</td><td class="num">355</td><td class="num">1.00</td></tr>
+      <tr><td>C20</td><td>Concrete C20/25</td><td class="num">30 000</td><td class="num">0.20</td><td class="num">25.0</td><td class="num">20</td><td class="num">1.50</td></tr>
+      <tr><td>C25</td><td>Concrete C25/30</td><td class="num">31 000</td><td class="num">0.20</td><td class="num">25.0</td><td class="num">25</td><td class="num">1.50</td></tr>
+      <tr><td>C30</td><td>Concrete C30/37</td><td class="num">33 000</td><td class="num">0.20</td><td class="num">25.0</td><td class="num">30</td><td class="num">1.50</td></tr>
+      <tr><td>C35</td><td>Concrete C35/45</td><td class="num">34 000</td><td class="num">0.20</td><td class="num">25.0</td><td class="num">35</td><td class="num">1.50</td></tr>
+      <tr><td>C40</td><td>Concrete C40/50</td><td class="num">35 000</td><td class="num">0.20</td><td class="num">25.0</td><td class="num">40</td><td class="num">1.50</td></tr>
+      <tr><td>C50</td><td>Concrete C50/60</td><td class="num">37 000</td><td class="num">0.20</td><td class="num">25.0</td><td class="num">50</td><td class="num">1.50</td></tr>
+      <tr><td>GL24</td><td>Glulam GL24h</td><td class="num">11 500</td><td class="num">0.30</td><td class="num">4.00</td><td class="num">24</td><td class="num">1.25</td></tr>
+      <tr><td>GL28</td><td>Glulam GL28h</td><td class="num">12 600</td><td class="num">0.30</td><td class="num">4.20</td><td class="num">28</td><td class="num">1.25</td></tr>
+      <tr><td>C24</td><td>Sawn timber C24</td><td class="num">11 000</td><td class="num">0.30</td><td class="num">4.20</td><td class="num">24</td><td class="num">1.30</td></tr>
+      <tr><td>CLT</td><td>CLT (C24 lamellae)</td><td class="num">11 000</td><td class="num">0.30</td><td class="num">4.80</td><td class="num">24</td><td class="num">1.25</td></tr>
+      <tr><td>MAS5</td><td>Masonry f<sub>k</sub> 5 MPa</td><td class="num">5 000</td><td class="num">0.20</td><td class="num">19.0</td><td class="num">5</td><td class="num">2.00</td></tr>
+      <tr><td>MAS10</td><td>Masonry f<sub>k</sub> 10 MPa</td><td class="num">8 000</td><td class="num">0.20</td><td class="num">20.0</td><td class="num">10</td><td class="num">2.00</td></tr>
+    </tbody>
+    <caption>G is derived as E ÷ 2(1+ν) rather than stored. A design strength f<sub>d</sub> = f<sub>y</sub> ÷ γ<sub>M</sub> is computed on demand. There is no λ, no c, no μ, no kgCO₂e.</caption>
+  </table></div>
+
+  <h3>Build-up layers use a different, much thinner vocabulary</h3>
+  <p>The 15 materials above are used for <em>members</em> — beams, columns, slabs. A build-up <em>layer</em> does not reference them. It carries a single family token used to pick a drawing colour, from a set of eight: <code>timber</code>, <code>board</code>, <code>insul</code>, <code>void</code>, <code>metal</code>, <code>concrete</code>, <code>masonry</code>, <code>steel</code>. "Rigid insulation" and "mineral wool between studs" are both simply <code>insul</code>, and the tool knows nothing that distinguishes them.</p>
+
+  <h3>Where the values come from</h3>
+  <p>The source states three provenances and no others:</p>
+  <ul>
+    <li>Steel sections follow <strong>EN 10365</strong> (the IPE, HEA and HEB tables are transcribed with h, b, t<sub>w</sub>, t<sub>f</sub>, A, I<sub>y</sub>, I<sub>z</sub>, W<sub>el</sub> and I<sub>t</sub>).</li>
+    <li>Span rules are attributed to <strong>Allen &amp; Iano, <em>The Architect's Studio Companion</em></strong>, "and the standard steel and concrete references".</li>
+    <li>The masonry slenderness limit is attributed to <strong>EN 1996</strong>.</li>
+  </ul>
+  <p>The material property values themselves (E, ν, density, characteristic strengths, partial factors) carry <strong>no citation in the code</strong>. They are consistent with standard Eurocode values, but the source does not say so and a student should not cite the tool as their authority.</p>
+
+  <h3>Can a student add or edit a material?</h3>
+  <p><span class="chip no">No</span> The library is a fixed array evaluated when the page loads. There is no material editor, no import path for materials, and no part of the interface that writes to it. The only material-adjacent choice a student makes is picking a different <em>section</em> for an individual member.</p>
+</section>
+
+<section>
+  <h2 class="sec"><span class="q">3 — What is calculated</span>Preliminary sizing, a load takedown, and one code check</h2>
+
+  <p>Three kinds of arithmetic run, and the source is explicit that they are preliminary-design rules rather than analysis.</p>
+
+  <h3>A. Member sizing — 27 rules</h3>
+  <p>Most rules are span-to-depth ratios. The depth is computed, then the smallest real section at least that deep is picked from the library by binary search. The arithmetic is printed on screen in longhand, which is the tool's pedagogic point:</p>
+  <div class="formula">7.50 m ÷ 23.5 = 319 mm  →  IPE 330</div>
+  <p class="frule">rule: L/22 – L/25 · composite steel beam</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Rule</th><th>Stated ratio</th><th>As implemented</th></tr></thead>
+    <tbody>
+      <tr><td>steel.beam</td><td>L/18 – L/20</td><td>L × 1000 / 19</td></tr>
+      <tr><td>steel.composite</td><td>L/22 – L/25</td><td>L × 1000 / 23.5</td></tr>
+      <tr><td>steel.truss</td><td>L/12</td><td>L × 1000 / 12</td></tr>
+      <tr><td>steel.purlin</td><td>spacing ≤ 1.8 m</td><td>L × 1000 / 40</td></tr>
+      <tr><td>portal.rafter</td><td>haunch ≈ 2% of span</td><td>L × 1000 / 55</td></tr>
+      <tr><td>portal.column</td><td>eaves height /15 to /25</td><td>h × 1000 / 20</td></tr>
+      <tr><td>rc.beam</td><td>h = L/12 – L/15, b ≈ 0.5h</td><td>L × 1000 / 13.5</td></tr>
+      <tr><td>rc.slab1way</td><td>L/24 one end cont. · L/28 both</td><td>L × 1000 / (28 both · 24 one · 20 none)</td></tr>
+      <tr><td>rc.flatSlab</td><td>Lₙ/30 exterior · Lₙ/33 interior</td><td>Lₙ × 1000 / (33 interior · 30 else)</td></tr>
+      <tr><td>rc.flatDrops</td><td>Lₙ/33 · Lₙ/36 interior</td><td>Lₙ × 1000 / (36 interior · 33 else)</td></tr>
+      <tr><td>rc.waffle</td><td>≈ L/24</td><td>L × 1000 / 24</td></tr>
+      <tr><td>precast.hollowcore</td><td>L/35 – L/40</td><td>L × 1000 / 37.5</td></tr>
+      <tr><td>timber.joist</td><td>L/15 – L/20</td><td>L × 1000 / 17.5</td></tr>
+      <tr><td>timber.stud</td><td>storey height / 22</td><td>max(89, h × 1000 / 22)</td></tr>
+      <tr><td>glulam.beam</td><td>L/17 close · L/16 wide centres</td><td>L × 1000 / (17 if spacing &lt; 5 m else 16)</td></tr>
+      <tr><td>clt.panel</td><td>L/30</td><td>L × 1000 / 30</td></tr>
+      <tr><td>timber.truss</td><td>L/5 – L/6</td><td>L × 1000 / 5.5</td></tr>
+      <tr><td>timber.rafter</td><td>L/20 along the slope</td><td>L × 1000 / 20</td></tr>
+      <tr><td>found.raft</td><td>span/20, min 300 mm</td><td>max(300, L × 1000 / 20)</td></tr>
+      <tr><td>found.pile</td><td>cap depth ≈ 2 × pile diameter</td><td>max(750, dia × 2)</td></tr>
+      <tr><td>found.strip</td><td>width = load per metre ÷ bearing</td><td>depth fixed at 300 mm</td></tr>
+    </tbody>
+    <caption>Rules that size by <em>area</em> rather than depth use N = tributary area × storeys × load, then: steel column A = N / (0.6 × 275 MPa); RC column A<sub>c</sub> = N / (0.4 × 30 MPa); timber post A = N / (0.6 × 24 MPa); masonry pier A = N / 2.5 MPa; pad footing side = max(400, √(N / q<sub>allow</sub>) × 1000 × 0.35).</caption>
+  </table></div>
+
+  <h3>B. Load takedown</h3>
+  <p>Gravity only, by tributary area, with no frame action, no continuity and no moment anywhere. Uniformly distributed loads in kN/m² come from a five-entry table selected by building use:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Use</th><th>residential</th><th>office</th><th>retail</th><th>industrial</th><th>roof</th></tr></thead>
+    <tbody><tr><td>kN/m²</td><td class="num">9</td><td class="num">11</td><td class="num">12</td><td class="num">14</td><td class="num">5</td></tr></tbody>
+    <caption>Single combined figures — the source does not separate permanent from variable actions, and applies no load factors.</caption>
+  </table></div>
+  <p>On a column-supported building each grid node takes its tributary area × the load of every level above, accumulated downward. On a wall-supported building the total is divided by the perimeter run to give kN/m. The source asserts two invariants, both tested: the support loads must sum to the floor loads, and each level's member reactions must sum to that level's load.</p>
+
+  <h3>C. Horizontal load path and eaves thrust</h3>
+  <p>A level's load is shared among the members that span it in proportion to the strip each carries; each member delivers half of what it collects to the support at either end (w·L/2). A member is classified by geometry alone — the unit vertical component of its direction — as <strong>vertical</strong> (|u<sub>y</sub>| &gt; 0.94), <strong>horizontal</strong> (&lt; 0.09) or <strong>inclined</strong>. An inclined member also pushes its support sideways:</p>
+  <div class="formula">H = V × (run ÷ rise)      i.e.  H = V / tan(pitch)</div>
+  <p class="frule">the thrust a pitched roof puts into its walls</p>
+
+  <h3>D. The one code check</h3>
+  <p>Masonry wall slenderness, attributed to <strong>EN 1996</strong>: h<sub>ef</sub> / t<sub>ef</sub> ≤ 27, reduced to ≤ 20 where the thinnest leaf is under 90 mm in two storeys or more. For a cavity wall t<sub>ef</sub> = ⅔(t₁ + t₂). The source states its own assumption: h<sub>ef</sub> is taken as the clear storey height — a wall held top and bottom and free at the sides — and real restraint factors are not modelled.</p>
+
+  <h3>Not calculated</h3>
+  <p><span class="chip no">absent</span> U-value &nbsp; <span class="chip no">absent</span> R-value &nbsp; <span class="chip no">absent</span> thermal mass &nbsp; <span class="chip no">absent</span> decrement delay &nbsp; <span class="chip no">absent</span> condensation risk &nbsp; <span class="chip no">absent</span> embodied carbon &nbsp; <span class="chip no">absent</span> surface resistances</p>
+  <p>Surface resistances deserve a specific note because the question is a natural one: there are <strong>no R<sub>si</sub> or R<sub>se</sub> values in the tool at all</strong>, and therefore no question of whether they vary by element type or heat-flow direction. The tool has no concept of inside and outside as thermal environments — only a build-up's <code>from: 'outside'</code> flag, which controls which end of the stack is drawn first.</p>
+</section>
+
+<section>
+  <h2 class="sec"><span class="q">4 — What is not modelled</span>Read this section before relying on any output</h2>
+
+  <ul class="absent-list">
+    <li><b>All heat transfer.</b> No conduction, convection or radiation is computed. Thermal bridging does not arise as a question — neither repeating (the studs at 400 mm centres in the drawing above are geometry only) nor non-repeating (junctions, and there is no ψ-value anywhere).</li>
+    <li><b>Air gaps and cavities.</b> Layers named "Drained cavity", "Ventilated cavity", "Clear cavity", "Ventilated void" and "Service void" are thicknesses with a colour. The tool does not distinguish ventilated from unventilated, and assigns no resistance to any of them.</li>
+    <li><b>All moisture transport.</b> There is no steady-state check to go beyond — no Glaser method, no interstitial condensation assessment, no surface condensation or mould risk, no vapour resistivity data.</li>
+    <li><b>Structural analysis.</b> The source is explicit: "no frame action, no continuity, no moment anywhere". Nothing checks strength, stability, deflection, buckling, fire or connections. Wind and seismic loads are absent; so are load factors and load combinations.</li>
+    <li><b>Openings.</b> No windows, doors or rooflights, and therefore no lintels, cills, reveals, or any of the junctions where both heat and structure actually get complicated.</li>
+    <li><b>Acoustics, daylight, ventilation, cost.</b> None are modelled. Layers named "Acoustic screed", "Resilient layer" and "Resilient bar" are drawn, not evaluated.</li>
+    <li><b>Ground and site.</b> One number describes the ground: an allowable bearing pressure, default 150 kPa. No soil profile, no water table, no settlement, no slope.</li>
+  </ul>
+  <p>The connections the tool draws between systems are <em>derived and explained</em> — each junction is resolved from the pair of materials meeting there and carries a written rationale — but they are not designed. No fixing, weld, bolt or fastener is sized.</p>
+</section>
+
+<section>
+  <h2 class="sec"><span class="q">5 — Inputs the student controls</span>Model-wide settings, then per-system parameters</h2>
+
+  <div class="tw"><table>
+    <thead><tr><th>Input</th><th>Range</th><th>Step</th><th>Default</th><th>Unit</th></tr></thead>
+    <tbody>
+      <tr><td>Bays, X × Z</td><td>1–10 each</td><td class="num">1</td><td class="num">3 × 3</td><td>—</td></tr>
+      <tr><td>Span X</td><td>1.8–30</td><td class="num">0.1</td><td class="num">7.5</td><td>m</td></tr>
+      <tr><td>Span Z</td><td>1.8–60</td><td class="num">0.1</td><td class="num">7.5</td><td>m</td></tr>
+      <tr><td>Storeys</td><td>1–12</td><td class="num">1</td><td class="num">3</td><td>—</td></tr>
+      <tr><td>Storey height</td><td>2.2–14</td><td class="num">0.1</td><td class="num">3.9</td><td>m</td></tr>
+      <tr><td>Use</td><td>residential / office / retail / industrial</td><td>—</td><td>office</td><td>→ kN/m²</td></tr>
+      <tr><td>Ground bearing capacity</td><td>set per model</td><td>—</td><td class="num">150</td><td>kPa</td></tr>
+    </tbody>
+    <caption>The storey count is locked to 1 when the chosen structure is single-storey by nature (the steel portal frame), and the field says why rather than accepting a number it would discard.</caption>
+  </table></div>
+
+  <h3>Per-system parameters</h3>
+  <p>Every system exposes its own handful. A representative selection, with the ranges as coded:</p>
+  <div class="tw"><table>
+    <thead><tr><th>System</th><th>Parameter</th><th>Range</th><th>Default</th><th>Unit</th></tr></thead>
+    <tbody>
+      <tr><td>Cavity masonry wall</td><td>outer leaf</td><td>100–215</td><td class="num">102.5</td><td>mm</td></tr>
+      <tr><td></td><td>cavity</td><td>50–150</td><td class="num">50</td><td>mm</td></tr>
+      <tr><td></td><td>insulation</td><td>0–200</td><td class="num">100</td><td>mm</td></tr>
+      <tr><td></td><td>inner leaf</td><td>100–215</td><td class="num">100</td><td>mm</td></tr>
+      <tr><td>Timber platform frame</td><td>stud centres</td><td>choice</td><td class="num">400</td><td>mm</td></tr>
+      <tr><td></td><td>insulation</td><td>90–240</td><td class="num">140</td><td>mm</td></tr>
+      <tr><td>CLT wall panels</td><td>panel thickness</td><td>choice</td><td class="num">100</td><td>mm</td></tr>
+      <tr><td></td><td>insulation</td><td>60–240</td><td class="num">120</td><td>mm</td></tr>
+      <tr><td>Composite steel floor</td><td>secondary spacing</td><td>2–4.5</td><td class="num">3</td><td>m</td></tr>
+      <tr><td></td><td>slab over deck</td><td>110–200</td><td class="num">140</td><td>mm</td></tr>
+      <tr><td>Trussed rafter roof</td><td>pitch</td><td>15–50</td><td class="num">35</td><td>°</td></tr>
+      <tr><td></td><td>truss centres</td><td>0.4–1.2</td><td class="num">0.6</td><td>m</td></tr>
+      <tr><td></td><td>eaves overhang</td><td>0–1</td><td class="num">0.4</td><td>m</td></tr>
+      <tr><td>Steel portal frame</td><td>eaves height</td><td>4–14</td><td class="num">7</td><td>m</td></tr>
+      <tr><td>Piles and caps</td><td>pile diameter</td><td>300–900</td><td class="num">450</td><td>mm</td></tr>
+      <tr><td></td><td>pile length</td><td>6–30</td><td class="num">12</td><td>m</td></tr>
+      <tr><td>Ground-bearing slab</td><td>slab thickness</td><td>100–300</td><td class="num">150</td><td>mm</td></tr>
+      <tr><td></td><td>insulation</td><td>50–250</td><td class="num">120</td><td>mm</td></tr>
+    </tbody>
+    <caption>Note what the insulation sliders do: they change the drawn thickness of one layer and the overall build-up dimension. They do not change any calculated quantity, because no calculation consumes them.</caption>
+  </table></div>
+
+  <h3>View and study controls</h3>
+  <p>Three levels of detail (diagram / members / full assembly), four display modes (shaded, realistic, wireframe, x-ray), an explode slider, an Open slider that swings the enclosure aside, a section box, per-layer visibility, a build sequence, a two-scheme comparison, and a load-path overlay with arrows. These change what is shown, never what is computed.</p>
+</section>
+
+<section>
+  <h2 class="sec"><span class="q">6 — How it compares to established tools</span>Where the comparison applies, and where there is nothing to compare</h2>
+
+  <h3>Against BS EN ISO 6946, WUFI, or any thermal tool</h3>
+  <p><strong>There is no basis for comparison.</strong> A U-value calculated to BS EN ISO 6946 is ΣR including surface resistances, with corrections for fasteners, air gaps and inverted roofs; a WUFI run is transient coupled heat and moisture transport. Construction Studio produces neither a number nor an approximation of one. It would not "diverge" from those methods — it does not attempt them.</p>
+  <p>The one thing a student can legitimately take from the tool into a thermal calculation is <strong>geometry</strong>: a build-up's layer sequence and the thicknesses as drawn. Those are a reasonable starting sketch for a hand calculation done elsewhere, provided the student supplies every λ value themselves and treats the insulation-between-studs layer as the repeating thermal bridge it is — something the tool draws but does not flag.</p>
+
+  <h3>Against structural software</h3>
+  <p>Here there <em>is</em> a meaningful comparison, and the tool is honest about where it sits. A span-to-depth first pass is what a preliminary design actually does, and the depths it produces should land close to a designed member for regular, simply supported, gravity-only cases in the span ranges each rule declares. It will diverge, sometimes badly, wherever the things it omits matter: continuity, cantilevers, point loads, irregular grids, lateral stability, vibration, fire, and any serviceability limit. Its column and footing sizes follow from a single combined kN/m² figure with no load factors, so they are indicative of scale only.</p>
+
+  <h3>Building Regulations compliance</h3>
+  <p><span class="chip no">Not acceptable</span> for any part of any regulatory submission — not Part L, not Part A, not anything else. For Part L and its equivalents the question does not even arise, since no thermal quantity exists. For structure, the tool's own on-screen disclaimer is the correct statement of its status:</p>
+  <blockquote style="margin:0 0 14px;padding:14px 18px;border-left:3px solid var(--rule);color:var(--ink-2);font-size:16px;max-width:66ch">"These are rules of thumb for learning and for early design. They are not analysis and not design. Nothing here checks strength, stability, deflection, fire, buckling or connections."</blockquote>
+  <p>Cite it as a teaching model of construction assembly and load path. Do not cite it as a source of material property data, and do not cite it for building physics at all.</p>
+</section>
+
+<section>
+  <h2 class="sec"><span class="q">Exercises</span>Three things this tool can genuinely teach</h2>
+  <p>These teach construction and structural principles. <strong>None of them is a building-physics exercise</strong>, because the tool cannot support one — a thermal exercise would have to be done on paper using the geometry taken from the screen.</p>
+
+  <div class="ex">
+    <h3>1 · Why a floor system is chosen before a grid is fixed</h3>
+    <p class="teaches">Span-to-depth · structural zone · storey height</p>
+    <ol>
+      <li>Start from the steel office template. Set bays to <strong>3 × 3</strong> and both spans to <strong>6.0 m</strong>.</li>
+      <li>Record the beam size and the total floor zone from the build-up panel for each of these four floors in turn: <strong>composite steel</strong>, <strong>RC flat slab</strong>, <strong>precast hollowcore</strong>, <strong>timber joist</strong>.</li>
+      <li>Now change both spans to <strong>12.0 m</strong> and record the same four again.</li>
+      <li>Multiply each floor zone by 4 storeys and add it to 4 × 2.7 m of clear height to get a building height for each option.</li>
+    </ol>
+    <p class="look"><b>What to look for</b>At 6 m the four systems are within roughly a hundred millimetres of one another and the choice is about buildability and cost. At 12 m they separate sharply, and one of them (timber joist) has left its declared span range entirely — the panel says so. The difference in total building height across four storeys is the argument a structural engineer makes at the first meeting.</p>
+  </div>
+
+  <div class="ex">
+    <h3>2 · Where a pitched roof actually pushes</h3>
+    <p class="teaches">Thrust · H = V / tan θ · why a tie exists</p>
+    <ol>
+      <li>Build a two-storey masonry house: <strong>cavity masonry wall</strong>, <strong>trussed rafter roof</strong>, spans <strong>7.5 × 6.0 m</strong>, use set to <strong>residential</strong>.</li>
+      <li>Open the Analysis tab and turn the load path on. Set the filter to <strong>inclined</strong> and read the thrust figure at the eaves.</li>
+      <li>Change the roof pitch from <strong>35°</strong> to <strong>20°</strong>, then to <strong>50°</strong>, recording the thrust each time.</li>
+      <li>Plot thrust against pitch for those three values and compare the shape of your plot with 1/tan θ.</li>
+    </ol>
+    <p class="look"><b>What to look for</b>Halving the pitch roughly doubles the outward push, because the relationship is a cotangent, not a proportion. This is why a shallow pitch needs a substantial tie and why a steep roof was the sensible form before trusses. Note also that the tool gives you the horizontal force but does <em>not</em> check whether the wall can resist it — that judgement is yours.</p>
+  </div>
+
+  <div class="ex">
+    <h3>3 · What a wall has to do besides hold the roof up</h3>
+    <p class="teaches">Build-up sequence · the structural layer within the assembly</p>
+    <ol>
+      <li>Set Wall &amp; Structure to <strong>timber platform frame</strong>, detail to <strong>Full assembly</strong>, and open the build-up drawing.</li>
+      <li>Write down all nine layers in order, with thicknesses, and against each one state in your own words the single job it does.</li>
+      <li>Set the insulation to its minimum, <strong>90 mm</strong>, then its maximum, <strong>240 mm</strong>. Note what happens to the overall wall thickness — and what happens to the studs.</li>
+      <li>Now switch to <strong>cavity masonry</strong> and to <strong>CLT</strong> and identify, in each, which single layer carries the load and where it sits in the stack.</li>
+    </ol>
+    <p class="look"><b>What to look for</b>In the timber wall the insulation and the structure occupy the same 140 mm — the tool marks it <code>within</code> the studs — so thickening the insulation past the stud depth changes the drawing in a way that ought to make you ask what really happens on site. In the masonry wall the load-bearing leaf is the <em>inner</em> one, which surprises most students. In CLT, one layer does structure, racking and airtightness at once. That comparison is the point; the thermal consequence of each is a calculation you must do elsewhere.</p>
+  </div>
+</section>
+
+<footer>
+  <p><strong>Provenance.</strong> Every figure on this page was read from the tool's source: the material table, the 19 build-ups, the 27 sizing rules with their implemented divisors, the loading table, and the coded ranges of every parameter. Where the source states an attribution it is quoted above; where it states none, this page says so rather than supplying one.</p>
+  <h3>Licence</h3>
+  <p><b>The app</b> — the single HTML file and everything in it — is free and open source under the
+    <a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT licence</a>.
+    Use it, change it, host your own copy, teach from it, including commercially; the one condition
+    is that the copyright notice stays in the file.</p>
+  <p><b>This page, and the screenshots and exercises that go with it</b>, are not code, and are
+    licensed <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC
+    BY 4.0</a> — share and adapt them, with attribution.</p>
+  <p>A building you make with the tool is <b>yours</b>. Neither licence claims anything over your
+    model, your drawings or the images you export; the small credit on an exported image names the
+    tool that drew it. The tool loads
+    <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> (MIT), whose notice
+    travels inside the application file itself.</p>
+  <p>© Karam Al-Obaidi</p>
+
+  <h3>How to cite</h3>
+  <p>Keeping the notice in the file satisfies the licence. A citation is the scholarly act on top
+    of it.</p>
+  <p class="cite-ref">Al-Obaidi, K. (2026). <i>Construction Studio: a browser-based construction and
+    structural systems teaching tool</i> (Version 1.0.0) [Computer software].
+    https://karam.me.uk/apps/construction-studio/</p>
+  <p class="cite-bib">@software{alobaidi2026constructionstudio,
+  author  = {Al-Obaidi, Karam},
+  title   = {Construction Studio: a browser-based construction and
+             structural systems teaching tool},
+  year    = {2026},
+  version = {1.0.0},
+  url     = {https://karam.me.uk/apps/construction-studio/},
+  note    = {MIT licensed}
+}</p>
+  <p>Quote the <b>four systems</b>, the <b>grid</b> and the <b>storey count</b> alongside any figure
+    taken from the tool. The sizing rules are span-based, so a depth given without its span cannot
+    be checked by anyone reading you.</p>
+</footer>
+
+</div>
+</div>
