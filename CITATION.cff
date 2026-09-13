@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use Construction Studio in teaching or research, please cite it as below."
+title: "Construction Studio: a browser-based construction and structural systems teaching tool"
+abstract: >-
+  A parametric model of a building's construction for architecture students.
+  Choose a foundation, ground floor, wall or frame, floor and roof; the
+  building assembles itself on a grid, with members sized from the span rules
+  of thumb used in preliminary design and the arithmetic kept on screen. It
+  can be exploded, cut open, stepped through in build order and compared
+  against an alternative. It contains no structural analysis, deliberately.
+type: software
+authors:
+  - family-names: Al-Obaidi
+    given-names: Karam
+version: 1.0.0
+date-released: 2026-09-13
+license: MIT
+url: "https://karam.me.uk/apps/construction-studio/"
+keywords:
+  - architecture
+  - construction
+  - structural systems
+  - teaching
+  - building technology
+  - three.js

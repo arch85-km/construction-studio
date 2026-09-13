@@ -3,7 +3,8 @@
 Build and visualise construction systems in timber, concrete, steel and masonry.
 One self-contained HTML file, no build step, no server, no backend.
 
-**© Karam Al-Obaidi**
+**© Karam Al-Obaidi** — the app is [MIT](LICENSE) licensed; the documentation
+and teaching material are [CC BY 4.0](LICENSE-docs).
 
 ---
 
@@ -32,7 +33,7 @@ architects already use in SketchUp. There is no analysis in it, deliberately.
 | **Load path** | Follow the weight from where it lands to where it goes. Arrows point the way it travels — spread over a **surface**, collected **horizontally** by joists and beams, running down an **inclined** rafter, then **vertically** to the ground — with a sleeve round each column that widens and warms as the load accumulates. Gravity by tributary area: the hand calculation, not an analysis. |
 | **Teaching** | Live sizing readout · build-sequence animation · labelled build-up diagram with a dimension chain · side-by-side comparison on one shared camera. |
 | **Import** | DXF as a traceable underlay or measured into grid lines, OBJ as ghosted site context, and a plan image scaled by two-point calibration. |
-| **Export** | PNG with labels, a title block and the copyright. |
+| **Export** | PNG with labels, a title block and a credit line. |
 | **Files** | Save and open `.json` buildings. Snapshot undo. |
 
 Materials are colour-coded the way a student would shade a drawing — steel
@@ -163,6 +164,56 @@ says so and offers to keep or discard it rather than quietly forgetting.
 Keyboard: `1` `2` `3` detail levels, `E` explode, `X` section box, `F` fit,
 `Space` play the build sequence, `Esc` deselect, `Ctrl+Z` / `Ctrl+Y` undo and
 redo, `Ctrl+S` save, `Ctrl+O` open.
+
+---
+
+## Licence
+
+Two licences, because there are two different kinds of thing here.
+
+**The code** — `construction-studio.html` and everything in it — is under the
+[MIT licence](LICENSE). Use it, change it, host your own copy, teach from it,
+including commercially. The one condition is that the copyright notice stays in
+the file.
+
+**The documentation and teaching material** — the reference page, screenshots,
+diagrams and exercises — are under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); see
+[LICENSE-docs](LICENSE-docs). Share and adapt them, with attribution.
+
+**A building made with the tool belongs to whoever made it.** Neither licence
+claims anything over a user's model, drawings, or exported images. The small
+credit drawn in the corner of an exported PNG names the tool that produced the
+drawing; it is not a claim over the drawing.
+
+three.js is a separate copyright under its own MIT licence, reproduced in full
+at the top of the HTML file as that licence requires.
+
+### How to cite
+
+Keeping the notice in the file satisfies the licence. A citation is the
+scholarly act on top of it. `CITATION.cff` in this repository is the
+machine-readable version.
+
+> Al-Obaidi, K. (2026). *Construction Studio: a browser-based construction and
+> structural systems teaching tool* (Version 1.0.0) [Computer software].
+> https://karam.me.uk/apps/construction-studio/
+
+```bibtex
+@software{alobaidi2026constructionstudio,
+  author  = {Al-Obaidi, Karam},
+  title   = {Construction Studio: a browser-based construction and
+             structural systems teaching tool},
+  year    = {2026},
+  version = {1.0.0},
+  url     = {https://karam.me.uk/apps/construction-studio/},
+  note    = {MIT licensed}
+}
+```
+
+Quote the four systems, the grid and the storey count alongside any figure
+taken from the tool. The sizing rules are span-based, so a depth given without
+its span cannot be checked.
 
 ---
 

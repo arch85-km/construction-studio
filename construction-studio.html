@@ -1,9 +1,47 @@
 <!doctype html>
 <!--
   Construction Studio - build and visualise construction systems
-  Copyright (c) 2026 Karam Al-Obaidi. All rights reserved.
+  https://karam.me.uk/apps/construction-studio/
 
-  Free to use for teaching. For any other use, please ask.
+  ---------------------------------------------------------------------------
+  THIS APPLICATION
+
+  MIT License
+
+  Copyright (c) 2026 Karam Al-Obaidi
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  THE SOFTWARE.
+
+  ---------------------------------------------------------------------------
+  ACCOMPANYING MATERIAL
+
+  The documentation pages, screenshots and exercises that accompany this tool
+  are not code, and are licensed separately under the Creative Commons
+  Attribution 4.0 International licence (CC BY 4.0):
+
+      https://creativecommons.org/licenses/by/4.0/
+
+  Use, share and adapt them, including commercially, with attribution.
+
+  Cite as: Al-Obaidi, K. (2026). Construction Studio: a browser-based
+  construction and structural systems teaching tool (Version 1.0.0)
+  [Computer software]. https://karam.me.uk/apps/construction-studio/
 
   ---------------------------------------------------------------------------
   THIRD-PARTY SOFTWARE
@@ -14,7 +52,9 @@
   is the reader's own system font.
 
   three.js - https://threejs.org - is used under the MIT License, reproduced
-  in full below as that license requires.
+  in full below as that license requires. This is a separate copyright from
+  the MIT notice above: that one covers this application, this one covers
+  three.js.
 
   The MIT License
 
@@ -283,6 +323,11 @@ html[data-theme="light"] .seg{background:rgba(255,255,255,.86)}
 html[data-theme="light"] #copyright{background:rgba(255,255,255,.72)}
 #copyright b{font-weight:600;color:var(--ink-0)}
 #copyright .mark{color:var(--accent);font-weight:700;margin-right:1px}
+/* The badge is deliberately pointer-events:none - it sits over the model
+   space, so nothing in it may eat an orbit drag. The licence therefore
+   reads as a label, not a link; About carries the clickable one. */
+#copyright .sep{color:var(--ink-3);margin:0 6px}
+#copyright .lic{font-weight:600;color:var(--ink-0);letter-spacing:.4px}
 
 /* view cube / nav */
 #navcube{
@@ -937,7 +982,7 @@ window.__csBooted = false;
   </div>
 
   <div id="cmp-panel" hidden></div>
-  <div id="copyright"><span class="mark">&copy;</span> <b>Karam Al-Obaidi</b></div>
+  <div id="copyright" title="Free and open source under the MIT licence. Documentation and teaching material: CC BY 4.0."><span class="mark">&copy;</span> <b>Karam Al-Obaidi</b><span class="sep">·</span><span class="lic">MIT</span></div>
  </main>
 
  <aside id="side">
@@ -966,7 +1011,8 @@ window.__csBooted = false;
    Build and visualise construction systems in timber, concrete, steel and
    masonry. For architecture students.
 
-   (c) Karam Al-Obaidi
+   (c) 2026 Karam Al-Obaidi - MIT licensed. See the notice at the top of
+   this file for the full text.
 
    Internal units are metres and millimetres kept apart deliberately:
    geometry is in METRES, every published construction dimension (section
@@ -2377,8 +2423,15 @@ const Model = (() => {
   }
 
   /* --- (de)serialisation ------------------------------------------------- */
+  /* `generator` is a fixed string, deliberately. `savedAt` is the one field
+     allowed to move between two otherwise identical saves; adding a second
+     clock here would make every file differ for no reason. It says which tool
+     wrote the file - it claims nothing over the building, which is the
+     student's, and it is separate from meta.author, which is theirs to fill. */
+  const GENERATOR = 'Construction Studio - © Karam Al-Obaidi - MIT licensed';
+
   const serialize = doc => Object.assign(Util.clone(doc),
-    { savedAt:new Date().toISOString(), version:DOC_VERSION });
+    { savedAt:new Date().toISOString(), version:DOC_VERSION, generator:GENERATOR });
 
   function deserialize(raw){
     const doc = typeof raw === 'string' ? JSON.parse(raw) : Util.clone(raw);
@@ -6203,13 +6256,24 @@ const UI = (() => {
     return wrap;
   }
 
+  /* Comment lines above the header say where the numbers came from, so a sheet
+     that has been emailed on still carries its provenance. `#` is the usual
+     convention; note that Excel does not skip these - it imports them as rows
+     in column A, which is the price of keeping them in the file. */
   function csv(cols, rows, name){
+    const doc = Store.doc;
+    const note = [
+      '# Construction Studio - © Karam Al-Obaidi',
+      `# ${doc?.meta?.name || 'Untitled Project'}`,
+      `# Exported ${new Date().toISOString().slice(0,10)}`,
+      '# Sizing is by span rule of thumb, for learning and early design - not analysis.'
+    ].join('\n');
     const head = cols.map(c => `"${c.label}"`).join(',');
     const body = rows.map(r => cols.map(c => {
       const v = c.value ? c.value(r) : r[c.key];
       return typeof v === 'number' ? U.sig(v, 6) : `"${String(v ?? '').replace(/"/g,'""')}"`;
     }).join(',')).join('\n');
-    IO.download(new Blob([head + '\n' + body], { type:'text/csv' }), name);
+    IO.download(new Blob([note + '\n' + head + '\n' + body], { type:'text/csv' }), name);
   }
 
   /** The green / amber / red chip beside a sizing readout. */
@@ -6494,9 +6558,12 @@ const Draft = (() => {
           { value:'2', label:'2× — presentation (recommended)' },
           { value:'3', label:'3× — print' }], '2', v => { scale = +v; })),
         UI.rowWide(UI.check('Include labels and dimensions', true, v => { labels = v; })),
-        UI.rowWide(UI.check('Include title block and copyright', true, v => { block = v; })),
+        UI.rowWide(UI.check('Include title block', true, v => { block = v; })),
         UI.explain(`Title block: <b>${Util.esc(doc.meta.name)}</b> · ${new Date().toLocaleDateString()} · ` +
-                   `© Karam Al-Obaidi`)
+                   `© Karam Al-Obaidi` +
+                   '<br><br>The small credit in the corner of the image itself is always drawn, ' +
+                   'whatever you tick here. The building is yours — the credit says which tool ' +
+                   'drew it and claims nothing over your work.')
       ],
       footer:[
         el('button', { class:'btn ghost', onclick:UI.close }, ['Cancel']),
@@ -8704,7 +8771,38 @@ const App = (() => {
         UI.section('Credits', null, [UI.explain(
           'Sections follow EN 10365. Span rules are the ones in Allen &amp; Iano’s ' +
           '<i>Architect’s Studio Companion</i> and the standard steel and concrete references. ' +
-          'Built with three.js.<br><br><b>© Karam Al-Obaidi</b>')])
+          'Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>, ' +
+          'used under the MIT licence.')]),
+        UI.section('Licence', null, [UI.explain(
+          '<b>The app</b> — this HTML file and everything in it — is free and open source ' +
+          'under the <a href="https://opensource.org/license/mit" target="_blank" ' +
+          'rel="noopener">MIT licence</a>. Use it, change it, host your own copy, teach from it, ' +
+          'including commercially. The one condition is that the copyright notice stays in the ' +
+          'file.<br><br>' +
+          '<b>The documentation, screenshots and exercises</b> that accompany it are not code, ' +
+          'and are licensed <a href="https://creativecommons.org/licenses/by/4.0/" ' +
+          'target="_blank" rel="noopener">CC BY 4.0</a> — share and adapt them, with ' +
+          'attribution.<br><br>' +
+          'A building you make here is <b>yours</b>. Neither licence claims anything over your ' +
+          'model, your drawings or the images you export.<br><br><b>© Karam Al-Obaidi</b>')]),
+        UI.section('How to cite', null, [UI.explain(
+          'Keeping the notice in the file satisfies the licence. A citation is the scholarly act ' +
+          'on top of it.' +
+          '<span class="f">Al-Obaidi, K. (2026). Construction Studio: a browser-based\n' +
+          'construction and structural systems teaching tool (Version 1.0.0)\n' +
+          '[Computer software]. https://karam.me.uk/apps/construction-studio/</span>' +
+          '<span class="f">@software{alobaidi2026constructionstudio,\n' +
+          '  author  = {Al-Obaidi, Karam},\n' +
+          '  title   = {Construction Studio: a browser-based construction and\n' +
+          '             structural systems teaching tool},\n' +
+          '  year    = {2026},\n' +
+          '  version = {1.0.0},\n' +
+          '  url     = {https://karam.me.uk/apps/construction-studio/},\n' +
+          '  note    = {MIT licensed}\n' +
+          '}</span>' +
+          'Quote the <b>four systems</b>, the <b>grid</b> and the <b>storey count</b> alongside ' +
+          'any figure you take from the tool. The sizing rules are span-based, so a depth given ' +
+          'without its span cannot be checked by anyone reading you.')])
       ],
       footer:[el('button', { class:'btn primary', onclick:UI.close }, ['Close'])] });
   }
