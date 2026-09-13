@@ -197,7 +197,7 @@ machine-readable version.
 
 > Al-Obaidi, K. (2026). *Construction Studio: a browser-based construction and
 > structural systems tool* (Version 1.0.0) [Computer software].
-> https://karam.me.uk/apps/construction-studio/
+> https://karam.me.uk/applications/construction-studio/
 
 ```bibtex
 @software{alobaidi2026constructionstudio,
@@ -206,7 +206,7 @@ machine-readable version.
              structural systems tool},
   year    = {2026},
   version = {1.0.0},
-  url     = {https://karam.me.uk/apps/construction-studio/},
+  url     = {https://karam.me.uk/applications/construction-studio/},
   note    = {MIT licensed}
 }
 ```
