@@ -253,6 +253,20 @@ Roughly 8,300 lines in one file. Nothing is minified; it is meant to be read.
   moving. The label layer also stays up through a gesture: at the couple of
   dozen labels a building carries, hiding it saved nothing measurable and cost
   a visible blink on every nudge.
+- **Both cameras get their depth range fitted, every frame.** Orthographic
+  depth is linear, so a step is the range over 2²⁴ everywhere. Perspective
+  depth is hyperbolic — a step at distance *z* is about `z²/(near · 2^bits)`,
+  so nearly the whole buffer is spent just past the near plane and where that
+  plane sits is the only thing that matters. It used to be 0.02 m whatever the
+  building, leaving 10 to 35 mm per step where the walls are, against build-up
+  layers of 1 and 12 mm: the buffer could not say which leaf of a wall was in
+  front, and the answer changed as the camera moved. It is now fitted to the
+  nearest thing on screen, which is three orders of magnitude.
+- **The ground grid is sized to the building**, not a fixed 120 m field. Under
+  a small house that is both odd to look at and quietly expensive: a plane that
+  large reaches past the camera, and since nothing on screen may be clipped, it
+  was the grid rather than the building that decided how near the near plane
+  could be.
 - **The shadow map is fitted to the building.** A shadow map is a depth picture
   taken from the light, and a surface is in shadow when it is further from the
   light than that picture says. Spread 1024 pixels over the 120 metres this
@@ -344,5 +358,11 @@ out real geometry or to say plainly that it is not modelled. The depth probe is 
 depth range is deliberately 256× too wide — arithmetically a 16-bit buffer —
 which `mkcs.sh` emits alongside the real file so it cannot drift: the probe
 must report 0.01 mm on one and 0.5 mm on the other, because an instrument that
-does not respond to a known change is measuring nothing. Console clean
+does not respond to a known change is measuring nothing. Both cameras are exercised
+everywhere it matters, because they were not: every harness forced axonometric,
+which is how the perspective camera sat at a 0.02 m near plane without anything
+noticing. The property that would have caught it is now stated once and checked
+for both — **one depth step must be finer than the thinnest layer on screen** —
+and it fails on a control build with the old near plane (4.72 mm per step
+against a 1 mm layer) while the fitted one reads 0.0012 mm. Console clean
 throughout.

@@ -4585,14 +4585,59 @@ const Render = (() => {
     const bg = stage && getComputedStyle(stage).backgroundColor;
     if(bg && bg !== 'transparent' && !/rgba\(0, 0, 0, 0\)/.test(bg)) col = bg;
     renderer.setClearColor(new THREE.Color(col), 1);
-    const grid = groups.env && groups.env.getObjectByName('groundgrid');
-    if(grid){
-      grid.material.color.set(light ? 0x9aa6b6 : C.grid);
-      grid.material.opacity = light ? 0.34 : 0.5;
-      grid.material.needsUpdate = true;
-    }
+    paintGround();
     dirty = true;
   }
+
+  /**
+   * The ground grid, sized to the building.
+   *
+   * It used to be a fixed 120 metre field. Under a small house that is both
+   * odd to look at and quietly expensive: a plane that large reaches past the
+   * camera, and since nothing on screen may be clipped, it was the grid - not
+   * the building - that decided how near the near plane could be. In
+   * perspective the near plane is the whole ballgame for depth precision, so a
+   * 120 m grid under a 20 m house cost three orders of magnitude of it.
+   *
+   * Squares stay one metre, because that is what they are for.
+   */
+  /* The ground is rebuilt when the building changes size, so how it looks
+     cannot live only in applyTheme - it would be repainted white on the next
+     rebuild. One function, called from both. */
+  function paintGround(){
+    const grid = groups.env && groups.env.getObjectByName('groundgrid');
+    if(!grid) return;
+    const light = document.documentElement.dataset.theme === 'light';
+    grid.material.color.set(light ? 0x9aa6b6 : C.grid);
+    grid.material.opacity = light ? 0.34 : 0.5;
+    grid.material.needsUpdate = true;
+  }
+
+  function makeGround(size, cx = 0, cz = 0){
+    const old = groups.env.getObjectByName('groundgrid');
+    if(old){ groups.env.remove(old); old.geometry.dispose(); old.material.dispose(); }
+    const n = Math.max(12, Math.round(size));
+    const grid = new THREE.GridHelper(n, n, 0xffffff, 0xffffff);
+    grid.material.transparent = true; grid.material.opacity = 0.5;
+    grid.material.color.set(C.grid);
+    grid.position.set(Math.round(cx), -0.002, Math.round(cz));
+    grid.name = 'groundgrid';
+    grid.visible = groundVisible;
+    groups.env.add(grid);
+    paintGround();
+    return grid;
+  }
+  let groundVisible = true, groundKey = '';
+  /** Re-laid only when the building has actually changed size or moved. */
+  function fitGround(box){
+    const c = box.getCenter(_gc), sz = box.getSize(_gs);
+    const size = Math.max(24, Math.ceil(Math.max(sz.x, sz.z) * 2.2));
+    const key = `${size}|${Math.round(c.x)}|${Math.round(c.z)}`;
+    if(key === groundKey) return;
+    groundKey = key;
+    makeGround(size, c.x, c.z);
+  }
+  const _gc = new THREE.Vector3(), _gs = new THREE.Vector3();
 
   function buildEnvironment(){
     const hemi = new THREE.HemisphereLight(0xdfe8f5, 0x2a3240, 2.1);
@@ -4607,12 +4652,7 @@ const Render = (() => {
     groups.env.userData.sun = dir;
     fitShadow();
 
-    const grid = new THREE.GridHelper(120, 120, 0xffffff, 0xffffff);
-    grid.material.transparent = true; grid.material.opacity = 0.5;
-    grid.material.color.set(C.grid);
-    grid.position.y = -0.002;
-    grid.name = 'groundgrid';
-    groups.env.add(grid);
+    makeGround(60);
 
     const ax = new THREE.Group();
     const mkAxis = (v, col) => {
@@ -4685,10 +4725,11 @@ const Render = (() => {
    * comes back clean.
    */
   function depthProbe(){
-    if(!renderer || !ortho || !canvas) return null;
+    if(!renderer || !camera || !canvas) return null;
     const gl = renderer.getContext();
     const bits = gl.getParameter(gl.DEPTH_BITS);
-    const range = ortho.far - ortho.near;
+    const range = camera.far - camera.near;
+    const isOrtho = !!camera.isOrthographicCamera;
 
     /* Into the CANVAS, not an off-screen target: a render target three.js
        allocates gets 24-bit depth whatever the canvas has, so probing one
@@ -4696,9 +4737,22 @@ const Render = (() => {
        Nothing composites in the middle of a task, so the reader never sees
        this; the real frame is redrawn before the function returns. */
     const sc = new THREE.Scene();
-    const mid = (ortho.near + ortho.far)/2;
-    const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, ortho.near, ortho.far);
-    const quad = c => new THREE.Mesh(new THREE.PlaneGeometry(4, 4),
+    /* Measure where the MODEL is, not at the midpoint of the range. In
+       perspective almost all the precision sits just past the near plane, so
+       an answer from the wrong distance is not an answer. */
+    const bx = bounds();
+    camera.updateMatrixWorld();
+    const em = camera.matrixWorld.elements;
+    const fwd = [-em[8], -em[9], -em[10]], pos = [em[12], em[13], em[14]];
+    const ctr = bx.getCenter(new THREE.Vector3());
+    let mid = (ctr.x-pos[0])*fwd[0] + (ctr.y-pos[1])*fwd[1] + (ctr.z-pos[2])*fwd[2];
+    if(!(mid > camera.near && mid < camera.far)) mid = (camera.near + camera.far)/2;
+    const cam = isOrtho
+      ? new THREE.OrthographicCamera(-1, 1, 1, -1, camera.near, camera.far)
+      : new THREE.PerspectiveCamera(camera.fov, 1, camera.near, camera.far);
+    // big enough to fill the view at `mid` in either projection
+    const span = isOrtho ? 4 : mid*4;
+    const quad = c => new THREE.Mesh(new THREE.PlaneGeometry(span, span),
       new THREE.MeshBasicMaterial({ color:c }));
     const near = quad(0x00ff00), far = quad(0x0000ff);
     /* Draw the NEAR one first. Three sorts opaque objects front-to-back, which
@@ -4739,8 +4793,14 @@ const Render = (() => {
     far.geometry.dispose(); far.material.dispose();
     renderNow();                      // put the real picture back, same task
 
+    /* What the arithmetic says it ought to be, at the distance measured:
+       linear for an orthographic camera, hyperbolic for a perspective one. */
+    const theory = isOrtho ? range/2**bits
+      : mid*mid*range/(camera.far*camera.near*2**bits);
     return { finestMm:finest, range:+range.toFixed(1), bits,
-             theoryMm:+(range/2**bits*1000).toFixed(4) };
+             camera:isOrtho ? 'parallel' : 'perspective',
+             atMetres:+mid.toFixed(1), near:+camera.near.toFixed(3),
+             theoryMm:+(theory*1000).toFixed(4) };
   }
 
   function glInfo(){
@@ -4757,7 +4817,10 @@ const Render = (() => {
              stencilBits: gl.getParameter(gl.STENCIL_BITS),
              samples: gl.getParameter(gl.SAMPLES),
              pixelRatio: renderer.getPixelRatio(),
-             depthRange: ortho ? +(ortho.far - ortho.near).toFixed(1) : null };
+             // the camera that is DRAWING, not whichever one happens to exist
+             camera: camera ? (camera.isOrthographicCamera ? 'parallel' : 'perspective') : null,
+             near: camera ? +camera.near.toFixed(3) : null,
+             depthRange: camera ? +(camera.far - camera.near).toFixed(1) : null };
   }
 
   function clearGroup(g, deep){
@@ -4780,7 +4843,7 @@ const Render = (() => {
     labelRenderer.setSize(w, h);
     persp.aspect = (w/h)*aspectScale; persp.updateProjectionMatrix();
     fitOrtho(w/h);
-    updateOrthoDepth();
+    updateDepthRange();
     scene.traverse(o => { if(o.material && o.material.isLineMaterial) o.material.resolution.set(w,h); });
     dirty = true;
     // setSize cleared the buffer; draw before the browser gets a chance to show it
@@ -4888,7 +4951,7 @@ const Render = (() => {
     try { renderFrame(); } finally { inRender = false; }
   }
   function renderFrame(){
-    updateOrthoDepth();
+    updateDepthRange();
     if(!(renderHook && renderHook())) renderer.render(scene, camera);
     if(lblSuspended) return;
     labelRenderer.render(scene, camera);
@@ -4941,7 +5004,7 @@ const Render = (() => {
     }
     orthoZoom = Math.max(my, mx/a, 0.5)*pad;
     fitOrtho();          // no argument: fitOrtho applies aspectScale itself
-    updateOrthoDepth();
+    updateDepthRange();
 
   }
   function setCamera(mode){
@@ -4976,24 +5039,35 @@ const Render = (() => {
    * costs eight point transforms. Symmetric about the orbit target, so it stays
    * correct through any rotation without being recomputed.
    */
-  const _dp = new THREE.Vector3();
-  function updateOrthoDepth(){
-    if(!ortho || camera !== ortho) return;
+  const _dp = new THREE.Vector3(), _dbox = new THREE.Box3();
+  function updateDepthRange(){
+    if(!camera) return;
     /* near and far are measured from the CAMERA, along the way it is looking -
        not from the orbit target the camera swings around. Getting that wrong
        clips the entire model away, which is a silent and total failure: the
        viewport goes empty and every scene-graph test still passes.
        Depth of a point is therefore its distance along the camera's forward
        axis, which is the third column of the camera's world matrix, negated. */
-    ortho.updateMatrixWorld();
-    const e = ortho.matrixWorld.elements;
+    camera.updateMatrixWorld();
+    const e = camera.matrixWorld.elements;
     const fx = -e[8], fy = -e[9], fz = -e[10];
     const px = e[12], py = e[13], pz = e[14];
     const d = (x, y, z) => (x-px)*fx + (y-py)*fy + (z-pz)*fz;
 
     const box = bounds();
     fitShadow(box);           // same box, and it only does work when it changed
-    const mn = box.min, mx = box.max;
+    fitGround(box);           // likewise - and it is why the near plane can be near
+
+    /* Everything that must not be clipped, which is more than the model:
+       the ground grid, an imported plan, the load-path arrows. bounds() is
+       deliberately the model alone - it decides FRAMING, and framing the view
+       to a 120 m grid would be wrong - so the depth fit widens it here. */
+    _dbox.copy(box);
+    for(const k of ['env', 'underlay', 'loads', 'overlay']){
+      const g = groups[k];
+      if(g && g.visible && g.children.length) _dbox.expandByObject(g);
+    }
+    const mn = _dbox.min, mx = _dbox.max;
     let lo = Infinity, hi = -Infinity;
     const see = v => { if(v < lo) lo = v; if(v > hi) hi = v; };
     for(let i = 0; i < 8; i++)
@@ -5008,13 +5082,40 @@ const Render = (() => {
 
     /* A margin so nothing sits exactly on a plane, and so a small camera move
        between one fit and the next cannot push anything through it. */
-    let pad = Math.max(1, (hi - lo) * 0.15);
-    ortho.near = lo - pad; ortho.far = hi + pad;
-    if(diag.halfDepth){                       // a diagnostic switch, not a setting
-      const m = (ortho.near + ortho.far)/2, h2 = (ortho.far - ortho.near)/4;
-      ortho.near = m - h2; ortho.far = m + h2;
+    const pad = Math.max(1, (hi - lo) * 0.15);
+
+    if(camera.isOrthographicCamera){
+      camera.near = lo - pad; camera.far = hi + pad;
+    } else {
+      /* Perspective depth is hyperbolic: a step at distance z is about
+         z² / (near · 2^bits), so nearly the whole buffer is spent just past
+         the near plane and the only lever that matters is how far out that
+         plane sits. It used to be 0.02 m whatever the building, which left
+         10 to 35 mm per step where the walls actually are - against build-up
+         layers of 1 and 12 mm. The buffer could not say which leaf was in
+         front, and the answer changed as the camera moved. That was the
+         hatching, and it was in perspective only because the fit below was
+         written for the orthographic camera and returned early for this one.
+
+         Pulling the near plane up to the nearest thing on screen is three
+         orders of magnitude. It is safe to hug it this closely because this
+         runs every frame, before the frame that would have clipped. */
+      /* The margin has to be a FRACTION of the near distance, not the fixed
+         pad the orthographic camera uses. The ground grid is 120 m across, so
+         its near corner sits far in front of the building - subtract an
+         additive pad sized from that whole span and the near plane lands at
+         zero, which is precisely the case being fixed. Ten per cent of the
+         nearest thing is scale-free and keeps the plane where the precision
+         is. */
+      camera.near = Math.max(0.05, lo * 0.9);
+      camera.far = Math.max(camera.near + 1, hi + pad);
     }
-    ortho.updateProjectionMatrix();
+    if(diag.halfDepth){                       // a diagnostic switch, not a setting
+      const m = (camera.near + camera.far)/2, h2 = (camera.far - camera.near)/4;
+      camera.near = camera.isOrthographicCamera ? m - h2 : Math.max(0.05, m - h2);
+      camera.far = m + h2;
+    }
+    camera.updateProjectionMatrix();
   }
 
   /**
@@ -5088,8 +5189,10 @@ const Render = (() => {
     if(!isFinite(dirv.x) || dirv.lengthSq() < 1e-6) dirv.set(0.7, 0.55, 0.85).normalize();
     controls.target.copy(ctr);
     camera.position.copy(ctr).add(dirv.multiplyScalar(dist));
-    persp.near = Math.max(modelDiag/2000, 0.02);
-    persp.far = modelDiag*40;
+    /* A starting point only - updateDepthRange fits both cameras properly on
+       every frame. What matters here is that it is not absurd to begin with. */
+    persp.near = Math.max(0.05, dist - modelDiag);
+    persp.far = dist + modelDiag*1.5;
     persp.updateProjectionMatrix();
     orthoZoom = modelDiag*pad*0.5;
     fitOrtho();
@@ -5111,7 +5214,7 @@ const Render = (() => {
     orthoZoom = d*0.42; fitOrtho();
     camera.updateProjectionMatrix(); controls.update();
     fitOrthoTo(box, 1.12);
-    updateOrthoDepth();
+    updateDepthRange();
     invalidate();
   }
 
@@ -5249,7 +5352,10 @@ const Render = (() => {
            get modelDiag(){return modelDiag},
            init, resize, start, stop, invalidate, setOnScreen, renderNow,
            fit, standardView, bounds, label, budgetLabels, clearGroup, disposeCaches,
-           applyTheme, updateOrthoDepth, fitShadow, glInfo, depthProbe,
+           applyTheme, updateDepthRange, fitShadow, fitGround, glInfo, depthProbe,
+           set groundVisible(v){ groundVisible = v;
+             const g = groups.env && groups.env.getObjectByName('groundgrid');
+             if(g) g.visible = v; },
            get diag(){ return diag },
            forceShadowRefit(){ _shKey = ''; fitShadow(); },
            get aspectScale(){ return aspectScale },
@@ -5857,7 +5963,7 @@ const View = (() => {
     }
     // grid and level references stay put; underlays and context do too
     if(state.section.on) refreshClipping();
-    Render.updateOrthoDepth();   // the model just moved outside its old bounds
+    Render.updateDepthRange();   // the model just moved outside its old bounds
     Render.invalidate();
   }
 
@@ -5918,8 +6024,9 @@ const View = (() => {
     if(real) Render.forceShadowRefit();   // the map is only fitted while it is used
     Render.renderer.toneMapping = real ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
     Render.renderer.toneMappingExposure = real ? 1.05 : 1;
-    const grid = Render.groups.env.getObjectByName('groundgrid');
-    if(grid) grid.visible = state.style !== 'realistic';
+    // through Render, so the choice survives the ground being re-laid when the
+    // building changes size
+    Render.groundVisible = state.style !== 'realistic';
   }
 
   return { LAYERS, state, CLIP, set, clipFor, setBounds, updateClip, refreshClipping,
