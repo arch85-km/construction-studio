@@ -269,6 +269,15 @@ Roughly 8,300 lines in one file. Nothing is minified; it is meant to be read.
   which takes effect the moment it is ticked and shows its stored state next
   time, so the decision can be taken back: start the tour by hand and untick
   it. `?tour=1` opens it regardless, for a link in a handout.
+
+  The spotlight is a hole in a dimmed overlay, placed from a measurement — so
+  it follows the window. Pressing Fullscreen on the embed takes the frame from
+  1500 × 760 to the whole screen, and a measurement taken once left the hole
+  over the middle of the model with the dock it was pointing at sitting
+  undimmed in the corner. Each viewport change now opens a short window during
+  which the tour keeps re-placing itself every frame until the layout stops
+  moving: one pass on the event is not enough, because the app's own layout is
+  still settling when `resize` fires — measured at 274 px short.
 - WebGL context-loss recovery, label budgeting, and an on-demand render loop
   that pauses when the iframe scrolls out of view.
 
@@ -305,6 +314,9 @@ this one, holds through an orbit, and the shadow frustum is asserted still to
 contain the whole building, so the acne has not been traded for no shadows. Every guided-tour step is asserted to spotlight a real, on-screen
 element and to keep its bubble wholly inside the viewport at two window sizes,
 and the tour is opened twice in one browser to prove it comes back — the thing
-the old one-shot flag made impossible to check, and every band of every build-up drawing is asserted either to pick
+the old one-shot flag made impossible to check, and the whole embed is
+reproduced as reported — the app in an iframe on a page with a Fullscreen
+button — to check that the spotlight follows the dock through going full screen
+and back, and every band of every build-up drawing is asserted either to pick
 out real geometry or to say plainly that it is not modelled. Console clean
 throughout.

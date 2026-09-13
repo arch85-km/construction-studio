@@ -6811,12 +6811,14 @@ const Tour = (() => {
   function start(){
     host = $('#tour'); spot = host.querySelector('.spot'); bubble = host.querySelector('.bubble');
     i = 0; host.classList.add('open'); render();
+    watch(true);
   }
 
   /* Whether the tour opens by itself. Unset means yes: a reader who has never
      expressed a preference is a reader who has not seen it. */
   const onLaunch = () => IO.prefs().tourOnLaunch !== false;
   function stop(){
+    watch(false);
     host.classList.remove('open');
     // hand the app back the way it was found, not mid-demonstration
     Store.clearSelection();
@@ -6825,6 +6827,76 @@ const Tour = (() => {
   }
 
   const warned = new Set();
+
+  /**
+   * Where the spotlight and the bubble go, for the step already on screen.
+   *
+   * Separate from render() because it has to be able to run again on its own.
+   * The tour measures the element it is pointing at, and a measurement taken
+   * once is wrong the moment the viewport changes underneath it - going full
+   * screen from a WordPress embed takes the window from 1500 x 760 to
+   * 1920 x 1080, and the hole in the dimmed overlay stayed where the dock
+   * used to be, over the middle of the model. Everything else in the app
+   * re-lays-out on resize; this did not, because nothing asked it to.
+   */
+  function place(){
+    const s = steps[i];
+    const t = $(s.sel);
+    const r = t && t.getClientRects().length ? t.getBoundingClientRect()
+            : { left:innerWidth/2-120, top:innerHeight/2-60, width:240, height:120 };
+    const pad = 6;
+    const sx = Math.max(0, r.left-pad), sy = Math.max(0, r.top-pad);
+    spot.style.left = sx+'px'; spot.style.top = sy+'px';
+    spot.style.width = Math.min(r.width+pad*2, innerWidth-sx)+'px';
+    spot.style.height = Math.min(r.height+pad*2, innerHeight-sy)+'px';
+
+    /* Clear of the highlighted element, and against the height the bubble
+       ACTUALLY has. A guessed height is what leaves a bubble hanging off the
+       bottom of a laptop screen. */
+    bubble.style.left = '0px'; bubble.style.top = '0px';
+    const bb = bubble.getBoundingClientRect();
+    const bw = bb.width || 320, bh = bb.height || 210;
+    let bx = r.left + r.width + 16, by = r.top;
+    if(bx + bw > innerWidth - 12) bx = Math.max(12, r.left - bw - 16);
+    if(bx < 12) bx = Math.min(Math.max(12, innerWidth - bw - 12), Math.max(12, r.left));
+    if(by + bh > innerHeight - 12) by = Math.max(12, innerHeight - bh - 12);
+    bubble.style.left = bx+'px'; bubble.style.top = by+'px';
+  }
+
+  /* Re-placing once, on the event, is not enough: the app's own layout is
+     still settling when `resize` fires, and a spotlight measured against a
+     dock that has not finished moving lands next to it rather than on it.
+     Measured going from an embed to full screen, the dock was still 274 px
+     short of its final position at the moment of the event.
+     So each viewport change opens a short window during which the tour keeps
+     re-placing itself, every frame, until the layout stops moving. Idle cost
+     is nothing: no event, no frames. */
+  const SETTLE_MS = 520;
+  let settleUntil = 0, raf = null;
+  function replace_(){
+    if(!host || !host.classList.contains('open')) return;
+    settleUntil = performance.now() + SETTLE_MS;
+    if(raf) return;
+    const step = () => {
+      raf = null;
+      if(!host || !host.classList.contains('open')) return;
+      place();
+      if(performance.now() < settleUntil) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+  /* `scroll` in the capture phase catches the dock scrolling under a
+     spotlight as well as the window moving. */
+  const VIEWPORT_EVENTS = ['resize', 'orientationchange', 'fullscreenchange',
+                           'webkitfullscreenchange', 'scroll'];
+  function watch(on){
+    for(const ev of VIEWPORT_EVENTS){
+      const target = ev === 'resize' || ev === 'orientationchange' ? window : document;
+      target[on ? 'addEventListener' : 'removeEventListener'](ev, replace_, true);
+    }
+    if(!on && raf){ cancelAnimationFrame(raf); raf = null; settleUntil = 0; }
+  }
+
   function render(){
     const s = steps[i];
     if(s.prep) try { s.prep(); } catch(e){ /* a demo step must never break the tour */ }
@@ -6835,13 +6907,6 @@ const Tour = (() => {
       warned.add(s.sel);
       console.warn(`Tour step ${i+1} ("${s.title}") targets ${s.sel}, which is not on screen.`);
     }
-    const r = t && t.getClientRects().length ? t.getBoundingClientRect()
-            : { left:innerWidth/2-120, top:innerHeight/2-60, width:240, height:120 };
-    const pad = 6;
-    const sx = Math.max(0, r.left-pad), sy = Math.max(0, r.top-pad);
-    spot.style.left = sx+'px'; spot.style.top = sy+'px';
-    spot.style.width = Math.min(r.width+pad*2, innerWidth-sx)+'px';
-    spot.style.height = Math.min(r.height+pad*2, innerHeight-sy)+'px';
 
     bubble.textContent = '';
     bubble.append(
@@ -6863,22 +6928,12 @@ const Tour = (() => {
       el('label', { class:'chk optout' }, [
         el('input', { type:'checkbox', checked:!onLaunch(),
           onchange:e => IO.prefs({ tourOnLaunch: !e.target.checked }) }),
-        'Don\u2019t show this on launch'])
+        'Don’t show this on launch'])
     );
-    /* Place it clear of the highlighted element - against the height it
-       ACTUALLY has. A guessed height is what leaves a bubble hanging off the
-       bottom of a laptop screen, and this one grew a row. */
-    bubble.style.left = '0px'; bubble.style.top = '0px';
-    const bb = bubble.getBoundingClientRect();
-    const bw = bb.width || 320, bh = bb.height || 210;
-    let bx = r.left + r.width + 16, by = r.top;
-    if(bx + bw > innerWidth - 12) bx = Math.max(12, r.left - bw - 16);
-    if(bx < 12) bx = Math.min(Math.max(12, innerWidth - bw - 12), Math.max(12, r.left));
-    if(by + bh > innerHeight - 12) by = Math.max(12, innerHeight - bh - 12);
-    bubble.style.left = bx+'px'; bubble.style.top = by+'px';
+    place();
   }
 
-  return { start, stop,
+  return { start, stop, place,
            get onLaunch(){ return onLaunch() },
            set onLaunch(v){ IO.prefs({ tourOnLaunch: !!v }); } };
 })();
