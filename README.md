@@ -262,6 +262,13 @@ Roughly 8,300 lines in one file. Nothing is minified; it is meant to be read.
   hatching that crawled across the walls in Realistic. Covering the building
   rather than a field around it, at 2048 rather than 1024, with a bias scaled
   to what one texel is still worth, takes it from 117 mm per texel to 21.
+- **The tour greets everyone, every time.** It used to run once per browser and
+  never again, which is wrong for a page students arrive at cold each week —
+  and on a shared machine, or a browser that had already opened it once, it
+  meant nobody saw it. The bubble now carries *Don't show this on launch*,
+  which takes effect the moment it is ticked and shows its stored state next
+  time, so the decision can be taken back: start the tour by hand and untick
+  it. `?tour=1` opens it regardless, for a link in a handout.
 - WebGL context-loss recovery, label budgeting, and an on-demand render loop
   that pauses when the iframe scrolls out of view.
 
@@ -296,6 +303,8 @@ raises nearly all of them, so the median is what separates detail from a
 defect; it reads 3.6–5.8 on a build with the old shadow settings and 0–1.7 on
 this one, holds through an orbit, and the shadow frustum is asserted still to
 contain the whole building, so the acne has not been traded for no shadows. Every guided-tour step is asserted to spotlight a real, on-screen
-element, and every band of every build-up drawing is asserted either to pick
+element and to keep its bubble wholly inside the viewport at two window sizes,
+and the tour is opened twice in one browser to prove it comes back — the thing
+the old one-shot flag made impossible to check, and every band of every build-up drawing is asserted either to pick
 out real geometry or to say plainly that it is not modelled. Console clean
 throughout.

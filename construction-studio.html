@@ -492,6 +492,10 @@ html[data-theme="light"] .explain .f{background:var(--bg-3)}
 #tour .bubble p{margin:0 0 11px;font-size:12px;color:var(--ink-1);line-height:1.6}
 #tour .bubble .nav{display:flex;align-items:center;gap:8px}
 #tour .bubble .step{font-size:11px;color:var(--ink-3);font-family:var(--mono);margin-right:auto}
+#tour .bubble .optout{
+  margin-top:10px;padding-top:9px;border-top:1px solid var(--line-soft);
+  font-size:11px;color:var(--ink-2)
+}
 
 /* --- sheet / drafting output -------------------------------------------- */
 .dropzone{
@@ -6764,7 +6768,14 @@ const Import = (() => {
            loadDXF:dxf, loadOBJ:obj, loadImage:image };
 })();
 /* ==========================================================================
-   17  TOUR - the first-run walkthrough
+   17  TOUR - the walkthrough, on every launch
+   ==========================================================================
+   This used to run once per browser and never again, which is wrong for a
+   page students arrive at cold each week - and on a shared machine, or a
+   lecturer's browser that has already opened it, it meant nobody saw it. So
+   it greets everyone, every time, and anyone who does not want it says so
+   once: the checkbox in the bubble writes that preference immediately, and
+   shows its stored state next time so the decision can be taken back.
    ========================================================================== */
 const Tour = (() => {
   const steps = [
@@ -6800,8 +6811,11 @@ const Tour = (() => {
   function start(){
     host = $('#tour'); spot = host.querySelector('.spot'); bubble = host.querySelector('.bubble');
     i = 0; host.classList.add('open'); render();
-    IO.prefs({ tourSeen:true });
   }
+
+  /* Whether the tour opens by itself. Unset means yes: a reader who has never
+     expressed a preference is a reader who has not seen it. */
+  const onLaunch = () => IO.prefs().tourOnLaunch !== false;
   function stop(){
     host.classList.remove('open');
     // hand the app back the way it was found, not mid-demonstration
@@ -6840,18 +6854,33 @@ const Tour = (() => {
         el('button', { class:'btn primary sm',
           onclick:() => { if(i === steps.length-1) stop(); else { i++; render(); } } },
           [i === steps.length-1 ? 'Start modelling' : 'Next'])
-      ].filter(Boolean))
+      ].filter(Boolean)),
+      /* On every step, not only the last: someone who wants this gone should
+         not have to reach step seven to say so. It takes effect the moment it
+         is ticked rather than when the tour closes, so ticking it and then
+         closing the tab is enough. And it shows what is stored, because
+         starting the tour by hand and unticking it is the way back. */
+      el('label', { class:'chk optout' }, [
+        el('input', { type:'checkbox', checked:!onLaunch(),
+          onchange:e => IO.prefs({ tourOnLaunch: !e.target.checked }) }),
+        'Don\u2019t show this on launch'])
     );
-    // place the bubble clear of the highlighted element
-    const bw = 320, bh = 190;
+    /* Place it clear of the highlighted element - against the height it
+       ACTUALLY has. A guessed height is what leaves a bubble hanging off the
+       bottom of a laptop screen, and this one grew a row. */
+    bubble.style.left = '0px'; bubble.style.top = '0px';
+    const bb = bubble.getBoundingClientRect();
+    const bw = bb.width || 320, bh = bb.height || 210;
     let bx = r.left + r.width + 16, by = r.top;
     if(bx + bw > innerWidth - 12) bx = Math.max(12, r.left - bw - 16);
-    if(bx < 12) bx = Math.min(innerWidth - bw - 12, Math.max(12, r.left));
+    if(bx < 12) bx = Math.min(Math.max(12, innerWidth - bw - 12), Math.max(12, r.left));
     if(by + bh > innerHeight - 12) by = Math.max(12, innerHeight - bh - 12);
     bubble.style.left = bx+'px'; bubble.style.top = by+'px';
   }
 
-  return { start, stop, get seen(){ return !!IO.prefs().tourSeen } };
+  return { start, stop,
+           get onLaunch(){ return onLaunch() },
+           set onLaunch(v){ IO.prefs({ tourOnLaunch: !!v }); } };
 })();
 
 /* ==========================================================================
@@ -8884,7 +8913,9 @@ const Ribbon = (() => {
   Render.resize();
   App.rebuild({ fit:true });
 
-  if(params.get('tour') === '1' || !IO.prefs().tourSeen) setTimeout(() => Tour.start(), 800);
+  // Every launch, unless the reader has said otherwise. ?tour=1 overrides even
+  // that, so a link in a lecture handout always opens it.
+  if(params.get('tour') === '1' || Tour.onLaunch) setTimeout(() => Tour.start(), 800);
   addEventListener('beforeunload', e => { if(Store.isDirty){ e.preventDefault(); e.returnValue = ''; } });
   window.ConstructionStudio = { Store, Model, Gen, Realize, View, SYSTEMS, SIZING, BUILDUPS,
                                 LIB, App, Render, Seq, Compare, Dock, LayerDiagram, Pick,
