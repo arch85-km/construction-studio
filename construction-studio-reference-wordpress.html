@@ -127,6 +127,9 @@
 .csdoc footer{padding-block:30px 60px;font-size:14px;color:var(--ink-3);
   border-top:2px solid var(--ink);margin-top:8px;background:transparent}
 .csdoc footer p{max-width:66ch;margin-bottom:9px}
+.csdoc footer h3{font-size:14.5px;margin:26px 0 8px}
+.csdoc .cite-ref{max-width:66ch;margin:0 0 12px;padding-left:12px;border-left:2px solid var(--rule,currentColor);color:var(--ink-2,inherit)}
+.csdoc .cite-bib{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:var(--sunk);padding:12px 14px;border-radius:4px;overflow-x:auto;white-space:pre;margin:0 0 12px;color:inherit}
 
 @media (max-width:480px){
   .csdoc{font-size:16px}
@@ -431,7 +434,39 @@
 
 <footer>
   <p><strong>Provenance.</strong> Every figure on this page was read from the tool's source: the material table, the 19 build-ups, the 27 sizing rules with their implemented divisors, the loading table, and the coded ranges of every parameter. Where the source states an attribution it is quoted above; where it states none, this page says so rather than supplying one.</p>
-  <p>Construction Studio © Karam Al-Obaidi. Built with three.js (MIT).</p>
+  <h3>Licence</h3>
+  <p><b>The app</b> — the single HTML file and everything in it — is free and open source under the
+    <a href="https://opensource.org/license/mit" target="_blank" rel="noopener">MIT licence</a>.
+    Use it, change it, host your own copy, teach from it, including commercially; the one condition
+    is that the copyright notice stays in the file.</p>
+  <p><b>This page, and the screenshots and exercises that go with it</b>, are not code, and are
+    licensed <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC
+    BY 4.0</a> — share and adapt them, with attribution.</p>
+  <p>A building you make with the tool is <b>yours</b>. Neither licence claims anything over your
+    model, your drawings or the images you export; the small credit on an exported image names the
+    tool that drew it. The tool loads
+    <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> (MIT), whose notice
+    travels inside the application file itself.</p>
+  <p>© Karam Al-Obaidi</p>
+
+  <h3>How to cite</h3>
+  <p>Keeping the notice in the file satisfies the licence. A citation is the scholarly act on top
+    of it.</p>
+  <p class="cite-ref">Al-Obaidi, K. (2026). <i>Construction Studio: a browser-based construction and
+    structural systems teaching tool</i> (Version 1.0.0) [Computer software].
+    https://karam.me.uk/apps/construction-studio/</p>
+  <p class="cite-bib">@software{alobaidi2026constructionstudio,
+  author  = {Al-Obaidi, Karam},
+  title   = {Construction Studio: a browser-based construction and
+             structural systems teaching tool},
+  year    = {2026},
+  version = {1.0.0},
+  url     = {https://karam.me.uk/apps/construction-studio/},
+  note    = {MIT licensed}
+}</p>
+  <p>Quote the <b>four systems</b>, the <b>grid</b> and the <b>storey count</b> alongside any figure
+    taken from the tool. The sizing rules are span-based, so a depth given without its span cannot
+    be checked by anyone reading you.</p>
 </footer>
 
 </div>
