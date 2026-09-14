@@ -11,7 +11,7 @@ abstract: >-
 type: software
 authors:
   - family-names: Al-Obaidi
-    given-names: Karam
+    given-names: Karam M.
 version: 1.0.0
 date-released: 2026-09-13
 license: MIT
