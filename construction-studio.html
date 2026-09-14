@@ -40,7 +40,7 @@
   Use, share and adapt them, including commercially, with attribution.
 
   Cite as: Al-Obaidi, K.M. (2026). Construction Studio: a browser-based
-  modeller for construction and structural systems (Version 1.0.0)
+  modeller for construction and structural systems (Version 1.0.1)
   [Computer software]. https://karam.me.uk/applications/construction-studio/
 
   ---------------------------------------------------------------------------
@@ -2308,7 +2308,7 @@ const Model = (() => {
 
   function emptyDoc(name = 'Untitled building'){
     return {
-      format:'construction-studio', version:DOC_VERSION, app:'1.0.0',
+      format:'construction-studio', version:DOC_VERSION, app:'1.0.1',
       savedAt:new Date().toISOString(),
       meta:{ name, author:'', notes:'' },
       grid:{ bx:3, bz:3, sx:7.5, sz:7.5 },
@@ -8764,7 +8764,7 @@ const App = (() => {
               [icon('i-table'), 'Rendering diagnostics…'])])
         ]),
         UI.section('Credits', null, [UI.explain(
-          '<b>Version 1.0.0</b> · updated 14 September 2026<br><br>' +
+          '<b>Version 1.0.1</b> · updated 14 September 2026<br><br>' +
           'Sections follow EN 10365. Span rules are the ones in Allen &amp; Iano’s ' +
           '<i>Architect’s Studio Companion</i> and the standard steel and concrete references. ' +
           'Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>, ' +
@@ -8785,14 +8785,14 @@ const App = (() => {
           'Keeping the notice in the file satisfies the licence. A citation is the scholarly act ' +
           'on top of it.' +
           '<span class="f">Al-Obaidi, K.M. (2026). Construction Studio: a browser-based\n' +
-          'modeller for construction and structural systems (Version 1.0.0)\n' +
+          'modeller for construction and structural systems (Version 1.0.1)\n' +
           '[Computer software]. https://karam.me.uk/applications/construction-studio/</span>' +
           '<span class="f">@software{alobaidi2026constructionstudio,\n' +
           '  author  = {Al-Obaidi, Karam M.},\n' +
           '  title   = {Construction Studio: a browser-based modeller for\n' +
           '             construction and structural systems},\n' +
           '  year    = {2026},\n' +
-          '  version = {1.0.0},\n' +
+          '  version = {1.0.1},\n' +
           '  url     = {https://karam.me.uk/applications/construction-studio/},\n' +
           '  note    = {MIT licensed}\n' +
           '}</span>' +
