@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you use Construction Studio in teaching or research, please cite it as below."
+message: "Please cite Construction Studio if you use it in teaching or research."
 title: "Construction Studio: a browser-based modeller for construction and structural systems"
 abstract: >-
   A parametric model of a building's construction for architecture students.
