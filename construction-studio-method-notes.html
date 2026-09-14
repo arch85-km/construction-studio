@@ -143,6 +143,10 @@
   letter-spacing:.07em;text-transform:uppercase;color:var(--cs-ink3);
   background:var(--cs-surface2);border-bottom:1px solid var(--cs-rule);white-space:nowrap;}
 .cs-doc .cs-tbl tbody tr:last-child td{border-bottom:0;}
+/* Greek and subscripted symbols must not be uppercased: text-transform turns
+   ν into Ν and γ into Γ, which are different letters, and a reader of a
+   materials table would be misled by both. */
+.cs-doc .cs-tbl thead th.cs-sym{text-transform:none;letter-spacing:.02em;font-size:.74rem;}
 .cs-doc .cs-tbl tbody tr{background:transparent;}
 .cs-doc .cs-tbl .cs-n{text-align:right;font-family:var(--cs-fm);
   font-variant-numeric:tabular-nums;white-space:nowrap;}
@@ -429,11 +433,65 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
       <p>111 catalogue sections across steel, concrete, timber and masonry. Steel is tabulated from
         EN 10365 and searched for the first section deep enough; concrete, glulam, CLT and masonry
         sizes are generated to the nearest sensible increment (25 mm for concrete, 45 mm — one
-        lamination — for glulam). Fifteen materials carry E, ν, density, f<sub>y</sub> and γ<sub>M</sub>.</p>
-      <p class="cs-note">Those material properties are <b>stored but barely used</b>. Density does
-        not feed the load takedown, which works from the use-class allowance instead; E appears
-        nowhere, because nothing computes a deflection. They are there for display and for whatever
-        the tool might do later.</p>
+        lamination — for glulam).</p>
+
+      <h3>The material library</h3>
+      <p>Fifteen materials, all of them structural. Six properties each:</p>
+      <div class="cs-tbl"><table>
+        <thead><tr><th>ID</th><th>Name</th><th class="cs-n">E (MPa)</th><th class="cs-n cs-sym">ν</th><th class="cs-n">Density (kN/m³)</th><th class="cs-n cs-sym">f<sub>y</sub> / f<sub>ck</sub> / f<sub>k</sub> (MPa)</th><th class="cs-n cs-sym">γ<sub>M</sub></th></tr></thead>
+        <tbody>
+          <tr><td class="cs-p">S235</td><td>Steel S235</td><td class="cs-n">210 000</td><td class="cs-n">0.30</td><td class="cs-n">78.5</td><td class="cs-n">235</td><td class="cs-n">1.00</td></tr>
+          <tr><td class="cs-p">S275</td><td>Steel S275</td><td class="cs-n">210 000</td><td class="cs-n">0.30</td><td class="cs-n">78.5</td><td class="cs-n">275</td><td class="cs-n">1.00</td></tr>
+          <tr><td class="cs-p">S355</td><td>Steel S355</td><td class="cs-n">210 000</td><td class="cs-n">0.30</td><td class="cs-n">78.5</td><td class="cs-n">355</td><td class="cs-n">1.00</td></tr>
+          <tr><td class="cs-p">C20</td><td>Concrete C20/25</td><td class="cs-n">30 000</td><td class="cs-n">0.20</td><td class="cs-n">25.0</td><td class="cs-n">20</td><td class="cs-n">1.50</td></tr>
+          <tr><td class="cs-p">C25</td><td>Concrete C25/30</td><td class="cs-n">31 000</td><td class="cs-n">0.20</td><td class="cs-n">25.0</td><td class="cs-n">25</td><td class="cs-n">1.50</td></tr>
+          <tr><td class="cs-p">C30</td><td>Concrete C30/37</td><td class="cs-n">33 000</td><td class="cs-n">0.20</td><td class="cs-n">25.0</td><td class="cs-n">30</td><td class="cs-n">1.50</td></tr>
+          <tr><td class="cs-p">C35</td><td>Concrete C35/45</td><td class="cs-n">34 000</td><td class="cs-n">0.20</td><td class="cs-n">25.0</td><td class="cs-n">35</td><td class="cs-n">1.50</td></tr>
+          <tr><td class="cs-p">C40</td><td>Concrete C40/50</td><td class="cs-n">35 000</td><td class="cs-n">0.20</td><td class="cs-n">25.0</td><td class="cs-n">40</td><td class="cs-n">1.50</td></tr>
+          <tr><td class="cs-p">C50</td><td>Concrete C50/60</td><td class="cs-n">37 000</td><td class="cs-n">0.20</td><td class="cs-n">25.0</td><td class="cs-n">50</td><td class="cs-n">1.50</td></tr>
+          <tr><td class="cs-p">GL24</td><td>Glulam GL24h</td><td class="cs-n">11 500</td><td class="cs-n">0.30</td><td class="cs-n">4.0</td><td class="cs-n">24</td><td class="cs-n">1.25</td></tr>
+          <tr><td class="cs-p">GL28</td><td>Glulam GL28h</td><td class="cs-n">12 600</td><td class="cs-n">0.30</td><td class="cs-n">4.2</td><td class="cs-n">28</td><td class="cs-n">1.25</td></tr>
+          <tr><td class="cs-p">C24</td><td>Sawn timber C24</td><td class="cs-n">11 000</td><td class="cs-n">0.30</td><td class="cs-n">4.2</td><td class="cs-n">24</td><td class="cs-n">1.30</td></tr>
+          <tr><td class="cs-p">CLT</td><td>CLT (C24 lamellae)</td><td class="cs-n">11 000</td><td class="cs-n">0.30</td><td class="cs-n">4.8</td><td class="cs-n">24</td><td class="cs-n">1.25</td></tr>
+          <tr><td class="cs-p">MAS5</td><td>Masonry fk 5 MPa</td><td class="cs-n">5 000</td><td class="cs-n">0.20</td><td class="cs-n">19.0</td><td class="cs-n">5</td><td class="cs-n">2.00</td></tr>
+          <tr><td class="cs-p">MAS10</td><td>Masonry fk 10 MPa</td><td class="cs-n">8 000</td><td class="cs-n">0.20</td><td class="cs-n">20.0</td><td class="cs-n">10</td><td class="cs-n">2.00</td></tr>
+        </tbody>
+        <caption>The complete library, generated from the source rather than transcribed. Four families: steel, concrete, timber, masonry. f<sub>y</sub> is yield for steel, f<sub>ck</sub> for concrete, f<sub>mk</sub> for timber and f<sub>k</sub> for masonry — one column carrying four different quantities.</caption>
+      </table></div>
+      <p class="cs-note">Two of the six are not stored but derived: the shear modulus is computed
+        as <span class="cs-mono">G = E / 2(1 + ν)</span>, and the design strength
+        <span class="cs-mono">f_d = f_y / γ_M</span> is evaluated on demand rather than held. There
+        is no λ, no c, no μ and no kgCO₂e — the library carries no thermal, hygric or carbon
+        property of any kind, which is why §03 can say flatly that there is no building physics
+        here.</p>
+
+      <h4>Build-up layers use a different, much thinner vocabulary</h4>
+      <p>The fifteen materials above are for <em>members</em> — beams, columns, slabs. A build-up
+        layer does not reference them at all. It carries one of eight family tokens, used only to
+        choose a drawing colour:</p>
+      <div class="cs-formula">timber · board · insul · void · metal · concrete · masonry · steel</div>
+      <p>"Rigid insulation" and "mineral wool between studs" are both simply
+        <span class="cs-mono">insul</span>, and nothing in the tool distinguishes them. A layer has
+        a thickness, a name and a colour; it has no properties.</p>
+
+      <h4>Where the values come from</h4>
+      <p>The source states three provenances and no others: steel sections follow
+        <b>EN 10365</b>; the span rules are attributed to Allen &amp; Iano's
+        <i>The Architect's Studio Companion</i> and "the standard steel and concrete references";
+        the masonry slenderness limit is attributed to <b>EN 1996</b>.</p>
+      <p class="cs-note">The material property values themselves — E, ν, density, the
+        characteristic strengths, the partial factors — <b>carry no citation in the code</b>. They
+        are consistent with standard Eurocode values, but the source does not say so, and a student
+        should not cite this tool as their authority for them. Go to the Eurocode.</p>
+
+      <h4>The library is fixed</h4>
+      <p>It is an array evaluated when the page loads. There is no material editor, no import path
+        for materials, and no part of the interface that writes to it. The only material-adjacent
+        choice a student makes is picking a different section for an individual member.</p>
+      <p class="cs-note">And these properties are <b>stored but barely used</b>. Density does not
+        feed the load takedown, which works from the use-class allowance instead; E appears
+        nowhere, because nothing computes a deflection. They are there for display, and for
+        whatever the tool might do later.</p>
 
       <h3>Edits</h3>
       <p>An element you change is remembered by <b>where it sits on the grid</b>, not by an index,
