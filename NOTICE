@@ -1,0 +1,11 @@
+THIRD-PARTY SOFTWARE
+====================
+
+This project loads three.js (https://threejs.org), which is distributed under
+its own MIT License, Copyright (c) 2010-2026 three.js authors. That notice is
+reproduced in full at the top of construction-studio.html, as the licence
+requires. It is a separate copyright from Construction Studio's own.
+
+The application itself is licensed under the MIT License; see LICENSE.
+The documentation and teaching material are licensed CC BY 4.0; see
+DOCS-LICENCE.md.
