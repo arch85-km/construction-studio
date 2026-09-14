@@ -74,6 +74,8 @@
 .cs-doc img{max-width:100%;height:auto;}
 .cs-doc a{color:var(--cs-accent);text-decoration:underline;text-underline-offset:2px;}
 .cs-doc a:focus-visible{outline:2px solid var(--cs-accent);outline-offset:3px;}
+.cs-doc .cs-sechead{scroll-margin-top:5rem;}
+.cs-doc .cs-sechead:target h2{background:var(--cs-hl,rgba(127,127,127,.14));}
 .cs-doc code,.cs-doc .cs-mono{font-family:var(--cs-fm);font-size:.855em;}
 /* Inline bold defaults to 700. A site that ships only 400/500/600 has no such
    face, so the browser either drops to 600 or fakes one by smearing the 400.
@@ -221,7 +223,7 @@
 <div class="cs-doc">
 
   <div class="cs-masthead">
-    <h1>Construction Studio Method Notes</h1>
+    <h1>Construction Studio &mdash; Method Notes</h1>
     <p class="cs-standfirst">
       What this tool computes, how it computes it, and — the part that matters most when you
       cite it — <strong>what it does not model at all</strong>. Everything below is read from the
@@ -239,10 +241,14 @@
   <div class="cs-traps">
     <h2>Three things to know before you cite a number</h2>
     <ol>
-      <li><b>The panel prints a range; the tool computes one number from the middle of it.</b>
-        A steel beam is labelled <span class="cs-mono">L/18 – L/20</span> and then sized at
-        <span class="cs-mono">L/19</span>. Seven of the rules work this way. Quoting a depth from
-        this tool as "L/18" is wrong — it is the midpoint, always.</li>
+      <li><b>The panel prints a range; the tool sizes from the middle of it.</b>
+        A depth rule is the span divided by a number. A steel beam is labelled
+        <span class="cs-mono">L/18 – L/20</span>, which on a 12 m span means 667 mm deep at one
+        end and 600 mm at the other — a real choice, since the shallow end costs steel and the
+        deep end costs headroom. The tool makes it for you: it averages the two divisors and uses
+        19, so the panel reads <span class="cs-mono">12.00 m &divide; 19 = 632 mm &rarr; IPE 600</span>,
+        a depth the range it quotes never names. Seven of the rules work this way. Quoting a depth
+        from this tool as "L/18" is wrong: it is the midpoint, always.</li>
       <li><b>Nothing here is analysis.</b> No strength, deflection, buckling, fire or connection
         check is ever performed. The green / amber / red flag compares the <em>span</em> against
         the range the rule suits, not the member against a capacity.</li>
@@ -254,7 +260,7 @@
 
   <!-- 01 -->
   <div class="cs-sec">
-    <div class="cs-sechead"><span class="cs-secnum">01</span><h2>What it calculates</h2></div>
+    <div class="cs-sechead" id="cs-01"><span class="cs-secnum">01</span><h2>What it calculates</h2></div>
     <div class="cs-secbody">
       <p>Five things, and they are all arithmetic you could do on paper. There is no solver in
         this application — no stiffness matrix, no finite elements, nothing iterative.</p>
@@ -281,13 +287,13 @@
         <tbody>
           <tr><td>Steel beam</td><td class="cs-p">L/18 – L/20</td><td class="cs-d">19</td></tr>
           <tr><td>Composite steel beam</td><td class="cs-p">L/22 – L/25</td><td class="cs-d">23.5</td></tr>
-          <tr><td>RC beam</td><td class="cs-p">h = L/12 – L/15</td><td class="cs-d">13.5</td></tr>
+          <tr><td>RC beam</td><td class="cs-p">h = L/12 – L/15,  b &asymp; 0.5 h</td><td class="cs-d">13.5</td></tr>
           <tr><td>Precast hollowcore</td><td class="cs-p">L/35 – L/40</td><td class="cs-d">37.5</td></tr>
           <tr><td>Timber joist</td><td class="cs-p">L/15 – L/20</td><td class="cs-d">17.5</td></tr>
-          <tr><td>Timber truss</td><td class="cs-p">L/5 – L/6</td><td class="cs-d">5.5</td></tr>
-          <tr><td>Portal frame column</td><td class="cs-p">h/15 – h/25</td><td class="cs-d">20</td></tr>
+          <tr><td>Timber truss</td><td class="cs-p">depth = L/5 – L/6</td><td class="cs-d">5.5</td></tr>
+          <tr><td>Portal frame column</td><td class="cs-p">depth = eaves height / 15 to /25</td><td class="cs-d">20</td></tr>
         </tbody>
-        <caption>The spread matters: L/18 and L/20 differ by 11%, which on a 12 m span is 63 mm — often a whole section size. The tool never shows you the ends of the range it quotes.</caption>
+        <caption>The spread matters: L/18 and L/20 differ by 11%, which on a 12 m span is 67 mm — often a whole section size. The tool never shows you the ends of the range it quotes.</caption>
       </table></div>
 
       <p class="cs-note">Two rules go further: their <span class="cs-mono">ratio</span> string does
@@ -310,7 +316,7 @@ A_required = N / f_permissible
 <em>masonry</em> f = 2.5 MPa         <em>(pier)</em></div>
       <p class="cs-note">There is <b>no imposed-load reduction</b>. A real takedown reduces the
         imposed load on a column carrying many storeys, because the chance of every floor being
-        fully loaded at once is small; EN 1991-1-1 gives the factor. This tool multiplies by the
+        fully loaded at once is small; the loading code gives the factor. This tool multiplies by the
         full storey count every time, so tall buildings are sized conservatively — increasingly so
         the taller they get.</p>
 
@@ -364,6 +370,13 @@ A_required = N / f_permissible
       <h3>The masonry check</h3>
       <div class="cs-formula">h_ef / t_ef ≤ 27        <em>(≤ 20 where a leaf is under 90 mm and there are 2+ storeys)</em>
 t_ef = ⅔(t₁ + t₂)      <em>cavity wall — both leaves count</em></div>
+      <p class="cs-note"><b>The two halves of this check may not come from the same code.</b>
+        The limit of 27 is the Eurocode 6 value, but the cavity-wall effective thickness used here,
+        t<sub>ef</sub> = &frac23;(t&#8321; + t&#8322;), is the BS 5628 form; EN 1996-1-1 gives
+        t<sub>ef</sub> = (t&#8321;&sup3; + t&#8322;&sup3;)<sup>1/3</sup>. The source names only
+        &ldquo;EN 1996&rdquo;, with no clause and no edition, so which was intended cannot be read
+        from the code. Treated as a rule of thumb this changes little; quoted as a code check it
+        matters.</p>
       <p>Attributed in the source to EN 1996. It assumes h<sub>ef</sub> is the clear storey height
         — a wall held top and bottom and free at the sides. <b>Real restraint factors are not
         modelled.</b> The tool says so on screen, which is better teaching than hiding it.</p>
@@ -372,7 +385,7 @@ t_ef = ⅔(t₁ + t₂)      <em>cavity wall — both leaves count</em></div>
 
   <!-- 02 -->
   <div class="cs-sec">
-    <div class="cs-sechead"><span class="cs-secnum">02</span><h2>How the building is generated</h2></div>
+    <div class="cs-sechead" id="cs-02"><span class="cs-secnum">02</span><h2>How the building is generated</h2></div>
     <div class="cs-secbody">
       <p>You do not draw the building. You choose a system for each of five parts and set a grid;
         everything else is derived. Changing any choice rebuilds the whole model.</p>
@@ -438,6 +451,11 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
         EN 10365 and searched for the first section deep enough; concrete, glulam, CLT and masonry
         sizes are generated to the nearest sensible increment (25 mm for concrete, 45 mm — one
         lamination — for glulam).</p>
+      <p class="cs-note"><b>Only the I- and H-sections are tabulated.</b> The IPE, HEA and HEB
+        entries are transcribed values. The square, rectangular and circular hollow sections
+        counted in the same 111 are not: their dimensions are a list written into the source, and
+        their properties are computed from that geometry by the code itself — from no table and
+        no standard. Nothing on screen distinguishes a transcribed section from a computed one.</p>
 
       <h3>The material library</h3>
       <p>Fifteen materials, all of them structural. Six properties each:</p>
@@ -466,7 +484,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
         as <span class="cs-mono">G = E / 2(1 + ν)</span>, and the design strength
         <span class="cs-mono">f_d = f_y / γ_M</span> is evaluated on demand rather than held. There
         is no λ, no c, no μ and no kgCO₂e — the library carries no thermal, hygric or carbon
-        property of any kind, which is why §03 can say flatly that there is no building physics
+        property of any kind, which is why <a href="#cs-03">What is and isn't modelled</a> can say flatly that there is no building physics
         here.</p>
 
       <h4>Build-up layers use a different, much thinner vocabulary</h4>
@@ -479,10 +497,18 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
         a thickness, a name and a colour; it has no properties.</p>
 
       <h4>Where the values come from</h4>
-      <p>The source states three provenances and no others: steel sections follow
+      <p>The Credits panel states three provenances: steel sections follow
         <b>EN 10365</b>; the span rules are attributed to Allen &amp; Iano's
         <i>The Architect's Studio Companion</i> and "the standard steel and concrete references";
-        the masonry slenderness limit is attributed to <b>EN 1996</b>.</p>
+        the masonry slenderness limit is attributed to <b>EN 1996</b>. Two more are named
+        elsewhere in the code: the About panel gives the four-part taxonomy as Ching's, and
+        three of the concrete slab rules cite <b>ACI 318</b> in their own source text. Those
+        five are the References list below, and the code names no others.</p>
+      <p class="cs-note"><b>Six of the twenty-seven rules cite nothing at all.</b>
+        steel.purlin, portal.column, rc.column, timber.rafter, timber.post and masonry.pier
+        carry no source text in the code &mdash; not a vague one, none. The provenances above
+        cover the rules that do carry it; for these six the tool offers a number and no account
+        of where it comes from.</p>
       <p class="cs-note">The material property values themselves — E, ν, density, the
         characteristic strengths, the partial factors — <b>carry no citation in the code</b>. They
         are consistent with standard Eurocode values, but the source does not say so, and a student
@@ -516,7 +542,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
 
   <!-- 03 -->
   <div class="cs-sec">
-    <div class="cs-sechead"><span class="cs-secnum">03</span><h2>What is and isn't modelled</h2></div>
+    <div class="cs-sechead" id="cs-03"><span class="cs-secnum">03</span><h2>What is and isn't modelled</h2></div>
     <div class="cs-secbody">
       <h3>Included</h3>
       <dl class="cs-ledger">
@@ -561,7 +587,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
 
   <!-- 04 -->
   <div class="cs-sec">
-    <div class="cs-sechead"><span class="cs-secnum">04</span><h2>How exact the numbers are</h2></div>
+    <div class="cs-sechead" id="cs-04"><span class="cs-secnum">04</span><h2>How exact the numbers are</h2></div>
     <div class="cs-secbody">
       <p>"Accuracy" is the wrong frame for a tool with no analysis in it: there is no exact answer
         to be near. What can be stated is how the arithmetic behaves, and where it quietly stops
@@ -629,7 +655,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
 
   <!-- 05 -->
   <div class="cs-sec">
-    <div class="cs-sechead"><span class="cs-secnum">05</span><h2>Inputs you control</h2></div>
+    <div class="cs-sechead" id="cs-05"><span class="cs-secnum">05</span><h2>Inputs you control</h2></div>
     <div class="cs-secbody">
       <h4>The building</h4>
       <div class="cs-tbl"><table>
@@ -639,7 +665,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
           <tr><td>Span between grid lines</td><td class="cs-d">7.5 × 7.5 m</td><td class="cs-n">1.8 – 30 · 1.8 – 60</td><td>The two directions have different limits</td></tr>
           <tr><td>Storeys</td><td class="cs-d">3</td><td class="cs-n">1 – 12</td><td>Locked to 1 by single-storey systems, which say why</td></tr>
           <tr><td>Storey height</td><td class="cs-d">3.9 m</td><td class="cs-n">2.2 – 14 m</td><td>Floor to floor</td></tr>
-          <tr><td>Use class</td><td class="cs-d">Office</td><td class="cs-n">4 options</td><td>Sets the kN/m² in §01; nothing else changes</td></tr>
+          <tr><td>Use class</td><td class="cs-d">Office</td><td class="cs-n">4 options</td><td>Sets the kN/m² in <a href="#cs-01">What it calculates</a>; nothing else changes</td></tr>
           <tr><td>Soil bearing capacity</td><td class="cs-d">150 kPa</td><td class="cs-n">—</td><td>Used by the pad, strip and raft rules</td></tr>
         </tbody>
         <caption>Six templates ship with the tool: office, house, masonry, RC, CLT and shed.</caption>
@@ -672,7 +698,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
       </ul>
       <p class="cs-note">Every other layer thickness is fixed in the source. You cannot change a
         layer's material, substitute one product for another, or mark a layer as ventilated or
-        unventilated — which, with §02's note that a layer carries only a colour token, is why no
+        unventilated — which, with the note in <a href="#cs-02">How the building is generated</a> that a layer carries only a colour token, is why no
         build-up question beyond geometry can be asked of this tool.</p>
 
       <h4>Controls that change nothing numerical</h4>
@@ -685,7 +711,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
 
   <!-- 06 -->
   <div class="cs-sec">
-    <div class="cs-sechead"><span class="cs-secnum">06</span><h2>Compared with Revit, Tekla and a hand calculation</h2></div>
+    <div class="cs-sechead" id="cs-06"><span class="cs-secnum">06</span><h2>Compared with BIM, analysis software and a hand calculation</h2></div>
     <div class="cs-secbody">
       <h3>Where it should agree</h3>
       <ul>
@@ -697,12 +723,12 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
 
       <h3>Where it will diverge</h3>
       <ul>
-        <li><b>Any analysis at all.</b> Revit with a structural analysis link, Tekla, Robot or SCIA compute internal forces; this computes none. There is no setting that closes that gap because there is no solver to configure.</li>
+        <li><b>Any analysis at all.</b> BIM with a structural analysis link, and analysis packages generally, compute internal forces; this computes none. There is no setting that closes that gap because there is no solver to configure.</li>
         <li><b>Continuity and frame action.</b> A real frame sheds load through continuity and moment connections. Every support here takes only what falls nearest to it, so interior columns are under-loaded and edge columns over-loaded relative to an analysed frame.</li>
-        <li><b>Lateral stability.</b> Tekla and Revit model bracing and cores as load-carrying; here they are drawn but carry nothing. Nothing sizes a brace.</li>
-        <li><b>Detailing.</b> Tekla exists to produce fabrication-level connections with every bolt and weld. This tool names a connection type and draws its shape.</li>
-        <li><b>Tall or heavily loaded buildings.</b> As §04 shows, the steel catalogue is exhausted from around eight storeys on a 7.5 m grid, and the tool does not say so.</li>
-        <li><b>Building physics.</b> Not a comparison at all — there is no thermal, moisture or acoustic model of any kind, so nothing here can be set against WUFI, THERM or an ISO 6946 calculation.</li>
+        <li><b>Lateral stability.</b> BIM and analysis tools model bracing and cores as load-carrying; here they are drawn but carry nothing. Nothing sizes a brace.</li>
+        <li><b>Detailing.</b> Fabrication software exists to produce connections with every bolt and weld. This tool names a connection type and draws its shape.</li>
+        <li><b>Tall or heavily loaded buildings.</b> As <a href="#cs-04">How exact the numbers are</a> shows, the steel catalogue is exhausted from around eight storeys on a 7.5 m grid, and the tool does not say so.</li>
+        <li><b>Building physics.</b> Not a comparison at all — there is no thermal, moisture or acoustic model of any kind, so nothing here can be set against a hygrothermal simulation or a U-value calculation.</li>
       </ul>
 
       <p class="cs-note">The honest summary: this tool sits between a sketch and a scheme. It is
@@ -716,7 +742,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
 
   <!-- 07 -->
   <div class="cs-sec">
-    <div class="cs-sechead"><span class="cs-secnum">07</span><h2>Three exercises</h2></div>
+    <div class="cs-sechead" id="cs-07"><span class="cs-secnum">07</span><h2>Three exercises</h2></div>
     <div class="cs-secbody">
       <p>Each isolates one variable and holds everything else fixed. Start from a template, change
         only what the step names, and read the sizing panel rather than the picture.</p>
@@ -756,7 +782,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
           floor by <em>use class</em>, not by what the floor is made of: the self-weight of a
           concrete slab and a CLT panel are identical to this model. That is a limitation, and
           finding it yourself is the exercise. Ask what the answer <em>should</em> look like, then
-          look at §01 to see why it does not.</p>
+          look at <a href="#cs-01">What it calculates</a> to see why it does not.</p>
       </div>
 
       <div class="cs-ex">
@@ -785,7 +811,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
   </div>
 
   <div class="cs-footer">
-    <p>Everything on this page was read from the tool's source code, and the measured tables in §04
+    <p>Everything on this page was read from the tool's source code, and the measured tables in <a href="#cs-04">How exact the numbers are</a>
       were produced by driving its own sizing functions. Where a figure is quoted it is measured,
       not estimated. Where the code did not make something clear it has been said so rather than
       inferred.</p>
@@ -826,22 +852,36 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
     <h3>References</h3>
     <p>What the systems, build-ups and rules are drawn from, and what each one contributes. These
       are the sources the code itself names; where it names none — the material property values,
-      as §02 says — none is listed here either.</p>
+      as <a href="#cs-02">How the building is generated</a> explains — none is listed here either. The code names the works but never an edition,
+      so the editions below are this document&rsquo;s choice, not something transcribed from the
+      source.</p>
     <ul class="cs-refs">
-      <li>Ching, F. D. K. <i>Building Construction Illustrated</i> — the Foundation / Floor / Wall
-        / Roof taxonomy the tool navigates by, and the one to go to for what a build-up is for.</li>
-      <li>Allen, E. &amp; Iano, J. <i>The Architect's Studio Companion</i> — the shape of the
+      <li>Ching, F. D. K. (2024). <i>Building construction illustrated</i> (7th ed.).
+        Wiley. &mdash; the Foundation / Floor / Wall / Roof taxonomy the tool navigates by,
+        and the one to go to for what a build-up is for.</li>
+      <li>Allen, E., &amp; Iano, J. (2017). <i>The architect's studio companion: Rules
+        of thumb for preliminary design</i> (6th ed.). Wiley. &mdash; the shape of the
         span-versus-depth tables behind the 27 sizing rules.</li>
-      <li>Allen, E. &amp; Iano, J. <i>Fundamentals of Building Construction: Materials and
-        Methods</i> — material-by-material descriptions of the systems in the catalogue.</li>
-      <li>Deplazes, A. <i>Constructing Architecture: Materials, Processes, Structures</i> — the
-        solid / filigree distinction used as a secondary way of grouping systems.</li>
-      <li><b>EN 10365</b> — hot-rolled steel section dimensions. The IPE, HEA and HEB tables are
-        transcribed from it with h, b, t<sub>w</sub>, t<sub>f</sub>, A, I<sub>y</sub>,
-        I<sub>z</sub>, W<sub>el</sub> and I<sub>t</sub>.</li>
-      <li><b>EN 1992-1-1</b> and <b>ACI 318</b> — span-to-depth ratios for reinforced concrete,
-        including the flat-slab and waffle cases.</li>
-      <li><b>EN 1996</b> — the masonry slenderness limit, the single code check in the tool.</li>
+      <li>American Concrete Institute. (2019). <i>Building code requirements for
+        structural concrete (ACI 318-19) and commentary (ACI 318R-19)</i>. ACI. &mdash;
+        minimum slab thickness for the one-way slab, the flat plate and the flat slab
+        with drop panels. Superseded by ACI 318-25.</li>
+      <li>European Committee for Standardization. (2026). <i>Hot rolled steel channels,
+        I and H sections: Dimensions and masses</i> (EN 10365:2026). CEN. &mdash; the IPE,
+        HEA and HEB catalogue. The standard specifies nominal dimensions and masses only
+        (h, b, t<sub>w</sub>, t<sub>f</sub>, and mass per metre); it publishes no
+        sectional properties. Everything else in the table is derived, the area included:
+        A, I<sub>y</sub>, I<sub>z</sub>, W<sub>el,y</sub>, W<sub>el,z</sub> and
+        I<sub>t</sub> come from published section tables, and <b>the code names no source
+        for them</b>, as it names none for the material property values (see <a href="#cs-02">How the building is generated</a>).
+        This edition superseded EN 10365:2017, withdrawn on 7 July 2026; the tool&rsquo;s
+        table was written against the 2017 edition.</li>
+      <li>European Committee for Standardization. (2005). <i>Eurocode 6: Design of
+        masonry structures. Part 1-1: General rules for reinforced and unreinforced
+        masonry structures</i> (EN 1996-1-1:2005+A1:2012). CEN. &mdash; the slenderness limit
+        h<sub>ef</sub> / t<sub>ef</sub> &le; 27 (clause 5.5.1.4), which applies to walls under
+        mainly vertical loading rather than to every masonry wall. The only rule in the tool
+        tied to a code.</li>
     </ul>
     <p class="cs-cite">For anything that must stand up, none of the above substitutes for an
       engineer. They are where the tool's rules of thumb come from, not a design authority.</p>
