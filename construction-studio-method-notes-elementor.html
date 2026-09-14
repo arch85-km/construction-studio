@@ -192,6 +192,9 @@
   font-size:.86rem;color:var(--cs-ink2);}
 .cs-doc .cs-footer p{max-width:var(--cs-measure);margin:0 0 .8rem;}
 .cs-doc .cs-cite{font-family:var(--cs-fm);font-size:.78rem;color:var(--cs-ink3);line-height:1.7;}
+.cs-doc .cs-refs{max-width:var(--cs-measure);margin:0 0 1.2rem;padding-left:1.15rem;
+  display:grid;gap:.55rem;font-size:.9rem;color:var(--cs-ink2);}
+.cs-doc .cs-refs b{color:var(--cs-ink);font-weight:600;}
 .cs-doc .cs-ref{border-left:2px solid var(--cs-rule);padding-left:.95rem;margin:0 0 1rem;
   max-width:var(--cs-measure);font-size:.92rem;color:var(--cs-ink2);}
 .cs-doc pre{margin:0 0 1rem;padding:.9rem 1rem;background:var(--cs-surface);
@@ -229,6 +232,7 @@
       <span><b>Audience</b> Architecture students and staff</span>
       <span><b>Method</b> Span rules of thumb · tributary-area takedown</span>
       <span><b>Runs</b> Entirely in the browser</span>
+      <span><b>Updated</b> 14 September 2026</span>
     </div>
   </div>
 
@@ -818,11 +822,28 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
       quoted without its span cannot be checked by anyone reading you. Every exported image carries
       the building description and the detail level in its title block.</p>
 
-    <p class="cs-cite">Rules and data follow: Ching, <i>Building Construction Illustrated</i>
-      (the four-part taxonomy) · Allen &amp; Iano, <i>The Architect's Studio Companion</i>
-      (span-to-depth tables) · Allen &amp; Iano, <i>Fundamentals of Building Construction</i> ·
-      Deplazes, <i>Constructing Architecture</i> · EN 10365 (steel section dimensions) ·
-      EN 1992-1-1 and ACI 318 (concrete span/depth) · EN 1996 (masonry slenderness).</p>
+    <h3>References</h3>
+    <p>What the systems, build-ups and rules are drawn from, and what each one contributes. These
+      are the sources the code itself names; where it names none — the material property values,
+      as §02 says — none is listed here either.</p>
+    <ul class="cs-refs">
+      <li>Ching, F. D. K. <i>Building Construction Illustrated</i> — the Foundation / Floor / Wall
+        / Roof taxonomy the tool navigates by, and the one to go to for what a build-up is for.</li>
+      <li>Allen, E. &amp; Iano, J. <i>The Architect's Studio Companion</i> — the shape of the
+        span-versus-depth tables behind the 27 sizing rules.</li>
+      <li>Allen, E. &amp; Iano, J. <i>Fundamentals of Building Construction: Materials and
+        Methods</i> — material-by-material descriptions of the systems in the catalogue.</li>
+      <li>Deplazes, A. <i>Constructing Architecture: Materials, Processes, Structures</i> — the
+        solid / filigree distinction used as a secondary way of grouping systems.</li>
+      <li><b>EN 10365</b> — hot-rolled steel section dimensions. The IPE, HEA and HEB tables are
+        transcribed from it with h, b, t<sub>w</sub>, t<sub>f</sub>, A, I<sub>y</sub>,
+        I<sub>z</sub>, W<sub>el</sub> and I<sub>t</sub>.</li>
+      <li><b>EN 1992-1-1</b> and <b>ACI 318</b> — span-to-depth ratios for reinforced concrete,
+        including the flat-slab and waffle cases.</li>
+      <li><b>EN 1996</b> — the masonry slenderness limit, the single code check in the tool.</li>
+    </ul>
+    <p class="cs-cite">For anything that must stand up, none of the above substitutes for an
+      engineer. They are where the tool's rules of thumb come from, not a design authority.</p>
   </div>
 
 </div>
