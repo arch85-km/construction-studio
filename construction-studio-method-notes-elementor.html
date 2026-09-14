@@ -75,7 +75,6 @@
 .cs-doc a{color:var(--cs-accent);text-decoration:underline;text-underline-offset:2px;}
 .cs-doc a:focus-visible{outline:2px solid var(--cs-accent);outline-offset:3px;}
 .cs-doc .cs-sechead{scroll-margin-top:5rem;}
-.cs-doc a.cs-xref{text-decoration-style:dotted;text-underline-offset:3px;white-space:nowrap;}
 .cs-doc .cs-sechead:target h2{background:var(--cs-hl,rgba(127,127,127,.14));}
 .cs-doc code,.cs-doc .cs-mono{font-family:var(--cs-fm);font-size:.855em;}
 /* Inline bold defaults to 700. A site that ships only 400/500/600 has no such
@@ -469,7 +468,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
         as <span class="cs-mono">G = E / 2(1 + ν)</span>, and the design strength
         <span class="cs-mono">f_d = f_y / γ_M</span> is evaluated on demand rather than held. There
         is no λ, no c, no μ and no kgCO₂e — the library carries no thermal, hygric or carbon
-        property of any kind, which is why <a class="cs-xref" href="#cs-03">§03</a> can say flatly that there is no building physics
+        property of any kind, which is why <a href="#cs-03">What is and isn't modelled</a> can say flatly that there is no building physics
         here.</p>
 
       <h4>Build-up layers use a different, much thinner vocabulary</h4>
@@ -645,7 +644,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
           <tr><td>Span between grid lines</td><td class="cs-d">7.5 × 7.5 m</td><td class="cs-n">1.8 – 30 · 1.8 – 60</td><td>The two directions have different limits</td></tr>
           <tr><td>Storeys</td><td class="cs-d">3</td><td class="cs-n">1 – 12</td><td>Locked to 1 by single-storey systems, which say why</td></tr>
           <tr><td>Storey height</td><td class="cs-d">3.9 m</td><td class="cs-n">2.2 – 14 m</td><td>Floor to floor</td></tr>
-          <tr><td>Use class</td><td class="cs-d">Office</td><td class="cs-n">4 options</td><td>Sets the kN/m² in <a class="cs-xref" href="#cs-01">§01</a>; nothing else changes</td></tr>
+          <tr><td>Use class</td><td class="cs-d">Office</td><td class="cs-n">4 options</td><td>Sets the kN/m² in <a href="#cs-01">What it calculates</a>; nothing else changes</td></tr>
           <tr><td>Soil bearing capacity</td><td class="cs-d">150 kPa</td><td class="cs-n">—</td><td>Used by the pad, strip and raft rules</td></tr>
         </tbody>
         <caption>Six templates ship with the tool: office, house, masonry, RC, CLT and shed.</caption>
@@ -678,7 +677,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
       </ul>
       <p class="cs-note">Every other layer thickness is fixed in the source. You cannot change a
         layer's material, substitute one product for another, or mark a layer as ventilated or
-        unventilated — which, with <a class="cs-xref" href="#cs-02">§02</a>'s note that a layer carries only a colour token, is why no
+        unventilated — which, with the note in <a href="#cs-02">How the building is generated</a> that a layer carries only a colour token, is why no
         build-up question beyond geometry can be asked of this tool.</p>
 
       <h4>Controls that change nothing numerical</h4>
@@ -707,7 +706,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
         <li><b>Continuity and frame action.</b> A real frame sheds load through continuity and moment connections. Every support here takes only what falls nearest to it, so interior columns are under-loaded and edge columns over-loaded relative to an analysed frame.</li>
         <li><b>Lateral stability.</b> Tekla and Revit model bracing and cores as load-carrying; here they are drawn but carry nothing. Nothing sizes a brace.</li>
         <li><b>Detailing.</b> Tekla exists to produce fabrication-level connections with every bolt and weld. This tool names a connection type and draws its shape.</li>
-        <li><b>Tall or heavily loaded buildings.</b> As <a class="cs-xref" href="#cs-04">§04</a> shows, the steel catalogue is exhausted from around eight storeys on a 7.5 m grid, and the tool does not say so.</li>
+        <li><b>Tall or heavily loaded buildings.</b> As <a href="#cs-04">How exact the numbers are</a> shows, the steel catalogue is exhausted from around eight storeys on a 7.5 m grid, and the tool does not say so.</li>
         <li><b>Building physics.</b> Not a comparison at all — there is no thermal, moisture or acoustic model of any kind, so nothing here can be set against WUFI, THERM or an ISO 6946 calculation.</li>
       </ul>
 
@@ -762,7 +761,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
           floor by <em>use class</em>, not by what the floor is made of: the self-weight of a
           concrete slab and a CLT panel are identical to this model. That is a limitation, and
           finding it yourself is the exercise. Ask what the answer <em>should</em> look like, then
-          look at <a class="cs-xref" href="#cs-01">§01</a> to see why it does not.</p>
+          look at <a href="#cs-01">What it calculates</a> to see why it does not.</p>
       </div>
 
       <div class="cs-ex">
@@ -791,7 +790,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
   </div>
 
   <div class="cs-footer">
-    <p>Everything on this page was read from the tool's source code, and the measured tables in <a class="cs-xref" href="#cs-04">§04</a>
+    <p>Everything on this page was read from the tool's source code, and the measured tables in <a href="#cs-04">How exact the numbers are</a>
       were produced by driving its own sizing functions. Where a figure is quoted it is measured,
       not estimated. Where the code did not make something clear it has been said so rather than
       inferred.</p>
@@ -832,7 +831,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
     <h3>References</h3>
     <p>What the systems, build-ups and rules are drawn from, and what each one contributes. These
       are the sources the code itself names; where it names none — the material property values,
-      as <a class="cs-xref" href="#cs-02">§02</a> says — none is listed here either. The code names the works but never an edition,
+      as <a href="#cs-02">How the building is generated</a> explains — none is listed here either. The code names the works but never an edition,
       so the editions below are this document&rsquo;s choice, not something transcribed from the
       source.</p>
     <ul class="cs-refs">
@@ -853,7 +852,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
         sectional properties. Everything else in the table is derived, the area included:
         A, I<sub>y</sub>, I<sub>z</sub>, W<sub>el,y</sub>, W<sub>el,z</sub> and
         I<sub>t</sub> come from published section tables, and <b>the code names no source
-        for them</b>, as it names none for the material property values (<a class="cs-xref" href="#cs-02">§02</a>).
+        for them</b>, as it names none for the material property values (see <a href="#cs-02">How the building is generated</a>).
         This edition superseded EN 10365:2017, withdrawn on 7 July 2026; the tool&rsquo;s
         table was written against the 2017 edition.</li>
       <li>European Committee for Standardization. (2005). <i>Eurocode 6: Design of
