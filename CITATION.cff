@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use Construction Studio in teaching or research, please cite it as below."
-title: "Construction Studio: a browser-based construction and structural systems tool"
+title: "Construction Studio: a browser-based modeller for construction and structural systems"
 abstract: >-
   A parametric model of a building's construction for architecture students.
   Choose a foundation, ground floor, wall or frame, floor and roof; the
@@ -11,7 +11,7 @@ abstract: >-
 type: software
 authors:
   - family-names: Al-Obaidi
-    given-names: Karam
+    given-names: Karam M.
 version: 1.0.0
 date-released: 2026-09-13
 license: MIT
