@@ -323,11 +323,6 @@ html[data-theme="light"] .seg{background:rgba(255,255,255,.86)}
 html[data-theme="light"] #copyright{background:rgba(255,255,255,.72)}
 #copyright b{font-weight:600;color:var(--ink-0)}
 #copyright .mark{color:var(--accent);font-weight:700;margin-right:1px}
-/* The badge is deliberately pointer-events:none - it sits over the model
-   space, so nothing in it may eat an orbit drag. The licence therefore
-   reads as a label, not a link; About carries the clickable one. */
-#copyright .sep{color:var(--ink-3);margin:0 6px}
-#copyright .lic{font-weight:600;color:var(--ink-0);letter-spacing:.4px}
 
 /* view cube / nav */
 #navcube{
@@ -982,7 +977,7 @@ window.__csBooted = false;
   </div>
 
   <div id="cmp-panel" hidden></div>
-  <div id="copyright" title="Free and open source under the MIT licence. Documentation and teaching material: CC BY 4.0."><span class="mark">&copy;</span> <b>Karam Al-Obaidi</b><span class="sep">·</span><span class="lic">MIT</span></div>
+  <div id="copyright"><span class="mark">&copy;</span> <b>Karam Al-Obaidi</b></div>
  </main>
 
  <aside id="side">
