@@ -241,10 +241,14 @@
   <div class="cs-traps">
     <h2>Three things to know before you cite a number</h2>
     <ol>
-      <li><b>The panel prints a range; the tool computes one number from the middle of it.</b>
-        A steel beam is labelled <span class="cs-mono">L/18 – L/20</span> and then sized at
-        <span class="cs-mono">L/19</span>. Seven of the rules work this way. Quoting a depth from
-        this tool as "L/18" is wrong — it is the midpoint, always.</li>
+      <li><b>The panel prints a range; the tool sizes from the middle of it.</b>
+        A depth rule is the span divided by a number. A steel beam is labelled
+        <span class="cs-mono">L/18 – L/20</span>, which on a 12 m span means 667 mm deep at one
+        end and 600 mm at the other — a real choice, since the shallow end costs steel and the
+        deep end costs headroom. The tool makes it for you: it averages the two divisors and uses
+        19, so the panel reads <span class="cs-mono">12.00 m &divide; 19 = 632 mm &rarr; IPE 600</span>,
+        a depth the range it quotes never names. Seven of the rules work this way. Quoting a depth
+        from this tool as "L/18" is wrong: it is the midpoint, always.</li>
       <li><b>Nothing here is analysis.</b> No strength, deflection, buckling, fire or connection
         check is ever performed. The green / amber / red flag compares the <em>span</em> against
         the range the rule suits, not the member against a capacity.</li>
