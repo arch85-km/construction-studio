@@ -3,6 +3,8 @@
 Build and visualise construction systems in timber, concrete, steel and masonry.
 One self-contained HTML file, no build step, no server, no backend.
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22751439.svg)](https://doi.org/10.5281/zenodo.22751439)
+
 **© Karam Al-Obaidi** — the app is [MIT](LICENSE) licensed; the documentation
 and teaching material are [CC BY 4.0](DOCS-LICENCE.md).
 
@@ -198,7 +200,7 @@ machine-readable version.
 
 > Al-Obaidi, K.M. (2026). *Construction Studio: a browser-based modeller for
 > construction and structural systems* (Version 1.0.1) [Computer software].
-> https://karam.me.uk/applications/construction-studio/
+> Zenodo. https://doi.org/10.5281/zenodo.22751439
 
 ```bibtex
 @software{alobaidi2026constructionstudio,
@@ -207,6 +209,7 @@ machine-readable version.
              construction and structural systems},
   year    = {2026},
   version = {1.0.1},
+  doi     = {10.5281/zenodo.22751439},
   url     = {https://karam.me.uk/applications/construction-studio/},
   note    = {MIT licensed}
 }
