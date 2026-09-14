@@ -197,7 +197,7 @@ scholarly act on top of it. `CITATION.cff` in this repository is the
 machine-readable version.
 
 > Al-Obaidi, K.M. (2026). *Construction Studio: a browser-based modeller for
-> construction and structural systems* (Version 1.0.0) [Computer software].
+> construction and structural systems* (Version 1.0.1) [Computer software].
 > https://karam.me.uk/applications/construction-studio/
 
 ```bibtex
@@ -206,7 +206,7 @@ machine-readable version.
   title   = {Construction Studio: a browser-based modeller for
              construction and structural systems},
   year    = {2026},
-  version = {1.0.0},
+  version = {1.0.1},
   url     = {https://karam.me.uk/applications/construction-studio/},
   note    = {MIT licensed}
 }
