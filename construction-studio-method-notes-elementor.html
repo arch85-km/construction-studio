@@ -312,7 +312,7 @@ A_required = N / f_permissible
 <em>masonry</em> f = 2.5 MPa         <em>(pier)</em></div>
       <p class="cs-note">There is <b>no imposed-load reduction</b>. A real takedown reduces the
         imposed load on a column carrying many storeys, because the chance of every floor being
-        fully loaded at once is small; EN 1991-1-1 gives the factor. This tool multiplies by the
+        fully loaded at once is small; the loading code gives the factor. This tool multiplies by the
         full storey count every time, so tall buildings are sized conservatively — increasingly so
         the taller they get.</p>
 
@@ -366,6 +366,13 @@ A_required = N / f_permissible
       <h3>The masonry check</h3>
       <div class="cs-formula">h_ef / t_ef ≤ 27        <em>(≤ 20 where a leaf is under 90 mm and there are 2+ storeys)</em>
 t_ef = ⅔(t₁ + t₂)      <em>cavity wall — both leaves count</em></div>
+      <p class="cs-note"><b>The two halves of this check may not come from the same code.</b>
+        The limit of 27 is the Eurocode 6 value, but the cavity-wall effective thickness used here,
+        t<sub>ef</sub> = &frac23;(t&#8321; + t&#8322;), is the BS 5628 form; EN 1996-1-1 gives
+        t<sub>ef</sub> = (t&#8321;&sup3; + t&#8322;&sup3;)<sup>1/3</sup>. The source names only
+        &ldquo;EN 1996&rdquo;, with no clause and no edition, so which was intended cannot be read
+        from the code. Treated as a rule of thumb this changes little; quoted as a code check it
+        matters.</p>
       <p>Attributed in the source to EN 1996. It assumes h<sub>ef</sub> is the clear storey height
         — a wall held top and bottom and free at the sides. <b>Real restraint factors are not
         modelled.</b> The tool says so on screen, which is better teaching than hiding it.</p>
@@ -440,6 +447,11 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
         EN 10365 and searched for the first section deep enough; concrete, glulam, CLT and masonry
         sizes are generated to the nearest sensible increment (25 mm for concrete, 45 mm — one
         lamination — for glulam).</p>
+      <p class="cs-note"><b>Only the I- and H-sections are tabulated.</b> The IPE, HEA and HEB
+        entries are transcribed values. The square, rectangular and circular hollow sections
+        counted in the same 111 are not: their dimensions are a list written into the source, and
+        their properties are computed from that geometry by the code itself — from no table and
+        no standard. Nothing on screen distinguishes a transcribed section from a computed one.</p>
 
       <h3>The material library</h3>
       <p>Fifteen materials, all of them structural. Six properties each:</p>
@@ -488,6 +500,11 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
         elsewhere in the code: the About panel gives the four-part taxonomy as Ching's, and
         three of the concrete slab rules cite <b>ACI 318</b> in their own source text. Those
         five are the References list below, and the code names no others.</p>
+      <p class="cs-note"><b>Six of the twenty-seven rules cite nothing at all.</b>
+        steel.purlin, portal.column, rc.column, timber.rafter, timber.post and masonry.pier
+        carry no source text in the code &mdash; not a vague one, none. The provenances above
+        cover the rules that do carry it; for these six the tool offers a number and no account
+        of where it comes from.</p>
       <p class="cs-note">The material property values themselves — E, ν, density, the
         characteristic strengths, the partial factors — <b>carry no citation in the code</b>. They
         are consistent with standard Eurocode values, but the source does not say so, and a student
@@ -690,7 +707,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
 
   <!-- 06 -->
   <div class="cs-sec">
-    <div class="cs-sechead" id="cs-06"><span class="cs-secnum">06</span><h2>Compared with Revit, Tekla and a hand calculation</h2></div>
+    <div class="cs-sechead" id="cs-06"><span class="cs-secnum">06</span><h2>Compared with BIM, analysis software and a hand calculation</h2></div>
     <div class="cs-secbody">
       <h3>Where it should agree</h3>
       <ul>
@@ -702,12 +719,12 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
 
       <h3>Where it will diverge</h3>
       <ul>
-        <li><b>Any analysis at all.</b> Revit with a structural analysis link, Tekla, Robot or SCIA compute internal forces; this computes none. There is no setting that closes that gap because there is no solver to configure.</li>
+        <li><b>Any analysis at all.</b> BIM with a structural analysis link, and analysis packages generally, compute internal forces; this computes none. There is no setting that closes that gap because there is no solver to configure.</li>
         <li><b>Continuity and frame action.</b> A real frame sheds load through continuity and moment connections. Every support here takes only what falls nearest to it, so interior columns are under-loaded and edge columns over-loaded relative to an analysed frame.</li>
-        <li><b>Lateral stability.</b> Tekla and Revit model bracing and cores as load-carrying; here they are drawn but carry nothing. Nothing sizes a brace.</li>
-        <li><b>Detailing.</b> Tekla exists to produce fabrication-level connections with every bolt and weld. This tool names a connection type and draws its shape.</li>
+        <li><b>Lateral stability.</b> BIM and analysis tools model bracing and cores as load-carrying; here they are drawn but carry nothing. Nothing sizes a brace.</li>
+        <li><b>Detailing.</b> Fabrication software exists to produce connections with every bolt and weld. This tool names a connection type and draws its shape.</li>
         <li><b>Tall or heavily loaded buildings.</b> As <a href="#cs-04">How exact the numbers are</a> shows, the steel catalogue is exhausted from around eight storeys on a 7.5 m grid, and the tool does not say so.</li>
-        <li><b>Building physics.</b> Not a comparison at all — there is no thermal, moisture or acoustic model of any kind, so nothing here can be set against WUFI, THERM or an ISO 6946 calculation.</li>
+        <li><b>Building physics.</b> Not a comparison at all — there is no thermal, moisture or acoustic model of any kind, so nothing here can be set against a hygrothermal simulation or a U-value calculation.</li>
       </ul>
 
       <p class="cs-note">The honest summary: this tool sits between a sketch and a scheme. It is
