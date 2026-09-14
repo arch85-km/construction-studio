@@ -493,11 +493,20 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
         nowhere, because nothing computes a deflection. They are there for display, and for
         whatever the tool might do later.</p>
 
+      <h4>Assemblies come from presets only</h4>
+      <p>Each system names one of the nineteen build-ups: a fixed, ordered list of layers,
+        outermost first. <b>You cannot add a layer, delete a layer, or reorder the stack.</b> The
+        build-up you get is the one the system carries. Every layer holds exactly four things — a
+        key, a label, a thickness in millimetres, and a colour family — and nothing else.</p>
+
       <h3>Edits</h3>
       <p>An element you change is remembered by <b>where it sits on the grid</b>, not by an index,
         so the edit survives you altering the building around it. When a change destroys the
         position an edit belonged to, the app says so and offers to keep or discard it rather than
         silently forgetting.</p>
+      <p>Clicking a single member opens a sheet where <b>exactly two things can be changed</b>: its
+        section, picked from the section library, and whether it exists at all. There is no third
+        option — you cannot move a member, rotate it, change its material, or split it.</p>
     </div>
   </div>
 
@@ -532,6 +541,17 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
         <div><span class="cs-chip is-out">Out</span><dt>Drawing your own elements</dt><dd>The document reserves a <span class="cs-mono">manual</span> array described in the source as "elements the student drew", and nothing in the application ever writes to it. There is no drawing tool. Everything you see is generated or edited, never drawn.</dd></div>
         <div><span class="cs-chip is-part">Note</span><dt>Geometry</dt><dd>One rectangular footprint on an orthogonal grid. No L-plans, no curves, no setbacks, no atria, no double-height spaces, no stairs or cores as modelled objects.</dd></div>
       </dl>
+
+      <h3>Building Regulations compliance</h3>
+      <p class="cs-note"><b>Not acceptable for any part of any regulatory submission</b> — not
+        Part L, not Part A, not anything else. For Part L and its equivalents the question does not
+        arise, since no thermal quantity exists anywhere in the tool. For structure, the
+        application's own on-screen disclaimer is the correct statement of its status:
+        <i>"These are rules of thumb for learning and for early design. They are not analysis and
+        not design. Nothing here checks strength, stability, deflection, fire, buckling or
+        connections."</i></p>
+      <p>Cite it as a teaching model of construction assembly and load path. Do not cite it as a
+        source of material property data, and do not cite it for building physics at all.</p>
     </div>
   </div>
 
@@ -630,6 +650,26 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
         number — "Insulation" edits the insulation layer of the wall stack itself. This is why the
         drawing and the model can never disagree, and why changing insulation past the stud depth
         visibly changes the wall rather than being silently absorbed.</p>
+
+      <h4>What you can change about a layer</h4>
+      <p>Only its <b>thickness</b>, and only where a system exposes a parameter whose key matches
+        the layer's. In practice:</p>
+      <ul>
+        <li><b>Insulation</b> — on every system carrying an <span class="cs-mono">insul</span>
+          parameter. The ranges differ by system: 0–200 mm on cavity masonry, 50–250 mm on ground
+          floors, 60–240 and 90–240 mm elsewhere.</li>
+        <li><b>The structural layer</b> — normally set by the sizing rule, but overridden where a
+          <span class="cs-mono">thk</span> parameter exists: 180–400 mm on an RC wall, 100–300 mm
+          on a ground slab.</li>
+        <li><b>Named build-up dimensions</b> a system happens to expose:
+          <span class="cs-mono">slabDepth</span>, <span class="cs-mono">topping</span>,
+          <span class="cs-mono">void</span>, <span class="cs-mono">cavity</span>,
+          <span class="cs-mono">outerT</span>, <span class="cs-mono">innerT</span>.</li>
+      </ul>
+      <p class="cs-note">Every other layer thickness is fixed in the source. You cannot change a
+        layer's material, substitute one product for another, or mark a layer as ventilated or
+        unventilated — which, with §02's note that a layer carries only a colour token, is why no
+        build-up question beyond geometry can be asked of this tool.</p>
 
       <h4>Controls that change nothing numerical</h4>
       <p>Explode, Open, the section box, the four display styles, layer isolation, labels, the
