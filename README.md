@@ -198,14 +198,14 @@ Keeping the notice in the file satisfies the licence. A citation is the
 scholarly act on top of it. `CITATION.cff` in this repository is the
 machine-readable version.
 
-> Al-Obaidi, K.M. (2026). *Construction Studio: a browser-based modeller for
+> Al-Obaidi, K.M. (2026). *Construction Studio: A browser-based modeller for
 > construction and structural systems* (Version 1.0.1) [Computer software].
 > Zenodo. https://doi.org/10.5281/zenodo.22751439
 
 ```bibtex
 @software{alobaidi2026constructionstudio,
   author  = {Al-Obaidi, Karam M.},
-  title   = {Construction Studio: a browser-based modeller for
+  title   = {Construction Studio: A browser-based modeller for
              construction and structural systems},
   year    = {2026},
   version = {1.0.1},
