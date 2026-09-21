@@ -16,6 +16,13 @@ authors:
     orcid: "https://orcid.org/0000-0002-4379-6964"
 version: 1.0.1
 doi: 10.5281/zenodo.22751439
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.22751439
+    description: "Concept DOI — always resolves to the latest version"
+  - type: doi
+    value: 10.5281/zenodo.22751440
+    description: "Version DOI — this release, 1.0.1"
 date-released: 2026-09-14
 license: MIT
 url: "https://karam.me.uk/applications/construction-studio/"

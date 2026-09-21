@@ -200,20 +200,25 @@ machine-readable version.
 
 > Al-Obaidi, K.M. (2026). *Construction Studio: A browser-based modeller for
 > construction and structural systems* (Version 1.0.1) [Computer software].
-> Zenodo. https://doi.org/10.5281/zenodo.22751439
+> Zenodo. https://doi.org/10.5281/zenodo.22751440
 
 ```bibtex
 @software{alobaidi2026constructionstudio,
-  author  = {Al-Obaidi, Karam M.},
-  title   = {Construction Studio: A browser-based modeller for
-             construction and structural systems},
-  year    = {2026},
-  version = {1.0.1},
-  doi     = {10.5281/zenodo.22751439},
-  url     = {https://karam.me.uk/applications/construction-studio/},
-  note    = {MIT licensed}
+  author    = {Al-Obaidi, Karam M.},
+  title     = {Construction Studio: A browser-based modeller for
+               construction and structural systems},
+  year      = {2026},
+  version   = {1.0.1},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.22751440},
+  url       = {https://karam.me.uk/applications/construction-studio/},
+  note      = {Code MIT licensed; accompanying material CC BY 4.0}
 }
 ```
+
+That DOI names this release. To cite the software in general rather than version
+1.0.1, use the concept DOI [10.5281/zenodo.22751439](https://doi.org/10.5281/zenodo.22751439),
+which always resolves to the newest version.
 
 Quote the four systems, the grid and the storey count alongside any figure
 taken from the tool. The sizing rules are span-based, so a depth given without
