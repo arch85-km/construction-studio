@@ -1,0 +1,733 @@
+<!-- ======================================================================
+     CONSTRUCTION STUDIO — "Method notes in brief"
+     A short companion to the full method notes.
+
+     Uses the SAME design system as the full notes: the .cs-doc scope, the same
+     custom properties, the same class names. Body type inherits from the site
+     (--cs-fb:inherit), so it picks up your serif exactly as the full notes do,
+     and it carries the same dark-mode block.
+
+     IF YOU PASTE THIS ON THE SAME PAGE AS THE FULL NOTES, delete the <style>
+     block below — the full notes already define every rule it contains, and
+     one copy is enough. On its own page, keep it.
+
+     THE CITATION STRIP JUMPS HERE. The "How to cite" heading below carries
+     id="how-to-cite", which is what the strip's "Version, BibTeX and licence"
+     link targets. Only ONE element per page may hold that id — so if the full
+     method notes are on this same page, remove the id from one of them.
+     ====================================================================== -->
+
+<style>
+.cs-doc{
+  --cs-paper:#F1F2EE; --cs-surface:#FBFBF9; --cs-surface2:#E8EAE4;
+  --cs-ink:#16191B; --cs-ink2:#4C555A; --cs-ink3:#5F696E;
+  --cs-rule:#D6D9D1; --cs-rule2:#E5E7E1;
+  --cs-accent:#1D5A73; --cs-accent-soft:rgba(29,90,115,.10);
+  --cs-ok:#3F6B47;  --cs-ok-soft:rgba(63,107,71,.12);
+  --cs-warn:#8A6410;--cs-warn-soft:rgba(138,100,16,.13);
+  --cs-no:#8E3A32;  --cs-no-soft:rgba(142,58,50,.11);
+  /* Headings and body follow the site's own typeface. `inherit` resolves where
+     it is used — inside .cs-doc, whose parent is the Elementor container — so
+     this keeps working if the theme font ever changes.
+     The monospace stack must NOT inherit: the table number columns use
+     font-variant-numeric:tabular-nums and align on fixed-width digits, and the
+     formulas and BibTeX block depend on their spacing. */
+  /* The site pairs a sans for headings with a serif for body, so the page
+     does the same. Body inherits — CSS has no way to inherit "the theme's
+     HEADING font", so that one is named. If the site's heading face ever
+     changes, this is the single line to update.
+     Weights sit at 600 throughout: the site ships Poppins 400/500/600 and
+     Source Serif 4 400/600, so 700 and 800 do not exist and the browser
+     would either drop to 600 or synthesise a smeared bold. Size carries the
+     hierarchy instead. */
+  --cs-fd:"Poppins",system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+  --cs-fb:inherit;
+  --cs-fm:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --cs-measure:90ch; --cs-rail:4.75rem;
+
+  background:var(--cs-paper); color:var(--cs-ink);
+  font-family:var(--cs-fb); font-size:17px; line-height:1.65; font-weight:400;
+  max-width:1040px; margin:0 auto; padding:0 20px 4rem;
+  -webkit-font-smoothing:antialiased; text-align:left;
+}
+@media (prefers-color-scheme:dark){
+  .cs-doc.cs-auto-dark{
+    --cs-paper:#121517; --cs-surface:#191D20; --cs-surface2:#21262A;
+    --cs-ink:#E9EBE6; --cs-ink2:#A6AFB4; --cs-ink3:#79838A;
+    --cs-rule:#2C3235; --cs-rule2:#232829;
+    --cs-accent:#74B6D0; --cs-accent-soft:rgba(116,182,208,.14);
+    --cs-ok:#7FB88C;  --cs-ok-soft:rgba(127,184,140,.14);
+    --cs-warn:#D6A748;--cs-warn-soft:rgba(214,167,72,.15);
+    --cs-no:#DD8479;  --cs-no-soft:rgba(221,132,121,.14);
+  }
+}
+
+/* local reset — only inside .cs-doc */
+.cs-doc *,.cs-doc *::before,.cs-doc *::after{box-sizing:border-box;}
+.cs-doc h1,.cs-doc h2,.cs-doc h3,.cs-doc h4,.cs-doc p,.cs-doc ul,.cs-doc ol,
+.cs-doc dl,.cs-doc dt,.cs-doc dd,.cs-doc table,.cs-doc figure{margin:0;padding:0;}
+.cs-doc ul,.cs-doc ol{list-style-position:outside;}
+.cs-doc li{margin:0;}
+.cs-doc img{max-width:100%;height:auto;}
+.cs-doc a{color:var(--cs-accent);text-decoration:underline;text-underline-offset:2px;}
+.cs-doc a:focus-visible{outline:2px solid var(--cs-accent);outline-offset:3px;}
+.cs-doc .cs-sechead{scroll-margin-top:5rem;}
+.cs-doc .cs-sechead:target h2{background:var(--cs-hl,rgba(127,127,127,.14));}
+.cs-doc code,.cs-doc .cs-mono{font-family:var(--cs-fm);font-size:.855em;}
+/* Inline bold defaults to 700. A site that ships only 400/500/600 has no such
+   face, so the browser either drops to 600 or fakes one by smearing the 400.
+   Pin it to a weight that exists. */
+.cs-doc b,.cs-doc strong{font-weight:600;}
+.cs-doc code{background:var(--cs-accent-soft);color:var(--cs-accent);
+  padding:.1em .34em;border-radius:2px;border:0;}
+
+/* masthead */
+.cs-doc .cs-masthead{padding:3.5rem 0 2.25rem;border-bottom:2px solid var(--cs-ink);}
+.cs-doc h1{font-family:var(--cs-fd);font-weight:600;
+  font-size:clamp(2.1rem,6.2vw,3.35rem);line-height:1.02;letter-spacing:-.028em;
+  text-wrap:balance;margin:0 0 1.1rem;color:var(--cs-ink);}
+.cs-doc .cs-standfirst{max-width:var(--cs-measure);font-size:1.14rem;line-height:1.6;
+  color:var(--cs-ink2);margin:0;}
+.cs-doc .cs-standfirst strong{color:var(--cs-ink);font-weight:600;}
+.cs-doc .cs-byline{display:flex;flex-wrap:wrap;gap:.5rem 1.6rem;margin-top:1.9rem;
+  font-family:var(--cs-fm);font-size:.74rem;letter-spacing:.04em;color:var(--cs-ink3);}
+.cs-doc .cs-byline b{color:var(--cs-ink2);font-weight:500;}
+
+/* trap notice */
+.cs-doc .cs-traps{margin:2.5rem 0;border:1px solid var(--cs-rule);
+  border-left:4px solid var(--cs-no);background:var(--cs-surface);padding:1.5rem 1.6rem;}
+.cs-doc .cs-traps h2{font-family:var(--cs-fd);font-size:.82rem;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--cs-no);margin:0 0 .9rem;}
+.cs-doc .cs-traps ol{margin:0;padding-left:1.15rem;display:grid;gap:.6rem;}
+.cs-doc .cs-traps li{max-width:var(--cs-measure);}
+
+/* sections */
+.cs-doc .cs-sec{padding:3.25rem 0 0;}
+.cs-doc .cs-sechead{display:grid;grid-template-columns:var(--cs-rail) 1fr;
+  align-items:baseline;gap:0 1rem;border-top:1px solid var(--cs-rule);
+  padding-top:1.4rem;margin-bottom:1.6rem;}
+.cs-doc .cs-secnum{font-family:var(--cs-fm);font-size:.95rem;font-weight:600;
+  color:var(--cs-accent);letter-spacing:.02em;font-variant-numeric:tabular-nums;}
+.cs-doc .cs-sechead h2{font-family:var(--cs-fd);font-weight:600;
+  font-size:clamp(1.45rem,3.3vw,1.95rem);line-height:1.12;letter-spacing:-.02em;
+  text-wrap:balance;margin:0;color:var(--cs-ink);}
+.cs-doc .cs-secbody{display:grid;grid-template-columns:var(--cs-rail) minmax(0,1fr);gap:0 1rem;}
+.cs-doc .cs-secbody>*{grid-column:2;}
+.cs-doc .cs-secbody>p,.cs-doc .cs-secbody>ul,.cs-doc .cs-secbody>ol{max-width:var(--cs-measure);}
+.cs-doc .cs-secbody>p{margin:0 0 1.05rem;}
+.cs-doc .cs-secbody>ul,.cs-doc .cs-secbody>ol{margin:0 0 1.15rem;padding-left:1.15rem;
+  display:grid;gap:.5rem;}
+.cs-doc h3{font-family:var(--cs-fd);font-weight:600;font-size:1.06rem;
+  letter-spacing:-.005em;margin:1.9rem 0 .7rem;color:var(--cs-ink);}
+.cs-doc .cs-secbody>h3:first-child{margin-top:0;}
+.cs-doc h4{font-family:var(--cs-fm);font-weight:600;font-size:.74rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--cs-ink3);margin:1.6rem 0 .6rem;}
+
+.cs-doc .cs-formula{font-family:var(--cs-fm);font-size:.84rem;line-height:1.75;
+  background:var(--cs-surface);border:1px solid var(--cs-rule);
+  border-left:3px solid var(--cs-accent);padding:.95rem 1.1rem;margin:0 0 1.2rem;
+  overflow-x:auto;white-space:pre;color:var(--cs-ink);}
+.cs-doc .cs-formula em{color:var(--cs-ink3);font-style:normal;}
+.cs-doc .cs-note{font-size:.9rem;color:var(--cs-ink2);border-left:2px solid var(--cs-rule);
+  padding-left:.95rem;margin:0 0 1.2rem;max-width:var(--cs-measure);}
+
+/* tables */
+.cs-doc .cs-tbl{overflow-x:auto;margin:0 0 1.4rem;border:1px solid var(--cs-rule);
+  background:var(--cs-surface);}
+.cs-doc .cs-tbl table{border-collapse:collapse;width:100%;font-size:.845rem;
+  line-height:1.45;background:transparent;}
+.cs-doc .cs-tbl th,.cs-doc .cs-tbl td{padding:.5rem .7rem;text-align:left;
+  vertical-align:top;border:0;border-bottom:1px solid var(--cs-rule2);color:var(--cs-ink);}
+.cs-doc .cs-tbl thead th{font-family:var(--cs-fm);font-size:.68rem;font-weight:600;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--cs-ink3);
+  background:var(--cs-surface2);border-bottom:1px solid var(--cs-rule);white-space:nowrap;}
+.cs-doc .cs-tbl tbody tr:last-child td{border-bottom:0;}
+/* Greek and subscripted symbols must not be uppercased: text-transform turns
+   ν into Ν and γ into Γ, which are different letters, and a reader of a
+   materials table would be misled by both. */
+.cs-doc .cs-tbl thead th.cs-sym{text-transform:none;letter-spacing:.02em;font-size:.74rem;}
+.cs-doc .cs-tbl tbody tr{background:transparent;}
+.cs-doc .cs-tbl .cs-n{text-align:right;font-family:var(--cs-fm);
+  font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cs-doc .cs-tbl .cs-p{font-family:var(--cs-fm);font-size:.8rem;white-space:nowrap;}
+.cs-doc .cs-tbl .cs-d{font-family:var(--cs-fm);font-variant-numeric:tabular-nums;
+  white-space:nowrap;color:var(--cs-accent);font-weight:500;text-align:right;}
+.cs-doc .cs-tbl caption{caption-side:bottom;text-align:left;padding:.6rem .7rem;
+  font-size:.78rem;color:var(--cs-ink3);border-top:1px solid var(--cs-rule2);}
+
+/* chips + ledger */
+.cs-doc .cs-chip{display:inline-block;font-family:var(--cs-fm);font-size:.64rem;
+  font-weight:600;letter-spacing:.07em;text-transform:uppercase;padding:.15em .5em;
+  border-radius:2px;white-space:nowrap;}
+.cs-doc .cs-chip.is-in{background:var(--cs-ok-soft);color:var(--cs-ok);}
+.cs-doc .cs-chip.is-part{background:var(--cs-warn-soft);color:var(--cs-warn);}
+.cs-doc .cs-chip.is-out{background:var(--cs-no-soft);color:var(--cs-no);}
+.cs-doc .cs-ledger{display:grid;gap:0;border:1px solid var(--cs-rule);
+  background:var(--cs-surface);margin-bottom:1.4rem;}
+.cs-doc .cs-ledger>div{display:grid;grid-template-columns:7.5rem minmax(0,1fr);
+  gap:.2rem .9rem;padding:.8rem 1rem;border-bottom:1px solid var(--cs-rule2);}
+.cs-doc .cs-ledger>div:last-child{border-bottom:0;}
+.cs-doc .cs-ledger dt{font-family:var(--cs-fd);font-weight:600;font-size:.95rem;
+  grid-column:2;margin:0;color:var(--cs-ink);}
+.cs-doc .cs-ledger .cs-chip{grid-row:1;grid-column:1;align-self:start;margin-top:.18rem;}
+.cs-doc .cs-ledger dd{grid-column:2;margin:0;font-size:.93rem;color:var(--cs-ink2);
+  line-height:1.55;}
+
+/* exercises */
+.cs-doc .cs-ex{border:1px solid var(--cs-rule);background:var(--cs-surface);
+  padding:1.5rem 1.6rem;margin-bottom:1.5rem;}
+.cs-doc .cs-ex-n{font-family:var(--cs-fm);font-size:.7rem;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--cs-accent);
+  display:block;margin-bottom:.35rem;}
+.cs-doc .cs-ex h3{margin:0 0 .9rem;font-size:1.18rem;}
+.cs-doc .cs-steps{margin:0;padding-left:1.2rem;display:grid;gap:.5rem;font-size:.95rem;}
+.cs-doc .cs-steps code{font-size:.8rem;}
+.cs-doc .cs-principle{font-size:.93rem;color:var(--cs-ink2);
+  border-top:1px solid var(--cs-rule2);padding-top:.85rem;margin:.95rem 0 0;}
+.cs-doc .cs-principle b{color:var(--cs-ink);font-weight:600;}
+
+/* footer */
+.cs-doc .cs-footer{margin-top:4rem;padding-top:1.6rem;border-top:2px solid var(--cs-ink);
+  font-size:.86rem;color:var(--cs-ink2);}
+.cs-doc .cs-footer p{max-width:var(--cs-measure);margin:0 0 .8rem;}
+.cs-doc .cs-cite{font-family:var(--cs-fm);font-size:.78rem;color:var(--cs-ink3);line-height:1.7;}
+.cs-doc .cs-refs{max-width:var(--cs-measure);margin:0 0 1.2rem;padding-left:1.15rem;
+  display:grid;gap:.55rem;font-size:.9rem;color:var(--cs-ink2);}
+.cs-doc .cs-refs b{color:var(--cs-ink);font-weight:600;}
+.cs-doc .cs-ref{border-left:2px solid var(--cs-rule);padding-left:.95rem;margin:0 0 1rem;
+  max-width:var(--cs-measure);font-size:.92rem;color:var(--cs-ink2);}
+.cs-doc pre{margin:0 0 1rem;padding:.9rem 1rem;background:var(--cs-surface);
+  border:1px solid var(--cs-rule);overflow-x:auto;font-family:var(--cs-fm);
+  font-size:.78rem;line-height:1.6;color:var(--cs-ink);white-space:pre;}
+
+/* Large screens. Most sizes here are in rem, which is relative to the ROOT
+   font size, not to .cs-doc — so raising .cs-doc alone would scale the body
+   copy and leave the byline, notes and references behind. They are stepped up
+   together. */
+@media (min-width:1280px){
+  .cs-doc{font-size:18.5px;max-width:1140px;}
+  .cs-doc .cs-standfirst{font-size:1.22rem;}
+  .cs-doc .cs-byline{font-size:.84rem;}
+  .cs-doc h3{font-size:1.14rem;}
+  .cs-doc .cs-note{font-size:.97rem;}
+  .cs-doc .cs-ref{font-size:1rem;}
+  .cs-doc .cs-cite{font-size:.86rem;}
+  .cs-doc pre{font-size:.86rem;}
+  .cs-doc .cs-ledger dt{font-size:1.02rem;}
+  .cs-doc .cs-ledger dd{font-size:1rem;}
+  .cs-doc .cs-chip{font-size:.70rem;}
+  .cs-doc .cs-traps h2{font-size:.88rem;}
+  .cs-doc .cs-steps{font-size:1rem;}
+  .cs-doc .cs-principle{font-size:.99rem;}
+  .cs-doc .cs-ex-n{font-size:.76rem;}
+}
+@media (max-width:720px){
+  .cs-doc{--cs-rail:0px;font-size:16px;}
+  .cs-doc .cs-sechead{grid-template-columns:1fr;gap:.35rem;}
+  .cs-doc .cs-secbody{grid-template-columns:minmax(0,1fr);}
+  .cs-doc .cs-secbody>*{grid-column:1;}
+  .cs-doc .cs-traps,.cs-doc .cs-ex{padding:1.15rem;}
+}
+@media (max-width:560px){
+  .cs-doc .cs-ledger>div{grid-template-columns:1fr;}
+  .cs-doc .cs-ledger .cs-chip{grid-row:auto;grid-column:1;justify-self:start;margin-bottom:.3rem;}
+  .cs-doc .cs-ledger dt,.cs-doc .cs-ledger dd{grid-column:1;}
+}
+@media (prefers-reduced-motion:reduce){
+  .cs-doc *{animation-duration:.01ms !important;transition-duration:.01ms !important;}
+}
+.cs-doc .cs-eyebrow{font-family:var(--cs-fm);font-size:.70rem;font-weight:500;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--cs-accent);margin:0 0 1.1rem;}
+
+/* Figures. A host theme usually styles <figure> and <figcaption> itself, and
+   its rules can be specific enough to win here — which is where an italic
+   caption and a caption sitting hard against the next paragraph come from.
+   The four properties that decide that are pinned, so the caption keeps this
+   page's own monospace label style wherever the fragment is pasted. */
+.cs-doc .cs-fig{margin:0 0 1.9rem !important;font-style:normal;}
+.cs-doc .cs-fig svg{display:block;width:100%;height:auto;font-style:normal;
+  background:var(--cs-paper);border:1px solid var(--cs-rule);}
+.cs-doc .cs-fig figcaption{font-family:var(--cs-fm) !important;
+  font-style:normal !important;font-size:.68rem;letter-spacing:.06em;line-height:1.5;
+  text-align:left;text-transform:uppercase;color:var(--cs-ink3);
+  margin:.7rem 0 0 !important;}
+</style>
+
+<div class="cs-doc cs-auto-dark">
+
+  <div class="cs-masthead">
+    <p class="cs-eyebrow">Construction Studio &middot; In brief</p>
+    <h1>Method notes in brief</h1>
+    <p class="cs-standfirst">The short version: what the tool computes, and <strong>what it does not
+      model at all</strong>. It sizes members from span rules of thumb and takes load down by
+      tributary area. There is no solver in it &mdash; no stiffness matrix, no finite elements,
+      nothing iterative, and no internal force is computed anywhere. The
+      <a href="https://github.com/arch85-km/construction-studio" target="_blank" rel="noopener">full
+      method notes</a> give all 27 rules, the measured tables and the provenance of every figure.</p>
+    <div class="cs-byline">
+      <span><b>Audience</b> Architecture students and staff</span>
+      <span><b>Method</b> Span rules of thumb &middot; tributary-area takedown</span>
+      <span><b>Runs</b> Entirely in the browser</span>
+      <span><b>Version</b> 1.0.1 &middot; 14 September 2026</span>
+    </div>
+  </div>
+
+  <div class="cs-traps">
+    <h2>Three things to know before you cite a number</h2>
+    <ol>
+      <li><b>The panel prints a range; the tool sizes from the middle of it.</b> A depth rule is the
+        span divided by a number. A steel beam is labelled <span class="cs-mono">L/18 &ndash; L/20</span>,
+        which on a 12&nbsp;m span means 667&nbsp;mm deep at one end and 600&nbsp;mm at the other
+        &mdash; a real choice, since the shallow end costs steel and the deep end costs headroom. The
+        tool makes it for you: it averages the two divisors and uses 19, so the panel reads
+        <span class="cs-mono">12.00&nbsp;m &divide; 19 = 632&nbsp;mm &rarr; IPE&nbsp;600</span>, a
+        depth the range it quotes never names. Seven rules work this way. Quoting a depth from this
+        tool as &ldquo;L/18&rdquo; is wrong: it is the midpoint, always.</li>
+      <li><b>Nothing here is analysis.</b> No strength, deflection, buckling, fire or connection check
+        is ever performed. The green / amber / red flag compares the <em>span</em> against the range
+        the rule suits &mdash; not the member against a capacity. A green flag does not mean the
+        member works.</li>
+      <li><b>The load takedown is gravity only, by tributary area.</b> No frame action, no continuity,
+        no moment, no wind, no seismic, no snow. It is the hand calculation done at the start of a
+        project, and nothing more.</li>
+    </ol>
+  </div>
+
+  <section class="cs-sec">
+    <div class="cs-sechead"><span class="cs-secnum"></span><h2>What it calculates</h2></div>
+    <div class="cs-secbody">
+      <p>Five things, and they are all arithmetic you could do on paper.</p>
+      <div class="cs-tbl"><table>
+        <thead><tr><th>Quantity</th><th>From</th><th>Basis</th></tr></thead>
+        <tbody>
+          <tr><td><b>Member depth</b></td><td class="cs-p">span &divide; a divisor</td><td>27 rules, one per member type</td></tr>
+          <tr><td><b>Column size</b></td><td class="cs-p">tributary area &times; storeys &times; load</td><td>Required area &divide; a permissible stress</td></tr>
+          <tr><td><b>Foundation size</b></td><td class="cs-p">load &divide; bearing capacity</td><td>Bearing pressure only</td></tr>
+          <tr><td><b>Load takedown</b></td><td class="cs-p">tributary area per support</td><td>Accumulated storey by storey</td></tr>
+          <tr><td><b>Masonry slenderness</b></td><td class="cs-p">h<sub>ef</sub> / t<sub>ef</sub></td><td>The one code check in the tool</td></tr>
+        </tbody>
+      </table></div>
+      <p>Columns, posts and piers all share one shape &mdash; gather a load, divide by a permissible
+        stress, take the square root for a square section:</p>
+      <div class="cs-formula">N = A_trib &#215; max(1, storeys) &#215; w        <em>kN</em>
+
+A_required = N / f_permissible
+
+<em>steel  </em> f = 0.6 &#215; 275 MPa   <em>(S275)</em>
+<em>RC     </em> f = 0.4 &#215; 30 MPa    <em>(C30)</em>
+<em>timber </em> f = 0.6 &#215; 24 MPa    <em>(GL24)</em>
+<em>masonry</em> f = 2.5 MPa         <em>(pier)</em></div>
+      <p>The load <i>w</i> is one number per use class, applied as a single combined allowance per
+        square metre per storey: residential&nbsp;9, office&nbsp;11, retail&nbsp;12,
+        industrial&nbsp;14, roof&nbsp;5&nbsp;kN/m&sup2;. <b>Dead and imposed are never separated and
+        no load factors are applied</b>, so these are service-level allowances, not design values.
+        They cannot be carried into a code calculation as they stand.</p>
+      <p>Load comes down top-down. Where the vertical system offers <b>lines</b> &mdash; walls
+        &mdash; it is spread evenly along the perimeter, so every metre of wall carries the same
+        whatever is above it. Where it offers <b>points</b> &mdash; columns &mdash; each grid node
+        takes the floor area nearest to it. Two invariants are asserted by the test suite: the loads
+        on all supports add up to the loads on all floors, and the reactions every level&rsquo;s
+        members deliver add up to that level&rsquo;s load.</p>
+      <p>Members are classified by their own direction rather than by name, so a rafter, a brace and
+        a portal leg classify themselves. A member takes the strip of floor its family spacing
+        implies and delivers half of what it collects to each end &mdash; the classic
+        <span class="cs-mono">wL/2</span>. An inclined member also pushes its support sideways, and
+        that push is the whole reason a pitched roof needs a tie:</p>
+      <div class="cs-formula">H = V &#215; (run / rise)   =   V / tan(pitch)</div>
+      <p class="cs-note">The strips are normalised so they add back up to the level&rsquo;s load,
+        which means an error in any one member&rsquo;s assumed strip is redistributed among the
+        others rather than showing up as a shortfall. The arithmetic always balances; that it
+        balances is not evidence that any individual member&rsquo;s share is right.</p>
+    </div>
+  </section>
+
+  <section class="cs-sec">
+    <div class="cs-sechead"><span class="cs-secnum"></span><h2>The flag is green far more often than it should be</h2></div>
+    <div class="cs-secbody">
+      <p>Eight of the 27 rules can <b>never</b> return anything but green, because they carry neither
+        a span band to compare against nor a real check: the four column rules, three of the four
+        foundation rules, and the pad footing &mdash; which does have a check, but one written to
+        compare a constant zero against a limit of one, so it can only ever pass. Only the masonry
+        slenderness rule performs a genuine check. The other eighteen compare the span against the
+        range the rule suits, which is useful, but it is a statement about applicability, not about
+        the member.</p>
+      <p>The consequence is worth seeing concretely. An office column on a 7.5&nbsp;&times;&nbsp;7.5&nbsp;m
+        grid, sized by the tool:</p>
+      <div class="cs-tbl"><table>
+        <thead><tr><th class="cs-n">Storeys</th><th class="cs-n">N</th><th class="cs-n">Area needed</th><th>Section given</th><th class="cs-n">Area provided</th><th class="cs-n">Short by</th><th>Flag</th></tr></thead>
+        <tbody>
+          <tr><td class="cs-n">6</td><td class="cs-n">3 713 kN</td><td class="cs-n">22 500 mm&sup2;</td><td class="cs-p">HEB 500</td><td class="cs-n">23 860 mm&sup2;</td><td class="cs-d">&mdash;</td><td><span class="cs-chip is-in">ok</span></td></tr>
+          <tr><td class="cs-n">8</td><td class="cs-n">4 950 kN</td><td class="cs-n">30 000 mm&sup2;</td><td class="cs-p">HEB 600</td><td class="cs-n">27 000 mm&sup2;</td><td class="cs-d">10%</td><td><span class="cs-chip is-in">ok</span></td></tr>
+          <tr><td class="cs-n">10</td><td class="cs-n">6 188 kN</td><td class="cs-n">37 500 mm&sup2;</td><td class="cs-p">HEB 600</td><td class="cs-n">27 000 mm&sup2;</td><td class="cs-d">28%</td><td><span class="cs-chip is-in">ok</span></td></tr>
+          <tr><td class="cs-n">12</td><td class="cs-n">7 425 kN</td><td class="cs-n">45 000 mm&sup2;</td><td class="cs-p">HEB 600</td><td class="cs-n">27 000 mm&sup2;</td><td class="cs-d">40%</td><td><span class="cs-chip is-in">ok</span></td></tr>
+        </tbody>
+        <caption>HEB 600 is the deepest of the 19 HEB sections in the catalogue. From eight storeys
+          up the tool has run out of steel, hands back the largest section it has, and still reports
+          green. Above roughly seven storeys on this grid, read the column size as &ldquo;at least
+          this&rdquo; rather than as an answer.</caption>
+      </table></div>
+    </div>
+  </section>
+
+  <section class="cs-sec">
+    <div class="cs-sechead"><span class="cs-secnum"></span><h2>Conservative one way, unconservative the other</h2></div>
+    <div class="cs-secbody">
+      <dl class="cs-ledger">
+        <div><span class="cs-chip is-part">runs high</span><dt>No imposed-load reduction</dt><dd>Every storey is counted at its full allowance. Real practice reduces the imposed component on a column gathering many floors, because the chance of every floor being fully loaded at once is small. The tool's loads therefore run high — increasingly so with height.</dd></div>
+        <div><span class="cs-chip is-part">runs low</span><dt>No slenderness reduction</dt><dd>Column area uses a flat permissible stress with no reduction for buckling. A slender column is therefore undersized by this rule — in the opposite direction to the point above. The two do not cancel in any predictable way.</dd></div>
+        <div><span class="cs-chip is-part">neither</span><dt>One combined load</dt><dd>Dead and imposed are never separated and no partial factors are applied, so the figures are neither characteristic nor design values.</dd></div>
+        <div><span class="cs-chip is-part">neither</span><dt>Rounding</dt><dd>Concrete to 25 mm, glulam to 45 mm — one lamination — masonry to 5 mm, and catalogue families to the next section up. Panels are synthesised at the exact size wanted, so a CLT or hollowcore depth can look more precise than the rule behind it.</dd></div>
+      </dl>
+      <p class="cs-note">One more worth knowing before you quote a masonry figure. The slenderness
+        limit of 27 is the Eurocode&nbsp;6 value, but the cavity-wall effective thickness the tool
+        uses, <span class="cs-mono">t_ef = &#8532;(t&#8321; + t&#8322;)</span>, is the BS&nbsp;5628
+        form; EN&nbsp;1996-1-1 gives <span class="cs-mono">(t&#8321;&sup3; + t&#8322;&sup3;)<sup>1/3</sup></span>.
+        The source names only &ldquo;EN&nbsp;1996&rdquo;, with no clause and no edition, so which was
+        intended cannot be read from the code. As a rule of thumb this changes little; quoted as a
+        code check it matters.</p>
+      <p>What <em>can</em> be checked, is: 27 sizing checks against hand calculation, 18
+        load-takedown checks in both directions including the eaves thrust, the generator exercised
+        across all 30 systems and every cross-part combination, and 71 checks driving the app in a
+        real browser. That tells you the tool computes what it says it computes. It says nothing
+        about whether a rule of thumb suits your building.</p>
+    </div>
+  </section>
+
+  <section class="cs-sec">
+    <div class="cs-sechead"><span class="cs-secnum"></span><h2>Not modelled at all</h2></div>
+    <div class="cs-secbody">
+      <p>These are the assumptions a student is most likely to make wrongly, because a
+        general-purpose structural tool would handle them.</p>
+      <dl class="cs-ledger">
+        <div><span class="cs-chip is-out">Out</span><dt>Structural analysis</dt><dd>No solver of any kind: no stiffness matrix, no finite elements, no moment, no shear force, no bending diagram. Nothing in the application computes an internal force.</dd></div>
+        <div><span class="cs-chip is-out">Out</span><dt>Strength and deflection checks</dt><dd>No member is ever verified against a capacity or a deflection limit. Several rules note in their own source text that deflection normally governs — and then do not check it.</dd></div>
+        <div><span class="cs-chip is-out">Out</span><dt>Buckling, fire and connection design</dt><dd>Named in the tool's own disclaimer as absent, and absent they are.</dd></div>
+        <div><span class="cs-chip is-out">Out</span><dt>Lateral load</dt><dd>No wind, no seismic, no notional horizontal force. Braced frames, shear walls and portal frames are drawn and named, but nothing sizes their bracing or checks the building's stability.</dd></div>
+        <div><span class="cs-chip is-out">Out</span><dt>Snow and load combinations</dt><dd>One combined allowance per square metre per use class, at service level. No partial factors, no combination formed.</dd></div>
+        <div><span class="cs-chip is-out">Out</span><dt>Reinforcement</dt><dd>No bar is sized, counted or arranged. Concrete elements are solid volumes.</dd></div>
+        <div><span class="cs-chip is-out">Out</span><dt>Building physics</dt><dd>No U-value, no thermal bridge, no condensation risk, no acoustics, no airtightness. The insulation layer in a build-up has a thickness and a colour and nothing else — the tool holds no material conductivity data at all.</dd></div>
+        <div><span class="cs-chip is-out">Out</span><dt>Cost and carbon</dt><dd>No quantities are priced and no embodied carbon is calculated, though the element counts a take-off would need are present in the model.</dd></div>
+        <div><span class="cs-chip is-part">Note</span><dt>Geometry</dt><dd>One rectangular footprint on an orthogonal grid. No L-plans, no curves, no setbacks, no atria, no double-height spaces, no stairs or cores as modelled objects — and no drawing tool: everything you see is generated or edited, never drawn.</dd></div>
+      </dl>
+      <p class="cs-note"><b>Not acceptable for any part of any regulatory submission</b> &mdash; not
+        Part&nbsp;L, not Part&nbsp;A, not anything else. For Part&nbsp;L the question does not arise,
+        since no thermal quantity exists anywhere in the tool. For structure, the
+        application&rsquo;s own on-screen disclaimer is the correct statement of its status:
+        <i>&ldquo;These are rules of thumb for learning and for early design. They are not analysis
+        and not design. Nothing here checks strength, stability, deflection, fire, buckling or
+        connections.&rdquo;</i></p>
+    </div>
+  </section>
+
+  <section class="cs-sec">
+    <div class="cs-sechead"><span class="cs-secnum"></span><h2>Three exercises</h2></div>
+    <div class="cs-secbody">
+      <p>Each isolates one variable and holds everything else fixed. Start from a template, change
+        only what the step names, and read the sizing panel rather than the picture.</p>
+
+      <div class="cs-ex">
+        <span class="cs-ex-n">Exercise 01</span>
+        <h3>Depth follows span, and it is not a straight line you can see</h3>
+        <figure class="cs-fig">
+<svg viewBox="0 0 720 336" role="img" aria-label="Beam depth against span for a steel beam. The span over 19 rule is a straight line; the section the tool actually returns is a staircase. Between 7.61 and 8.55 metres every span returns the same IPE 450, so a twelve per cent change of span changes the answer not at all, and just past 8.55 metres it jumps a whole size to IPE 500.">
+  <text x="20" y="24" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11" fill="var(--cs-ink)">THE RULE IS A LINE. THE ANSWER IS A STAIRCASE.</text>
+  <text x="20" y="38" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink3)">Steel beam &#183; L/19 &#183; IPE catalogue &#183; every step boundary read from the tool</text>
+  <text x="20" y="58" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink3)">DEPTH, mm</text>
+  <path d="M84 249.7 L660 249.7" stroke="var(--cs-rule2)" stroke-width="1"/>
+  <text x="75" y="253.15217391304347" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="end">300</text>
+  <path d="M84 207.9 L660 207.9" stroke="var(--cs-rule2)" stroke-width="1"/>
+  <text x="75" y="211.41304347826087" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="end">350</text>
+  <path d="M84 166.2 L660 166.2" stroke="var(--cs-rule2)" stroke-width="1"/>
+  <text x="75" y="169.67391304347825" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="end">400</text>
+  <path d="M84 124.4 L660 124.4" stroke="var(--cs-rule2)" stroke-width="1"/>
+  <text x="75" y="127.93478260869566" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="end">450</text>
+  <path d="M84 82.7 L660 82.7" stroke="var(--cs-rule2)" stroke-width="1"/>
+  <text x="75" y="86.19565217391303" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="end">500</text>
+  <path d="M84 66 L84 258" stroke="var(--cs-rule)" stroke-width="1"/>
+  <path d="M84 258 L660 258" stroke="var(--cs-rule)" stroke-width="1"/>
+  <path d="M117.9 258 L117.9 262" stroke="var(--cs-rule)" stroke-width="1"/>
+  <text x="117.8823529411765" y="275" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="middle">6&#8201;m</text>
+  <path d="M287.3 258 L287.3 262" stroke="var(--cs-rule)" stroke-width="1"/>
+  <text x="287.2941176470589" y="275" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="middle">7&#8201;m</text>
+  <path d="M456.7 258 L456.7 262" stroke="var(--cs-rule)" stroke-width="1"/>
+  <text x="456.7058823529413" y="275" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="middle">8&#8201;m</text>
+  <path d="M626.1 258 L626.1 262" stroke="var(--cs-rule)" stroke-width="1"/>
+  <text x="626.1176470588236" y="275" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="middle">9&#8201;m</text>
+  <text x="372.0" y="292" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink3)" text-anchor="middle">SPAN</text>
+  <rect x="390.6" y="66" width="160.9" height="192" fill="var(--cs-no)" opacity=".08"/>
+  <path d="M84.0 224.6 L165.3 224.6 L165.3 199.6 L261.9 199.6 L261.9 166.2 L390.6 166.2 L390.6 124.4 L551.6 124.4 L551.6 82.7 L660.0 82.7 L660.0 82.7" fill="none" stroke="var(--cs-accent)" stroke-width="2.2"/>
+  <path d="M84.0 245.3 L660.0 95.9" stroke="var(--cs-ink)" stroke-width="1.4" stroke-dasharray="6 4"/>
+  <text x="561.7411764705882" y="137.35926773455378" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink)">L/19 &#8212; the rule</text>
+  <text x="109.41176470588242" y="191.56521739130434" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-accent)">the section you get</text>
+  <text x="396.6352941176472" y="206" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-no)">IPE 450 for every span in here</text>
+  <text x="396.6352941176472" y="219" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-no)">7.61 to 8.55 m &#8212; 12% of span, no change at all</text>
+  <text x="20" y="306" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--cs-no)">Two buildings a metre apart in span can take the identical beam; two 10 cm apart can differ by a size.</text>
+  <text x="20" y="324" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink3)">Every boundary above was found by sweeping the tool in 10 mm steps.</text>
+</svg>
+<figcaption>Beam depth against span. The rule is continuous; the catalogue is not, so a metre of span can buy you nothing and 100 mm can cost a whole size.</figcaption>
+        </figure>
+        <ol class="cs-steps">
+          <li>Load the <b>office</b> template. Set the grid to <code>1 &times; 1</code> bays so there
+            is one span to watch, floor system <b>Composite steel floor</b>.</li>
+          <li>Set the span to <code>6.0</code>&nbsp;m. Click a secondary beam and write down the
+            depth the panel computes <em>and</em> the section it chooses.</li>
+          <li>Repeat at <code>6.5</code>, <code>7.0</code>, <code>7.75</code>, <code>8.5</code> and
+            <code>8.75</code>&nbsp;m. Six readings.</li>
+          <li>Plot computed depth against span, and the chosen section against span, on the same
+            axes.</li>
+          <li>Now switch the floor to <b>Timber joist</b> and repeat at three spans. Note where the
+            amber flag appears and read what it says.</li>
+        </ol>
+        <p class="cs-principle"><b>Principle.</b> The rule is a straight line &mdash; depth is span
+          over a constant. The <em>answer</em> is a staircase, because real sections come in sizes.
+          Two buildings a metre apart in span can take the identical beam, and two 100&nbsp;mm apart
+          can differ by a whole size. This is why a structural grid is chosen, not derived, and why
+          the question &ldquo;what span should I use?&rdquo; has flat spots in it worth landing on.
+          The timber run adds the second lesson: every rule has a range it suits, and the flag is
+          telling you about the <em>span</em>, not about the beam.</p>
+      </div>
+
+      <div class="cs-ex">
+        <span class="cs-ex-n">Exercise 02</span>
+        <h3>The same floor, carried four ways</h3>
+        <figure class="cs-fig">
+<svg viewBox="0 0 720 368" role="img" aria-label="Four floor systems at a 7.5 metre span with their structural depths drawn to scale: composite steel 470 millimetres, precast hollowcore 275, reinforced concrete flat plate 250, cross-laminated timber 240. Under all four, the same column load of 1856 kilonewtons, because the tool loads the floor by use class rather than by what the floor is made of.">
+  <text x="20" y="24" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11" fill="var(--cs-ink)">FOUR FLOORS, ONE COLUMN LOAD</text>
+  <text x="20" y="38" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink3)">7.5 &#215; 7.5 m grid &#183; 3 storeys &#183; office &#183; every depth sized by the tool&#8217;s own rule</text>
+  <path d="M28 101.9 L624 101.9" stroke="var(--cs-no)" stroke-width="1" stroke-dasharray="3 3"/>
+  <path d="M28 174.4 L624 174.4" stroke="var(--cs-no)" stroke-width="1" stroke-dasharray="3 3"/>
+  <text x="630" y="105.94999999999999" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-no)">470 mm</text>
+  <text x="630" y="178.4" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-no)">240 mm</text>
+  <text x="630" y="142.175" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-no)">230 apart</text>
+  <rect x="28" y="205.9" width="120" height="44.1" fill="var(--cs-accent)" opacity=".26" stroke="var(--cs-ink3)" stroke-width=".7"/>
+  <text x="88.0" y="231.45000000000002" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink)" text-anchor="middle">140 mm slab</text>
+  <rect x="28" y="102.0" width="120" height="104.0" fill="var(--cs-accent)" opacity=".50" stroke="var(--cs-ink3)" stroke-width=".7"/>
+  <text x="88.0" y="157.425" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink)" text-anchor="middle">IPE 330 beam</text>
+  <text x="88.0" y="82.95" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink)" text-anchor="middle">COMPOSITE STEEL</text>
+  <text x="88.0" y="94.95" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--cs-ink)" text-anchor="middle">470 mm structural</text>
+  <rect x="183" y="226.4" width="120" height="23.6" fill="var(--cs-accent)" opacity=".26" stroke="var(--cs-ink3)" stroke-width=".7"/>
+  <text x="243.0" y="241.6875" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink)" text-anchor="middle">75 topping</text>
+  <rect x="183" y="163.4" width="120" height="63.0" fill="var(--cs-accent)" opacity=".50" stroke="var(--cs-ink3)" stroke-width=".7"/>
+  <text x="243.0" y="198.375" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink)" text-anchor="middle">200 mm plank</text>
+  <text x="243.0" y="144.375" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink)" text-anchor="middle">HOLLOWCORE</text>
+  <text x="243.0" y="156.375" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--cs-ink)" text-anchor="middle">275 mm structural</text>
+  <rect x="338" y="171.2" width="120" height="78.8" fill="var(--cs-accent)" opacity=".50" stroke="var(--cs-ink3)" stroke-width=".7"/>
+  <text x="398.0" y="214.125" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink)" text-anchor="middle">250 mm slab</text>
+  <text x="398.0" y="152.25" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink)" text-anchor="middle">RC FLAT PLATE</text>
+  <text x="398.0" y="164.25" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--cs-ink)" text-anchor="middle">250 mm structural</text>
+  <rect x="493" y="174.4" width="120" height="75.6" fill="var(--cs-accent)" opacity=".50" stroke="var(--cs-ink3)" stroke-width=".7"/>
+  <text x="553.0" y="215.7" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink)" text-anchor="middle">240 mm panel</text>
+  <text x="553.0" y="155.4" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink)" text-anchor="middle">CLT PANEL</text>
+  <text x="553.0" y="167.4" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--cs-ink)" text-anchor="middle">240 mm structural</text>
+  <path d="M18 250 L623 250" stroke="var(--cs-ink)" stroke-width="1.6"/>
+  <text x="18" y="264" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)">common soffit</text>
+  <rect x="28" y="284" width="585" height="34" fill="var(--cs-surface2)" stroke="var(--cs-rule)" stroke-width="1"/>
+  <text x="320.5" y="299" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--cs-ink)" text-anchor="middle">N = 56.25 m&#178; &#215; 3 storeys &#215; 11 kN/m&#178; = 1&#8201;856 kN</text>
+  <text x="320.5" y="312" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink3)" text-anchor="middle">identical under all four floors</text>
+  <text x="20" y="340" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--cs-no)">The floor loads by use class, not by what it is made of &#8212; slab and timber panel weigh the same.</text>
+  <text x="20" y="358" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink3)">That is a limitation of the tool, not a finding about the floors. Finding it yourself is the exercise.</text>
+</svg>
+<figcaption>Four floors at a 7.5 m span, drawn to scale. 230 mm between shallowest and deepest &mdash; and one column load under all of them.</figcaption>
+        </figure>
+        <ol class="cs-steps">
+          <li>Office template, <code>7.5 &times; 7.5</code>&nbsp;m grid, <code>3</code> storeys, use
+            class <b>Office</b>.</li>
+          <li>Open <b>Teach &rarr; Compare</b> and put <b>Composite steel floor</b> against
+            <b>RC flat slab</b>. Record the structural depth of each and the floor-to-floor
+            consequence.</li>
+          <li>Swap the comparison to <b>Precast hollowcore</b> and then <b>CLT floor panels</b>.
+            Record both.</li>
+          <li>For each of the four, open <b>Analysis</b> and read the load arriving at one internal
+            column. Note that all four give you the same number.</li>
+          <li>Now change the use class to <b>Industrial</b> and re-read one column. Then change it
+            back.</li>
+        </ol>
+        <p class="cs-principle"><b>Principle.</b> Floor system choice is a depth decision long
+          before it is a strength decision &mdash; over three storeys, 230&nbsp;mm of structural
+          depth is most of a storey height. The column load does not move between systems because
+          the tool loads the floor by <em>use class</em>, not by what the floor is made of: the
+          self-weight of a concrete slab and a CLT panel are identical to this model. That is a
+          limitation, and finding it yourself is the exercise. Ask what the answer <em>should</em>
+          look like, then look at what the tool calculates to see why it does not.</p>
+      </div>
+
+      <div class="cs-ex">
+        <span class="cs-ex-n">Exercise 03</span>
+        <h3>Where the roof pushes, and what stops it</h3>
+        <figure class="cs-fig">
+<svg viewBox="0 0 720 358" role="img" aria-label="Horizontal thrust at the foot of a rafter divided by the vertical reaction, plotted against roof pitch. The relationship is one over the tangent of the pitch, a hyperbola: at fifteen degrees the thrust is 3.7 times the vertical, at six degrees 9.5 times, and at three degrees 19.1 times. Halving the pitch roughly doubles the push.">
+  <text x="20" y="24" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11" fill="var(--cs-ink)">A SHALLOW ROOF PUSHES HARD</text>
+  <text x="20" y="38" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink3)">H = V &#247; tan(pitch) &#183; steel portal, the shed template &#183; pitch range 3&#8211;15&#176;</text>
+  <path d="M54 196 L163 166 L272 196" fill="none" stroke="var(--cs-ink)" stroke-width="2.2"/>
+  <path d="M54 196 L54 250 M272 196 L272 250" stroke="var(--cs-ink)" stroke-width="2.2"/>
+  <path d="M24 250 L302 250" stroke="var(--cs-ink)" stroke-width="1.5"/>
+  <path d="M54 196 L118 196" stroke="var(--cs-ink3)" stroke-width="1" stroke-dasharray="3 2"/>
+  <text x="84" y="190" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)">pitch</text>
+  <path d="M54 256 L54 288" stroke="var(--cs-accent)" stroke-width="2"/>
+  <path d="M50 282 L58 282 L54 291 Z" fill="var(--cs-accent)"/>
+  <text x="61" y="280" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--cs-accent)">V</text>
+  <path d="M54 250 L8 250" stroke="var(--cs-no)" stroke-width="2"/>
+  <path d="M14 246 L14 254 L5 250 Z" fill="var(--cs-no)"/>
+  <text x="14" y="241" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--cs-no)">H</text>
+  <text x="163" y="308" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink3)" text-anchor="middle">the rafter pushes the column out</text>
+  <text x="163" y="322" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink3)" text-anchor="middle">&#8212; a tie or a haunch is what stops it</text>
+  <path d="M300 262.0 L660 262.0" stroke="var(--cs-rule2)" stroke-width="1"/>
+  <text x="292" y="265.5" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="end">0&#215;</text>
+  <path d="M300 218.8 L660 218.8" stroke="var(--cs-rule2)" stroke-width="1"/>
+  <text x="292" y="222.3181818181818" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="end">5&#215;</text>
+  <path d="M300 175.6 L660 175.6" stroke="var(--cs-rule2)" stroke-width="1"/>
+  <text x="292" y="179.13636363636363" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="end">10&#215;</text>
+  <path d="M300 132.5 L660 132.5" stroke="var(--cs-rule2)" stroke-width="1"/>
+  <text x="292" y="135.95454545454547" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="end">15&#215;</text>
+  <path d="M300 89.3 L660 89.3" stroke="var(--cs-rule2)" stroke-width="1"/>
+  <text x="292" y="92.77272727272728" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="end">20&#215;</text>
+  <path d="M300 72 L300 262" stroke="var(--cs-rule)" stroke-width="1"/>
+  <path d="M300 262 L660 262" stroke="var(--cs-rule)" stroke-width="1"/>
+  <path d="M336.0 262 L336.0 266" stroke="var(--cs-rule)" stroke-width="1"/>
+  <text x="336.0" y="278" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="middle">5&#176;</text>
+  <path d="M396.0 262 L396.0 266" stroke="var(--cs-rule)" stroke-width="1"/>
+  <text x="396.0" y="278" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="middle">10&#176;</text>
+  <path d="M456.0 262 L456.0 266" stroke="var(--cs-rule)" stroke-width="1"/>
+  <text x="456.0" y="278" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="middle">15&#176;</text>
+  <path d="M516.0 262 L516.0 266" stroke="var(--cs-rule)" stroke-width="1"/>
+  <text x="516.0" y="278" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="middle">20&#176;</text>
+  <path d="M576.0 262 L576.0 266" stroke="var(--cs-rule)" stroke-width="1"/>
+  <text x="576.0" y="278" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="middle">25&#176;</text>
+  <path d="M636.0 262 L636.0 266" stroke="var(--cs-rule)" stroke-width="1"/>
+  <text x="636.0" y="278" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="middle">30&#176;</text>
+  <text x="480.0" y="294" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink3)" text-anchor="middle">ROOF PITCH</text>
+  <text x="296" y="64" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-ink3)">H &#247; V</text>
+  <path d="M308.4 78.9 L309.6 85.4 L310.8 91.5 L312.0 97.2 L313.2 102.5 L314.4 107.5 L315.6 112.2 L316.8 116.6 L318.0 120.8 L319.2 124.7 L320.4 128.4 L321.6 132.0 L322.8 135.3 L324.0 138.5 L325.2 141.5 L326.4 144.4 L327.6 147.1 L328.8 149.8 L330.0 152.3 L331.2 154.7 L332.4 157.0 L333.6 159.2 L334.8 161.3 L336.0 163.3 L337.2 165.2 L338.4 167.1 L339.6 168.9 L340.8 170.6 L342.0 172.3 L343.2 173.9 L344.4 175.5 L345.6 177.0 L346.8 178.4 L348.0 179.8 L349.2 181.2 L350.4 182.5 L351.6 183.8 L352.8 185.0 L354.0 186.2 L355.2 187.4 L356.4 188.5 L357.6 189.6 L358.8 190.6 L360.0 191.7 L361.2 192.7 L362.4 193.6 L363.6 194.6 L364.8 195.5 L366.0 196.4 L367.2 197.3 L368.4 198.1 L369.6 199.0 L370.8 199.8 L372.0 200.5 L373.2 201.3 L374.4 202.1 L375.6 202.8 L376.8 203.5 L378.0 204.2 L379.2 204.9 L380.4 205.6 L381.6 206.2 L382.8 206.8 L384.0 207.5 L385.2 208.1 L386.4 208.7 L387.6 209.3 L388.8 209.8 L390.0 210.4 L391.2 210.9 L392.4 211.5 L393.6 212.0 L394.8 212.5 L396.0 213.0 L397.2 213.5 L398.4 214.0 L399.6 214.5 L400.8 214.9 L402.0 215.4 L403.2 215.9 L404.4 216.3 L405.6 216.7 L406.8 217.2 L408.0 217.6 L409.2 218.0 L410.4 218.4 L411.6 218.8 L412.8 219.2 L414.0 219.6 L415.2 219.9 L416.4 220.3 L417.6 220.7 L418.8 221.0 L420.0 221.4 L421.2 221.7 L422.4 222.1 L423.6 222.4 L424.8 222.7 L426.0 223.0 L427.2 223.4 L428.4 223.7 L429.6 224.0 L430.8 224.3 L432.0 224.6 L433.2 224.9 L434.4 225.2 L435.6 225.5 L436.8 225.7 L438.0 226.0 L439.2 226.3 L440.4 226.6 L441.6 226.8 L442.8 227.1 L444.0 227.4 L445.2 227.6 L446.4 227.9 L447.6 228.1 L448.8 228.4 L450.0 228.6 L451.2 228.8 L452.4 229.1 L453.6 229.3 L454.8 229.5 L456.0 229.8 L457.2 230.0 L458.4 230.2 L459.6 230.4 L460.8 230.6 L462.0 230.9 L463.2 231.1 L464.4 231.3 L465.6 231.5 L466.8 231.7 L468.0 231.9 L469.2 232.1 L470.4 232.3 L471.6 232.5 L472.8 232.7 L474.0 232.8 L475.2 233.0 L476.4 233.2 L477.6 233.4 L478.8 233.6 L480.0 233.8 L481.2 233.9 L482.4 234.1 L483.6 234.3 L484.8 234.4 L486.0 234.6 L487.2 234.8 L488.4 234.9 L489.6 235.1 L490.8 235.3 L492.0 235.4 L493.2 235.6 L494.4 235.7 L495.6 235.9 L496.8 236.0 L498.0 236.2 L499.2 236.3 L500.4 236.5 L501.6 236.6 L502.8 236.8 L504.0 236.9 L505.2 237.1 L506.4 237.2 L507.6 237.3 L508.8 237.5 L510.0 237.6 L511.2 237.7 L512.4 237.9 L513.6 238.0 L514.8 238.1 L516.0 238.3 L517.2 238.4 L518.4 238.5 L519.6 238.7 L520.8 238.8 L522.0 238.9 L523.2 239.0 L524.4 239.1 L525.6 239.3 L526.8 239.4 L528.0 239.5 L529.2 239.6 L530.4 239.7 L531.6 239.8 L532.8 240.0 L534.0 240.1 L535.2 240.2 L536.4 240.3 L537.6 240.4 L538.8 240.5 L540.0 240.6 L541.2 240.7 L542.4 240.8 L543.6 240.9 L544.8 241.0 L546.0 241.1 L547.2 241.3 L548.4 241.4 L549.6 241.5 L550.8 241.6 L552.0 241.7 L553.2 241.8 L554.4 241.8 L555.6 241.9 L556.8 242.0 L558.0 242.1 L559.2 242.2 L560.4 242.3 L561.6 242.4 L562.8 242.5 L564.0 242.6 L565.2 242.7 L566.4 242.8 L567.6 242.9 L568.8 243.0 L570.0 243.0 L571.2 243.1 L572.4 243.2 L573.6 243.3 L574.8 243.4 L576.0 243.5 L577.2 243.6 L578.4 243.6 L579.6 243.7 L580.8 243.8 L582.0 243.9 L583.2 244.0 L584.4 244.1 L585.6 244.1 L586.8 244.2 L588.0 244.3 L589.2 244.4 L590.4 244.4 L591.6 244.5 L592.8 244.6 L594.0 244.7 L595.2 244.8 L596.4 244.8 L597.6 244.9 L598.8 245.0 L600.0 245.1 L601.2 245.1 L602.4 245.2 L603.6 245.3 L604.8 245.3 L606.0 245.4 L607.2 245.5 L608.4 245.6 L609.6 245.6 L610.8 245.7 L612.0 245.8 L613.2 245.8 L614.4 245.9 L615.6 246.0 L616.8 246.0 L618.0 246.1 L619.2 246.2 L620.4 246.2 L621.6 246.3 L622.8 246.4 L624.0 246.4 L625.2 246.5 L626.4 246.5 L627.6 246.6 L628.8 246.7 L630.0 246.7 L631.2 246.8 L632.4 246.9 L633.6 246.9 L634.8 247.0 L636.0 247.0 L637.2 247.1 L638.4 247.2 L639.6 247.2 L640.8 247.3 L642.0 247.3 L643.2 247.4 L644.4 247.5 L645.6 247.5 L646.8 247.6 L648.0 247.6 L649.2 247.7 L650.4 247.7 L651.6 247.8 L652.8 247.9 L654.0 247.9 L655.2 248.0 L656.4 248.0 L657.6 248.1 L658.8 248.1" fill="none" stroke="var(--cs-accent)" stroke-width="2"/>
+  <circle cx="312.0" cy="97.2" r="3.6" fill="var(--cs-no)"/>
+  <text x="320.0" y="93.20836496962002" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-no)">3&#176; &#8212; 19.1&#215;</text>
+  <circle cx="348.0" cy="179.8" r="3.6" fill="var(--cs-no)"/>
+  <text x="356.0" y="175.8304888044413" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-no)">6&#176; &#8212; 9.5&#215;</text>
+  <circle cx="456.0" cy="229.8" r="3.6" fill="var(--cs-no)"/>
+  <text x="464.0" y="225.7686521164506" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9.5" fill="var(--cs-no)">15&#176; &#8212; 3.7&#215;</text>
+  <rect x="312.0" y="72" width="144.0" height="190" fill="var(--cs-warn)" opacity=".07"/>
+  <text x="384.0" y="245" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="9" fill="var(--cs-ink3)" text-anchor="middle">template range</text>
+  <text x="20" y="340" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="10.5" fill="var(--cs-no)">Halving the pitch roughly doubles the push. Flat is cheap in roof area, dear in everything resisting it.</text>
+</svg>
+<figcaption>Thrust against pitch at the foot of a rafter. A hyperbola, not a line: the flatter the roof, the harder it pushes.</figcaption>
+        </figure>
+        <ol class="cs-steps">
+          <li>Load the <b>shed</b> template &mdash; a steel portal frame. Open <b>Analysis</b> and
+            turn on the load-path arrows.</li>
+          <li>Filter to <b>inclined</b> members only. Read the thrust at the foot of a rafter, and
+            the pitch it reports.</li>
+          <li>Change the roof pitch from <code>6</code>&deg; to <code>15</code>&deg;, the maximum.
+            Re-read the thrust.</li>
+          <li>Now set it to the minimum, <code>3</code>&deg;, and read it again. Write down all
+            three, with their pitches.</li>
+          <li>Switch the roof to <b>Trussed rafter roof</b> on a house template and look at what
+            carries that push instead.</li>
+        </ol>
+        <p class="cs-principle"><b>Principle.</b> H&nbsp;=&nbsp;V/tan(pitch) is a hyperbola, not a
+          line: halving the pitch roughly doubles the horizontal push, and as pitch approaches zero
+          the thrust runs away. A shallow pitch looks cheap in roof area and is expensive in
+          everything that has to resist the spread &mdash; which is why portal frames have haunches,
+          why trusses have a tie along the bottom, and why a cut roof needs either a tie or a wall
+          stiff enough to be pushed. The arrows make a force you can only otherwise infer into
+          something you can see.</p>
+      </div>
+
+      <p class="cs-note">A caution for all three: <b>quote differences, not absolute values</b>.
+        These are rules of thumb rounded to catalogue sizes. A change that moves a section by one
+        size is a result; a 5% change in a computed depth is the rule&rsquo;s own imprecision, not a
+        finding.</p>
+    </div>
+  </section>
+
+  <section class="cs-sec">
+    <div class="cs-sechead"><span class="cs-secnum"></span><h2>Where it stops</h2></div>
+    <div class="cs-secbody">
+      <p>This tool sits between a sketch and a scheme. It is more rigorous than a sketch, because the
+        geometry is real and the arithmetic balances. It is far less rigorous than a scheme design,
+        because nothing is checked. Use it to understand <em>relationships</em> &mdash; how depth
+        follows span, how load accumulates, how a system choice propagates through a building
+        &mdash; and use something else to find out whether the building stands up.</p>
+      <p><b>Against an analysis package it will diverge, and no setting closes the gap.</b> There is
+        no solver to configure. A real frame sheds load through continuity and moment connections;
+        here every support takes only what falls nearest to it, so interior columns come out
+        under-loaded and edge columns over-loaded relative to an analysed frame. Bracing and cores
+        are drawn but carry nothing. Connections are named and shaped, not designed.</p>
+      <p><b>Cite it as a teaching model of construction assembly and load path.</b> Do not cite it as
+        a source of material property data &mdash; the code names no source for those values &mdash;
+        and do not cite it for building physics at all, because there is none. For anything that must
+        stand up, use an engineer and an analysis package.</p>
+    </div>
+  </section>
+
+  <div class="cs-footer">
+
+    <h3>Licence</h3>
+    <p>&copy; Karam Al-Obaidi. The app is licensed <b>MIT</b>; this documentation is
+      <b><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></b>.
+      Both permit any use, including commercial, and ask only that you credit the author. The tool
+      bundles <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> (also MIT),
+      whose notice travels inside the application file itself.</p>
+    <p>A building you make with the tool is <b>yours</b>. Neither licence claims anything over your
+      model, your drawings or the images you export.</p>
+
+    <h3 id="how-to-cite" style="scroll-margin-top:100px;">How to cite</h3>
+    <p>Cite it as software. Keeping the copyright notice in the file satisfies the licence; a
+      citation is the scholarly act on top of that.</p>
+    <p class="cs-ref">Al-Obaidi, K. M. (2026). <i>Construction Studio: A browser-based modeller for
+      construction and structural systems</i> (Version 1.0.1) [Computer software]. Zenodo.
+      <a href="https://doi.org/10.5281/zenodo.22751440" target="_blank" rel="noopener">https://doi.org/10.5281/zenodo.22751440</a></p>
+<pre>@software{alobaidi2026constructionstudio,
+  author    = {Al-Obaidi, Karam M.},
+  title     = {Construction Studio: A browser-based modeller for
+               construction and structural systems},
+  year      = {2026},
+  version   = {1.0.1},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.22751440},
+  url       = {https://karam.me.uk/applications/construction-studio/},
+  note      = {Code MIT licensed; accompanying material CC BY 4.0}
+}</pre>
+    <p>That DOI names this release. To cite the software in general rather than version 1.0.1, use
+      the concept DOI <a href="https://doi.org/10.5281/zenodo.22751439" target="_blank" rel="noopener">10.5281/zenodo.22751439</a>,
+      which always resolves to the newest version. If you are reporting figures someone should be
+      able to reproduce, cite the version DOI instead &mdash; it names the exact code those figures
+      came from.</p>
+    <p><b>Report four things alongside any figure</b> taken from the tool: the <b>five systems</b>
+      you chose, the <b>grid</b>, the <b>storey count</b> and the <b>use class</b>. All four change
+      the numbers, and a depth quoted without its span cannot be checked by anyone reading you.
+      Every exported image carries the building description and the detail level in its title
+      block.</p>
+
+    <h3>References</h3>
+    <p>What the systems, build-ups and rules are drawn from. These are the sources the code itself
+      names; where it names none &mdash; the material property values, and the sectional properties
+      behind the steel catalogue &mdash; none is listed here either. The code names the works but
+      never an edition, so the editions below are this page&rsquo;s choice, not something
+      transcribed from the source.</p>
+    <p class="cs-ref">Ching, F. D. K. (2024). <i>Building construction illustrated</i> (7th ed.).
+      Wiley. &mdash; the Foundation / Floor / Wall / Roof taxonomy the tool navigates by, and the one
+      to go to for what a build-up is for.</p>
+    <p class="cs-ref">Allen, E., &amp; Iano, J. (2017). <i>The architect&rsquo;s studio companion:
+      Rules of thumb for preliminary design</i> (6th ed.). Wiley. &mdash; the shape of the
+      span-versus-depth tables behind the 27 sizing rules.</p>
+    <p class="cs-ref">American Concrete Institute. (2019). <i>Building code requirements for
+      structural concrete (ACI 318-19) and commentary</i>. ACI. &mdash; minimum slab thickness for
+      the one-way slab, the flat plate and the flat slab with drop panels. Superseded by
+      ACI&nbsp;318-25.</p>
+    <p class="cs-ref">European Committee for Standardization. (2026). <i>Hot rolled steel channels,
+      I and H sections: Dimensions and masses</i> (EN 10365:2026). CEN. &mdash; the IPE, HEA and HEB
+      catalogue. The standard specifies nominal dimensions and masses only and publishes no
+      sectional properties, so the areas and moduli in the tool&rsquo;s table are from published
+      section tables the code names no source for. The tool&rsquo;s table was written against the
+      2017 edition, withdrawn 7 July 2026.</p>
+    <p class="cs-ref">European Committee for Standardization. (2005). <i>Eurocode 6: Design of
+      masonry structures. Part 1-1</i> (EN 1996-1-1:2005+A1:2012). CEN. &mdash; the slenderness limit
+      h<sub>ef</sub>&nbsp;/&nbsp;t<sub>ef</sub>&nbsp;&le;&nbsp;27 (clause 5.5.1.4), which applies to
+      walls under mainly vertical loading rather than to every masonry wall. The only rule in the
+      tool tied to a code.</p>
+
+    <p class="cs-cite">For anything that must stand up, none of the above substitutes for an
+      engineer. They are where the tool&rsquo;s rules of thumb come from, not a design authority.</p>
+
+  </div>
+
+</div>
