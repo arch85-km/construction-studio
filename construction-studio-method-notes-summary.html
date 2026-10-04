@@ -146,8 +146,6 @@
 /* Greek and subscripted symbols must not be uppercased: text-transform turns
    ν into Ν and γ into Γ, which are different letters, and a reader of a
    materials table would be misled by both. */
-.cs-doc .cs-tbl thead th.cs-sym{text-transform:none;letter-spacing:.02em;font-size:.74rem;}
-.cs-doc .cs-tbl tbody tr{background:transparent;}
 .cs-doc .cs-tbl .cs-n{text-align:right;font-family:var(--cs-fm);
   font-variant-numeric:tabular-nums;white-space:nowrap;}
 .cs-doc .cs-tbl .cs-p{font-family:var(--cs-fm);font-size:.8rem;white-space:nowrap;}
@@ -174,27 +172,11 @@
 .cs-doc .cs-ledger dd{grid-column:2;margin:0;font-size:.93rem;color:var(--cs-ink2);
   line-height:1.55;}
 
-/* exercises */
-.cs-doc .cs-ex{border:1px solid var(--cs-rule);background:var(--cs-surface);
-  padding:1.5rem 1.6rem;margin-bottom:1.5rem;}
-.cs-doc .cs-ex-n{font-family:var(--cs-fm);font-size:.7rem;font-weight:600;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--cs-accent);
-  display:block;margin-bottom:.35rem;}
-.cs-doc .cs-ex h3{margin:0 0 .9rem;font-size:1.18rem;}
-.cs-doc .cs-steps{margin:0;padding-left:1.2rem;display:grid;gap:.5rem;font-size:.95rem;}
-.cs-doc .cs-steps code{font-size:.8rem;}
-.cs-doc .cs-principle{font-size:.93rem;color:var(--cs-ink2);
-  border-top:1px solid var(--cs-rule2);padding-top:.85rem;margin:.95rem 0 0;}
-.cs-doc .cs-principle b{color:var(--cs-ink);font-weight:600;}
-
 /* footer */
 .cs-doc .cs-footer{margin-top:3rem;padding-top:1.6rem;border-top:2px solid var(--cs-ink);
   font-size:.86rem;color:var(--cs-ink2);}
 .cs-doc .cs-footer p{max-width:var(--cs-measure);margin:0 0 .8rem;}
 .cs-doc .cs-cite{font-family:var(--cs-fm);font-size:.78rem;color:var(--cs-ink3);line-height:1.7;}
-.cs-doc .cs-refs{max-width:var(--cs-measure);margin:0 0 1.2rem;padding-left:1.15rem;
-  display:grid;gap:.55rem;font-size:.9rem;color:var(--cs-ink2);}
-.cs-doc .cs-refs b{color:var(--cs-ink);font-weight:600;}
 .cs-doc .cs-ref{border-left:2px solid var(--cs-rule);padding-left:.95rem;margin:0 0 1rem;
   max-width:var(--cs-measure);font-size:.92rem;color:var(--cs-ink2);}
 .cs-doc pre{margin:0 0 1rem;padding:.9rem 1rem;background:var(--cs-surface);
@@ -218,16 +200,13 @@
   .cs-doc .cs-ledger dd{font-size:1rem;}
   .cs-doc .cs-chip{font-size:.70rem;}
   .cs-doc .cs-traps h2{font-size:.88rem;}
-  .cs-doc .cs-steps{font-size:1rem;}
-  .cs-doc .cs-principle{font-size:.99rem;}
-  .cs-doc .cs-ex-n{font-size:.76rem;}
 }
 @media (max-width:720px){
   .cs-doc{--cs-rail:0px;font-size:16px;}
   .cs-doc .cs-sechead{grid-template-columns:1fr;gap:.35rem;}
   .cs-doc .cs-secbody{grid-template-columns:minmax(0,1fr);}
   .cs-doc .cs-secbody>*{grid-column:1;}
-  .cs-doc .cs-traps,.cs-doc .cs-ex{padding:1.15rem;}
+  .cs-doc .cs-traps{padding:1.15rem;}
 }
 @media (max-width:560px){
   .cs-doc .cs-ledger>div{grid-template-columns:1fr;}
