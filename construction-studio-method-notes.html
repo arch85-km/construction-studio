@@ -175,19 +175,6 @@
 .cs-doc .cs-ledger dd{grid-column:2;margin:0;font-size:.93rem;color:var(--cs-ink2);
   line-height:1.55;}
 
-/* exercises */
-.cs-doc .cs-ex{border:1px solid var(--cs-rule);background:var(--cs-surface);
-  padding:1.5rem 1.6rem;margin-bottom:1.5rem;}
-.cs-doc .cs-ex-n{font-family:var(--cs-fm);font-size:.7rem;font-weight:600;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--cs-accent);
-  display:block;margin-bottom:.35rem;}
-.cs-doc .cs-ex h3{margin:0 0 .9rem;font-size:1.18rem;}
-.cs-doc .cs-steps{margin:0;padding-left:1.2rem;display:grid;gap:.5rem;font-size:.95rem;}
-.cs-doc .cs-steps code{font-size:.8rem;}
-.cs-doc .cs-principle{font-size:.93rem;color:var(--cs-ink2);
-  border-top:1px solid var(--cs-rule2);padding-top:.85rem;margin:.95rem 0 0;}
-.cs-doc .cs-principle b{color:var(--cs-ink);font-weight:600;}
-
 /* footer */
 .cs-doc .cs-footer{margin-top:4rem;padding-top:1.6rem;border-top:2px solid var(--cs-ink);
   font-size:.86rem;color:var(--cs-ink2);}
@@ -207,7 +194,7 @@
   .cs-doc .cs-sechead{grid-template-columns:1fr;gap:.35rem;}
   .cs-doc .cs-secbody{grid-template-columns:minmax(0,1fr);}
   .cs-doc .cs-secbody>*{grid-column:1;}
-  .cs-doc .cs-traps,.cs-doc .cs-ex{padding:1.15rem;}
+  .cs-doc .cs-traps{padding:1.15rem;}
 }
 @media (max-width:560px){
   .cs-doc .cs-ledger>div{grid-template-columns:1fr;}
@@ -736,76 +723,6 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
         <em>relationships</em> — how depth follows span, how load accumulates, how a system choice
         propagates through a building — and use something else to find out whether the building
         stands up.</p>
-    </div>
-  </div>
-
-  <!-- 07 -->
-  <div class="cs-sec">
-    <div class="cs-sechead" id="cs-07"><span class="cs-secnum">07</span><h2>Three exercises</h2></div>
-    <div class="cs-secbody">
-      <p>Each isolates one variable and holds everything else fixed. Start from a template, change
-        only what the step names, and read the sizing panel rather than the picture.</p>
-
-      <div class="cs-ex">
-        <span class="cs-ex-n">Exercise 01</span>
-        <h3>Depth follows span, and it is not a straight line you can see</h3>
-        <ol class="cs-steps">
-          <li>Load the <b>office</b> template. Set the grid to <code>1 × 1</code> bays so there is one span to watch, floor system <b>Composite steel floor</b>.</li>
-          <li>Set the span to <code>6.0 m</code>. Click a secondary beam and write down the depth the panel computes <em>and</em> the section it chooses.</li>
-          <li>Repeat at <code>6.5</code>, <code>7.0</code>, <code>7.75</code>, <code>8.5</code> and <code>8.75 m</code>. Six readings.</li>
-          <li>Plot computed depth against span, and the chosen section against span, on the same axes.</li>
-          <li>Now switch the floor to <b>Timber joist</b> and repeat at three spans. Note where the amber flag appears and read what it says.</li>
-        </ol>
-        <p class="cs-principle"><b>Principle.</b> The rule is a straight line — depth is span over a
-          constant. The <em>answer</em> is a staircase, because real sections come in sizes. Two
-          buildings 0.5 m apart in span can take the identical beam, and two 0.25 m apart can differ
-          by a whole size. This is why a structural grid is chosen, not derived, and why the
-          question "what span should I use?" has flat spots in it worth landing on. The timber run
-          adds the second lesson: every rule has a range it suits, and the flag is telling you about
-          the <em>span</em>, not about the beam.</p>
-      </div>
-
-      <div class="cs-ex">
-        <span class="cs-ex-n">Exercise 02</span>
-        <h3>The same floor, carried four ways</h3>
-        <ol class="cs-steps">
-          <li>Office template, <code>7.5 × 7.5 m</code> grid, <code>3</code> storeys, use class <b>Office</b>.</li>
-          <li>Open <b>Teach → Compare</b> and put <b>Composite steel floor</b> against <b>RC flat slab</b>. Record the structural depth of each and the floor-to-floor consequence.</li>
-          <li>Swap the comparison to <b>Precast hollowcore</b> and then <b>CLT floor panels</b>. Record both.</li>
-          <li>For each of the four, open <b>Analysis</b> and read the load arriving at one internal column. Note that all four give you the same number.</li>
-          <li>Now change the use class to <b>Industrial</b> and re-read one column. Then change it back.</li>
-        </ol>
-        <p class="cs-principle"><b>Principle.</b> Floor system choice is a depth decision long before
-          it is a strength decision — over three storeys, 230 mm of structural depth is most of a
-          storey height. The column load does not move at all between systems, because the tool loads the
-          floor by <em>use class</em>, not by what the floor is made of: the self-weight of a
-          concrete slab and a CLT panel are identical to this model. That is a limitation, and
-          finding it yourself is the exercise. Ask what the answer <em>should</em> look like, then
-          look at <a href="#cs-01">What it calculates</a> to see why it does not.</p>
-      </div>
-
-      <div class="cs-ex">
-        <span class="cs-ex-n">Exercise 03</span>
-        <h3>Where the roof pushes, and what stops it</h3>
-        <ol class="cs-steps">
-          <li>Load the <b>shed</b> template — a steel portal frame. Open <b>Analysis</b> and turn on the load-path arrows.</li>
-          <li>Filter to <b>inclined</b> members only. Read the thrust at the foot of a rafter, and the pitch it reports.</li>
-          <li>Change the roof pitch from <code>6°</code> to <code>15°</code>, the maximum. Re-read the thrust.</li>
-          <li>Now set it to the minimum, <code>3°</code>, and read it again. Write down all three, with their pitches.</li>
-          <li>Switch the roof to <b>Trussed rafter roof</b> on a house template and look at what carries that push instead.</li>
-        </ol>
-        <p class="cs-principle"><b>Principle.</b> H = V/tan(pitch) is a hyperbola, not a line: halving
-          the pitch roughly doubles the horizontal push, and as pitch approaches zero the thrust
-          runs away. A shallow pitch looks cheap in roof area and is expensive in everything that
-          has to resist the spread — which is why portal frames have haunches, why trusses have a
-          tie along the bottom, and why a cut roof needs either a tie or a wall stiff enough to be
-          pushed. The arrows make a force you can only otherwise infer into something you can see.</p>
-      </div>
-
-      <p class="cs-note">A caution for all three: <b>quote differences, not absolute values</b>.
-        These are rules of thumb rounded to catalogue sizes. A change that moves a section by one
-        size is a result; a 5% change in a computed depth is the rule's own imprecision, not a
-        finding.</p>
     </div>
   </div>
 
