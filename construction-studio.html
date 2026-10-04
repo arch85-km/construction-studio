@@ -18403,14 +18403,22 @@ html[data-theme="light"] .seg{background:rgba(255,255,255,.86)}
 .seg button[aria-pressed="true"]{background:var(--accent-ghost);color:var(--accent)}
 
 /* copyright badge - always bottom-left of the model space */
+/* The copyright chip is the handle for About & sources: licence, credits and
+   how to cite. It was a div with pointer-events:none, so the one thing on
+   screen that looks like it should open the terms did nothing. It takes
+   pointer events now - it is a control, and it covers a corner of the canvas
+   no larger than itself. */
 #copyright{
-  position:absolute;left:12px;bottom:10px;z-index:9;pointer-events:none;
-  font-size:11.5px;letter-spacing:.35px;color:var(--ink-1);
-  user-select:none;white-space:nowrap;
+  position:absolute;left:12px;bottom:10px;z-index:9;
+  font-family:inherit;font-size:11.5px;letter-spacing:.35px;color:var(--ink-1);
+  user-select:none;white-space:nowrap;cursor:pointer;appearance:none;
   padding:3px 9px;border-radius:999px;
   background:rgba(20,26,34,.62);border:1px solid var(--line-soft);
-  backdrop-filter:blur(6px)
+  backdrop-filter:blur(6px);
+  transition:color .12s, border-color .12s
 }
+#copyright:hover{color:var(--ink-0);border-color:var(--line)}
+#copyright:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 html[data-theme="light"] #copyright{background:rgba(255,255,255,.72)}
 #copyright b{font-weight:600;color:var(--ink-0)}
 #copyright .mark{color:var(--accent);font-weight:700;margin-right:1px}
@@ -19068,7 +19076,7 @@ window.__csBooted = false;
   </div>
 
   <div id="cmp-panel" hidden></div>
-  <div id="copyright"><span class="mark">&copy;</span> <b>Karam Al-Obaidi</b></div>
+  <button id="copyright" type="button" title="About, licence and how to cite"><span class="mark">&copy;</span> <b>Karam Al-Obaidi</b></button>
  </main>
 
  <aside id="side">
@@ -27356,6 +27364,7 @@ const Ribbon = (() => {
   D.qRedo.onclick = () => Store.redo();
   D.projName.oninput = () => { Store.doc.meta.name = D.projName.value; IO.autosave(); };
   $('#q-dock').onclick = () => $('#side').classList.toggle('open');
+  $('#copyright').onclick = () => App.showHelp();
 
   $$('#seg-detail-vp button').forEach(b => b.onclick = () => View.set('detail', b.dataset.v));
   $$('#seg-style-vp button').forEach(b => b.onclick = () => View.set('style', b.dataset.v));
