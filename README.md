@@ -203,7 +203,7 @@ machine-readable version.
 
 > Al-Obaidi, K.M. (2026). *Construction Studio: A browser-based modeller for
 > construction and structural systems* (Version 1.1.0) [Computer software].
-> Zenodo. https://doi.org/10.5281/zenodo.22751440
+> Zenodo. https://doi.org/10.5281/zenodo.22751439
 
 ```bibtex
 @software{alobaidi2026constructionstudio,
@@ -213,15 +213,19 @@ machine-readable version.
   year      = {2026},
   version   = {1.1.0},
   publisher = {Zenodo},
-  doi       = {10.5281/zenodo.22751440},
+  doi       = {10.5281/zenodo.22751439},
   url       = {https://karam.me.uk/applications/construction-studio/},
   note      = {Code MIT licensed; accompanying material CC BY 4.0}
 }
 ```
 
-That DOI names this release. To cite the software in general rather than version
-1.1.0, use the concept DOI [10.5281/zenodo.22751439](https://doi.org/10.5281/zenodo.22751439),
-which always resolves to the newest version.
+That is the **concept DOI**, which always resolves to the newest version. Each
+release also gets a **version DOI** frozen on it, and that is the better one to
+cite when you are reporting figures someone should be able to reproduce.
+[10.5281/zenodo.22751440](https://doi.org/10.5281/zenodo.22751440) is version
+1.0.1's; 1.1.0's is minted when this release is archived on Zenodo, and this page
+will name it once it exists. Until then, cite the concept DOI and give the version
+number.
 
 Quote the four systems, the grid and the storey count alongside any figure
 taken from the tool. The sizing rules are span-based, so a depth given without
