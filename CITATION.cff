@@ -14,7 +14,7 @@ authors:
     given-names: Karam M.
     affiliation: "Sheffield Hallam University"
     orcid: "https://orcid.org/0000-0002-4379-6964"
-version: 1.0.1
+version: 1.1.0
 doi: 10.5281/zenodo.22751439
 identifiers:
   - type: doi
@@ -22,8 +22,8 @@ identifiers:
     description: "Concept DOI — always resolves to the latest version"
   - type: doi
     value: 10.5281/zenodo.22751440
-    description: "Version DOI — this release, 1.0.1"
-date-released: 2026-09-14
+    description: "Version DOI — 1.0.1; 1.1.0's is minted when this release is archived"
+date-released: 2026-10-04
 license: MIT
 url: "https://karam.me.uk/applications/construction-studio/"
 repository-code: "https://github.com/arch85-km/construction-studio"

@@ -121,8 +121,8 @@ The file is a complete web page. Serve it and put it in an iframe.
    Use `height:100%` on the iframe rather than `100vh` — Safari on iOS
    mis-measures `vh` inside an iframe and clips the status bar.
 
-3. Serve the page over **HTTPS**. A mixed-content page will block the
-   three.js module load.
+3. Serve the page over **HTTPS**. Nothing is fetched at runtime, so there is
+   no mixed-content risk, but HTTPS is still what a live site should use.
 
 The app itself is responsive and has been checked at 1560, 1024 and 414 px
 wide and inside an iframe. Below 900 px the panel becomes a slide-in sheet;
@@ -130,17 +130,19 @@ below 640 px the whole layout stacks.
 
 ### three.js
 
-three.js r185 is loaded from the jsDelivr CDN through an import map. If your
-students are behind a school firewall that blocks CDNs, the page says so
-plainly instead of hanging, and tells you the fix: download
+three.js r185 (0.185.1) is **bundled into the HTML file**, minified, with its
+`@license` headers intact. Nothing is fetched at runtime: the app opens and runs
+with no network at all, which is what a student downloading it to a laptop
+actually gets.
 
-```
-https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js
-https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/   (the addons used)
-```
+The add-ons included are OrbitControls, OBJLoader, CSS2DRenderer, LineSegments2,
+LineSegmentsGeometry, LineMaterial and BufferGeometryUtils — the seven the app
+imports, and nothing else.
 
-next to the HTML file and change the two paths in the `<script type="importmap">`
-block near the top.
+A school firewall is therefore no longer a failure mode. The boot watchdog that
+used to explain a blocked CDN now names what can still go wrong instead: a
+content-security policy on the host page blocking inline script, or a browser
+without WebGL.
 
 ---
 
@@ -188,9 +190,10 @@ claims anything over a user's model, drawings, or exported images. The small
 credit drawn in the corner of an exported PNG names the tool that produced the
 drawing; it is not a claim over the drawing.
 
-three.js is a separate copyright under its own MIT licence, reproduced in full
-at the top of the HTML file as that licence requires, and noted in
-[NOTICE](NOTICE).
+three.js is a separate copyright under its own MIT licence. Since r185 is now
+bundled into the HTML file rather than linked, that licence travels with the
+file: it is reproduced in full at the top, the `@license` headers survive inside
+the bundled block, and it is noted in [NOTICE](NOTICE).
 
 ### How to cite
 
@@ -199,7 +202,7 @@ scholarly act on top of it. `CITATION.cff` in this repository is the
 machine-readable version.
 
 > Al-Obaidi, K.M. (2026). *Construction Studio: A browser-based modeller for
-> construction and structural systems* (Version 1.0.1) [Computer software].
+> construction and structural systems* (Version 1.1.0) [Computer software].
 > Zenodo. https://doi.org/10.5281/zenodo.22751440
 
 ```bibtex
@@ -208,7 +211,7 @@ machine-readable version.
   title     = {Construction Studio: A browser-based modeller for
                construction and structural systems},
   year      = {2026},
-  version   = {1.0.1},
+  version   = {1.1.0},
   publisher = {Zenodo},
   doi       = {10.5281/zenodo.22751440},
   url       = {https://karam.me.uk/applications/construction-studio/},
@@ -217,7 +220,7 @@ machine-readable version.
 ```
 
 That DOI names this release. To cite the software in general rather than version
-1.0.1, use the concept DOI [10.5281/zenodo.22751439](https://doi.org/10.5281/zenodo.22751439),
+1.1.0, use the concept DOI [10.5281/zenodo.22751439](https://doi.org/10.5281/zenodo.22751439),
 which always resolves to the newest version.
 
 Quote the four systems, the grid and the storey count alongside any figure

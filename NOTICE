@@ -1,10 +1,16 @@
 THIRD-PARTY SOFTWARE
 ====================
 
-This project loads three.js (https://threejs.org), which is distributed under
-its own MIT License, Copyright (c) 2010-2026 three.js authors. That notice is
-reproduced in full at the top of construction-studio.html, as the licence
-requires. It is a separate copyright from Construction Studio's own.
+This project bundles three.js (https://threejs.org) r185, which is distributed
+under its own MIT License, Copyright (c) 2010-2026 three.js authors. As of 1.1.0
+it is inlined into construction-studio.html rather than loaded from a CDN, so
+every copy of that file redistributes three.js code. Its notice is reproduced in
+full at the top of the file and its @license headers survive inside the bundled
+block, as the licence requires. It is a separate copyright from Construction
+Studio's own.
+
+Add-ons included: OrbitControls, OBJLoader, CSS2DRenderer, LineSegments2,
+LineSegmentsGeometry, LineMaterial and BufferGeometryUtils.
 
 The application itself is licensed under the MIT License; see LICENSE.
 The documentation and teaching material are licensed CC BY 4.0; see
