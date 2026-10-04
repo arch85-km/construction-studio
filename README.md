@@ -180,8 +180,8 @@ Two licences, because there are two different kinds of thing here.
 including commercially. The one condition is that the copyright notice stays in
 the file.
 
-**The documentation and teaching material** — the reference page, screenshots,
-diagrams and exercises — are under
+**The documentation and teaching material** — the method notes, screenshots
+and diagrams — are under
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); see
 [DOCS-LICENCE.md](DOCS-LICENCE.md). Share and adapt them, with attribution.
 

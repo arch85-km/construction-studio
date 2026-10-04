@@ -3,8 +3,8 @@ Documentation and teaching material
 
 The code in this repository is licensed under the MIT License; see LICENSE.
 
-Everything that accompanies it and is not code — the documentation pages,
-the reference page, screenshots, diagrams and the student exercises — is
+Everything that accompanies it and is not code — the method notes, the
+summary, screenshots and diagrams — is
 licensed under the Creative Commons Attribution 4.0 International licence
 ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)).
 
