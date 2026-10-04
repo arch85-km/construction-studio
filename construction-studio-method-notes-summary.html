@@ -442,14 +442,12 @@ A_required = N / f_permissible
       <b><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></b>.
       Both permit any use, including commercial, and ask only that you credit the author.</p>
     <p>The only third-party code is <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>,
-      also MIT, and it is <b>not bundled</b>: the page loads it from a content delivery network the
-      first time it runs, so the tool needs a network connection to start. Nothing else is fetched
-      &mdash; no other library, no icon set, no web font; the icons are inline SVG and the type is
-      your own system font. three.js&rsquo;s notice is reproduced in full inside the application
-      file, as its licence requires. To run with no network at all, download three.js r185, put its
-      <span class="cs-mono">build/</span> and <span class="cs-mono">examples/jsm/</span> folders
-      beside the file and point the import map at the local copy; the app says as much on screen if
-      the load fails.</p>
+      also MIT, and as of 1.1.0 it <b>is bundled</b>: r185 sits inside this file, minified, with its
+      licence headers intact, so the tool starts with no network connection at all. Nothing is
+      fetched &mdash; no library, no icon set, no web font; the icons are inline SVG and the type is
+      your own system font. Because the file now carries three.js rather than linking it, every copy
+      redistributes three.js code, and its notice is reproduced in full inside the application file
+      as its licence requires.</p>
     <p>A building you make with the tool is <b>yours</b>. Neither licence claims anything over your
       model, your drawings or the images you export.</p>
 
