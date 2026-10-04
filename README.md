@@ -385,7 +385,7 @@ Roughly 8,300 lines in one file. Nothing is minified; it is meant to be read.
 ### Verified
 
 Sizing checked against hand calculation (27 checks, including the section each
-column rule produces, not just its load); the generator exercised across every
+column rule produces, not just its load); a generator sweep across every
 system, every cross-part combination, edits, orphaned edits and scale; and the
 app driven in real Chromium for picking, explode reversibility, detail
 round-trips, save round-trips, undo, export, all three importers, orbit
