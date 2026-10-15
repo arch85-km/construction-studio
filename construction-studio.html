@@ -24380,9 +24380,11 @@ const UI = (() => {
     IO.download(new Blob([note + '\n' + head + '\n' + body], { type:'text/csv' }), name);
   }
 
-  /** The green / amber / red chip beside a sizing readout. */
+  /** The green / amber / red chip beside a sizing readout. Green says the span
+      suits the system - "span ok", never a bare "ok", which beside a member size
+      reads as an approval the app is in no position to give. */
   const statusChip = s => el('span', { class:`chip ${s}`,
-    text:{ ok:'ok', marginal:'marginal', over:'too far', under:'over-specified' }[s] || s });
+    text:{ ok:'span ok', marginal:'marginal', over:'too far', under:'over-specified' }[s] || s });
 
   /** A segmented control - the app uses these instead of dropdowns wherever
       there are three or four choices, because they show all the options. */
