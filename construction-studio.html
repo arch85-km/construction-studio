@@ -18775,6 +18775,8 @@ html[data-theme="light"] .sizing{background:var(--bg-3)}
 .sizing .rule{font-size:11px;color:var(--accent);margin-top:5px;font-family:var(--mono)}
 .sizing .advice{font-size:11px;color:var(--ink-2);margin-top:6px;line-height:1.5}
 .sizing .foot{font-size:10.5px;color:var(--ink-3);margin-top:6px;line-height:1.5}
+.sizing .foot.caution,.hint.caution{color:var(--warn);font-weight:600}
+html[data-theme="light"] .sizing .foot.caution,html[data-theme="light"] .hint.caution{color:#8a5a00}
 .sizing .alts{margin-top:7px;font-size:11px;color:var(--ink-2)}
 .chip{padding:1px 7px;border-radius:999px;font-size:10px;font-weight:640;letter-spacing:.2px;
   text-transform:uppercase;margin-left:auto;white-space:nowrap}
@@ -19822,6 +19824,15 @@ const LIB = (() => {
    the point is for the student to see the ratio working - not to be handed an
    answer. "7.5 m / 23.5 = 319 mm -> IPE 330" teaches; "IPE 330" does not.
    ========================================================================== */
+
+/* The caution that goes with every size and load the app shows, on screen and
+   on every export. One wording, so the warning reads the same wherever a
+   number can be seen, copied or screenshotted. The About panel used to be the
+   only place that said it, and nobody needs to open About to read a size. */
+const NOT_FOR_CONSTRUCTION = 'Teaching estimate from a rule of thumb \u2014 not for construction.';
+const NOT_FOR_CONSTRUCTION_FULL = 'Do not use these sizes or loads for construction: a building\u2019s ' +
+  'structure must be designed and checked by a qualified structural engineer.';
+
 const SIZING = (() => {
 
   const mm = v => `${Math.round(v)} mm`;
@@ -24358,7 +24369,8 @@ const UI = (() => {
       '# Construction Studio - © Karam Al-Obaidi',
       `# ${doc?.meta?.name || 'Untitled Project'}`,
       `# Exported ${new Date().toISOString().slice(0,10)}`,
-      '# Sizing is by span rule of thumb, for learning and early design - not analysis.'
+      '# Sizing is by span rule of thumb, for learning and early design - not analysis.',
+      '# Not for construction: structure must be designed and checked by a qualified structural engineer.'
     ].join('\n');
     const head = cols.map(c => `"${c.label}"`).join(',');
     const body = rows.map(r => cols.map(c => {
@@ -24562,11 +24574,32 @@ const Draft = (() => {
 
         const fs = Math.round(pad*0.28);
         c.textBaseline = 'middle';
-        c.fillStyle = dark ? '#eef2f7' : '#141a22';
-        c.font = `600 ${fs}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
-        c.fillText(doc.meta.name || 'Untitled Project', pad*0.35, H + pad*0.34);
 
-        c.font = `${Math.round(fs*0.72)}px ui-sans-serif, system-ui, sans-serif`;
+        // Right-hand column first: the copyright, and under it the caution
+        // that has to travel with any sheet showing a size. Measured, so the
+        // left-hand text can be fitted to whatever room is left.
+        const capFont = `600 ${Math.round(fs*0.85)}px ui-sans-serif, system-ui, sans-serif`;
+        const cauFont = `600 ${Math.round(fs*0.62)}px ui-sans-serif, system-ui, sans-serif`;
+        c.font = capFont; const capW = c.measureText('© Karam Al-Obaidi').width;
+        c.font = cauFont; const cauW = c.measureText(NOT_FOR_CONSTRUCTION).width;
+        const room = W - pad*0.7 - Math.max(capW, cauW) - pad*0.6;
+
+        // Left-hand text, shrunk (never below 60 %) and then shortened with an
+        // ellipsis if it would otherwise run into the right-hand column.
+        const fitText = (text, weight, size, y) => {
+          let px = size;
+          c.font = `${weight}${px}px ui-sans-serif, system-ui, sans-serif`;
+          while(c.measureText(text).width > room && px > size*0.6){
+            px -= 1; c.font = `${weight}${px}px ui-sans-serif, system-ui, sans-serif`;
+          }
+          let t = text;
+          while(t.length > 1 && c.measureText(t).width > room) t = t.slice(0, -2) + '…';
+          c.fillText(t, pad*0.35, y);
+        };
+
+        c.fillStyle = dark ? '#eef2f7' : '#141a22';
+        fitText(doc.meta.name || 'Untitled Project', '600 ', fs, H + pad*0.34);
+
         c.fillStyle = dark ? '#b6c0cd' : '#3d4757';
         const bits = [
           new Date().toLocaleDateString(),
@@ -24576,13 +24609,16 @@ const Draft = (() => {
           View.state.explode > 0.01 ? `exploded ×${U.fx(View.state.explode,2)}` : null,
           'Construction Studio'
         ].filter(Boolean);
-        c.fillText(bits.join('   ·   '), pad*0.35, H + pad*0.68);
+        fitText(bits.join('   ·   '), '', Math.round(fs*0.72), H + pad*0.68);
 
-        // the copyright, bottom left of the sheet, always
+        // the copyright, right of the title block, always - and the caution
         c.textAlign = 'right';
-        c.font = `600 ${Math.round(fs*0.85)}px ui-sans-serif, system-ui, sans-serif`;
+        c.font = capFont;
         c.fillStyle = dark ? '#eef2f7' : '#141a22';
-        c.fillText('© Karam Al-Obaidi', W - pad*0.35, H + pad*0.5);
+        c.fillText('© Karam Al-Obaidi', W - pad*0.35, H + pad*0.34);
+        c.font = cauFont;
+        c.fillStyle = dark ? '#f0b23c' : '#8a5a00';
+        c.fillText(NOT_FOR_CONSTRUCTION, W - pad*0.35, H + pad*0.68);
         c.textAlign = 'left';
       }
 
@@ -24593,6 +24629,16 @@ const Draft = (() => {
       c.shadowColor = dark ? 'rgba(0,0,0,.6)' : 'rgba(255,255,255,.8)';
       c.shadowBlur = 4*scale;
       c.fillText('© Karam Al-Obaidi', fs2, H - fs2);
+      // With the title block switched off, the caution goes on the image too,
+      // bottom right, so no exported sheet showing a size ever lacks it.
+      if(!titleBlock){
+        c.textAlign = 'right';
+        // Same ink and halo as the credit beside it, which is known to read
+        // over the scene; amber is kept for the title block, whose ground is fixed.
+        c.font = `600 ${Math.round(fs2*0.85)}px ui-sans-serif, system-ui, sans-serif`;
+        c.fillText(NOT_FOR_CONSTRUCTION, W - fs2, H - fs2);
+        c.textAlign = 'left';
+      }
       c.shadowBlur = 0;
 
       if(returnDataURL){ settle(out.toDataURL('image/png')); return; }
@@ -24652,7 +24698,9 @@ const Draft = (() => {
         UI.rowWide(UI.check('Include labels and dimensions', true, v => { labels = v; })),
         UI.rowWide(UI.check('Include title block', true, v => { block = v; })),
         UI.explain(`Title block: <b>${Util.esc(doc.meta.name)}</b> · ${new Date().toLocaleDateString()} · ` +
-                   `© Karam Al-Obaidi` +
+                   `© Karam Al-Obaidi · ${Util.esc(NOT_FOR_CONSTRUCTION)}` +
+                   '<br><br>The caution travels with every export: in the title block, or on the ' +
+                   'image itself if the title block is left out.' +
                    '<br><br>The small credit in the corner of the image itself is always drawn, ' +
                    'whatever you tick here. The building is yours — the credit says which tool ' +
                    'drew it and claims nothing over your work.')
@@ -25587,7 +25635,8 @@ const Dock = (() => {
       el('div', { class:'formula', text:z.formula }),
       z.rule ? el('div', { class:'rule', html:'rule: ' + Util.esc(z.rule) }) : null,
       z.advice ? el('div', { class:'advice', text:z.advice }) : null,
-      z.note ? el('div', { class:'foot', html:Util.esc(z.note) }) : null
+      z.note ? el('div', { class:'foot', html:Util.esc(z.note) }) : null,
+      el('div', { class:'foot caution', text:NOT_FOR_CONSTRUCTION })
     ].filter(Boolean));
     if(z.status === 'over' || z.status === 'under'){
       const span = Store.doc.grid.sx > Store.doc.grid.sz ? Store.doc.grid.sx : Store.doc.grid.sz;
@@ -25752,7 +25801,8 @@ const Dock = (() => {
                                      UI.statusChip(pl.meta.status || 'ok')]),
         el('div', { class:'formula', text:pl.meta.formula }),
         pl.meta.rule ? el('div', { class:'rule', text:'rule: ' + pl.meta.rule }) : null,
-        pl.meta.source ? el('div', { class:'foot', text:pl.meta.source }) : null
+        pl.meta.source ? el('div', { class:'foot', text:pl.meta.source }) : null,
+        el('div', { class:'foot caution', text:NOT_FOR_CONSTRUCTION })
       ].filter(Boolean)));
     }
 
@@ -26467,6 +26517,7 @@ const LoadPath = (() => {
     body.appendChild(el('div', { class:'tbl-wrap' }, [t]));
     body.appendChild(el('div', { class:'hint',
       text:`Each level is ${U.fx(d.grid.area,0)} m², and every figure is in kN.` }));
+    body.appendChild(el('div', { class:'hint caution', text:NOT_FOR_CONSTRUCTION_FULL }));
 
     if(d.onWalls){
       body.appendChild(el('div', { class:'sizing ok' }, [
@@ -26825,7 +26876,7 @@ const App = (() => {
             'at L/15–L/20, glulam at L/16–L/17, CLT at L/30. Columns from tributary area × storeys × load.'),
           UI.disclaimer('<b>These are rules of thumb for learning and for early design.</b> ' +
             'They are not analysis and not design. Nothing here checks strength, stability, ' +
-            'deflection, fire, buckling or connections.')]),
+            'deflection, fire, buckling or connections. ' + NOT_FOR_CONSTRUCTION_FULL)]),
         UI.section('The masonry check', null, [UI.explain(
           'Wall slenderness is h_ef / t_ef ≤ 27, with t_ef = ⅔(t₁ + t₂) for a cavity wall. ' +
           'It assumes the clear storey height with the wall held top and bottom — real restraint ' +
