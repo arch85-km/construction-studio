@@ -82,10 +82,68 @@ ok(`a version DOI for ${VERSION} ${releaseDoi ? 'is declared' : 'is not minted y
   true,
   releaseDoi || `documents cite the concept DOI ${conceptDoi} until Zenodo mints one`);
 
+/* --- the date that goes with it ----------------------------------------
+   Ported from Solar Analysis Lab, where 1.2.0 shipped with the old date in
+   its About panel: the version bumped and the date stayed behind, because no
+   check read the date at all. Here the version and date are declared in
+   CITATION.cff; the app writes the version into every saved document and
+   prints both in About, the notes spell the date long in their bylines, and
+   the README carries its own citation.
+   Every one of those is a copy that can drift, so every one is checked. */
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+                'August', 'September', 'October', 'November', 'December'];
+const cffDate = cff
+  ? ((cff.match(/^date-released:[ \t]*"?(\d{4}-\d{2}-\d{2})"?/m) || [])[1] || null)
+  : null;
+const longDate = (iso) => {
+  const d = new Date(iso + 'T00:00:00Z');
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+};
+
+if (has('construction-studio.html')) {
+  const app = read('construction-studio.html');
+  const docVersion = (app.match(/app:'([0-9][0-9.]*)'/) || [])[1];
+  ok("the app stamps saved documents with this version", docVersion === VERSION,
+    `app:'${docVersion}', CITATION.cff ${VERSION}`);
+  const about = app.match(/<b>Version ([0-9][0-9.]*)<\/b> · updated ([^<']+)</) || [];
+  ok("the app's About panel names this release",
+    about[1] === VERSION && (!cffDate || (about[2] || '').trim() === longDate(cffDate)),
+    `About "${about[1]} · updated ${(about[2] || '').trim()}", wanted "${VERSION} · updated ${cffDate ? longDate(cffDate) : '?'}"`);
+  const cited = [...app.matchAll(/\(Version ([0-9][0-9.]*)\)/g)].map((m) => m[1]);
+  ok("the app's citations name this version", cited.length > 0 && cited.every((v) => v === VERSION),
+    `cited ${cited.join(', ') || 'none'}`);
+}
+
+/* The README carries its own citation, and is the copy GitHub shows first. */
+if (has('README.md')) {
+  const readme = read('README.md');
+  const want = releaseDoi || conceptDoi;
+  const cited = [...readme.matchAll(/\(Version ([0-9][0-9.]*)\)/g)].map((m) => m[1]);
+  const bibVersion = (readme.match(/version\s*=\s*\{([^}]+)\}/) || [])[1];
+  ok(`README's citations name ${VERSION}`,
+    cited.length > 0 && cited.every((v) => v === VERSION) && bibVersion === VERSION,
+    `APA ${cited.join(', ') || 'none'}, BibTeX ${bibVersion}`);
+  const bibDoi = (readme.match(/doi\s*=\s*\{([^}]+)\}/) || [])[1];
+  const linked = [...readme.matchAll(/\(Version [0-9.]+\)[^\n]*\n?[^\n]*?doi\.org\/(10\.5281\/zenodo\.\d+)/g)].map((m) => m[1]);
+  ok(`README cites ${releaseDoi ? 'this release\'s version DOI' : 'the concept DOI, as it must until one is minted'}`,
+    !!want && bibDoi === want && linked.length > 0 && linked.every((d) => d === want),
+    `BibTeX ${bibDoi}, APA ${linked.join(', ') || 'none'}, wanted ${want}`);
+}
+
 for (const doc of docs) {
   const html = read(doc);
   const byline = (html.match(/Version<\/b>[^0-9]*([0-9][0-9.]*)/) || [])[1];
   ok(`${doc} byline names ${VERSION}`, byline === VERSION, `byline ${byline}`);
+
+  if (cffDate) {
+    const bylineDate = (html.match(/Version<\/b>[^0-9]*[0-9][0-9.]*\s*(?:&middot;|·)\s*([^<]+)/) || [])[1];
+    ok(`${doc} byline is dated ${longDate(cffDate)}`,
+      (bylineDate || '').trim() === longDate(cffDate),
+      `byline dated ${(bylineDate || '(none)').trim()}`);
+  }
+
+  const bibVer = (html.match(/version\s*=\s*\{([^}]+)\}/) || [])[1];
+  if (bibVer) ok(`${doc} BibTeX names ${VERSION}`, bibVer === VERSION, `BibTeX version ${bibVer}`);
 
   const bibDoi = (html.match(/doi\s*=\s*\{([^}]+)\}/) || [])[1];
   if (bibDoi) {
