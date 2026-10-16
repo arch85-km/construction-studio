@@ -272,7 +272,6 @@
 /* long addresses in the references break rather than push the page sideways on a phone */
 .cs-doc a{overflow-wrap:anywhere;}
 /* a column of figures has its heading over the figures, not at the far edge */
-.cs-doc .cs-tbl table:has(tbody td.cs-n:nth-child(1), tbody td.cs-d:nth-child(1)) thead th:nth-child(1),
 .cs-doc .cs-tbl table:has(tbody td.cs-n:nth-child(2), tbody td.cs-d:nth-child(2)) thead th:nth-child(2),
 .cs-doc .cs-tbl table:has(tbody td.cs-n:nth-child(3), tbody td.cs-d:nth-child(3)) thead th:nth-child(3),
 .cs-doc .cs-tbl table:has(tbody td.cs-n:nth-child(4), tbody td.cs-d:nth-child(4)) thead th:nth-child(4),
@@ -280,6 +279,11 @@
 .cs-doc .cs-tbl table:has(tbody td.cs-n:nth-child(6), tbody td.cs-d:nth-child(6)) thead th:nth-child(6),
 .cs-doc .cs-tbl table:has(tbody td.cs-n:nth-child(7), tbody td.cs-d:nth-child(7)) thead th:nth-child(7),
 .cs-doc .cs-tbl table:has(tbody td.cs-n:nth-child(8), tbody td.cs-d:nth-child(8)) thead th:nth-child(8){text-align:right;}
+/* the first column names the row, so it reads from the left like the text, even when it holds a number (unless its heading is marked as a figure) */
+.cs-doc .cs-tbl table:not(:has(thead th.cs-n:first-child)) tr > :first-child{text-align:left;}
+/* the site theme stripes table rows and tints them on hover; the notes keep one even tint */
+.cs-doc .cs-tbl th,.cs-doc .cs-tbl td{background-color:transparent;}
+/* formulas are <pre>, not <div>: the site's HTML minifier leaves <pre> alone but collapses the line breaks in a <div> */
 /* no side padding of its own: the Elementor section sets the margins, so the notes line up with the blocks above them on every screen */
 .cs-doc{padding-left:0;padding-right:0;}
 /* and no width cap of its own: on a wide screen a capped, centred block starts further in than the blocks above it */
@@ -385,14 +389,14 @@
       <h3>Columns, posts and piers</h3>
       <p>All four column rules share one shape — accumulate a load, divide by a permissible
         stress, take the square root for a square section:</p>
-      <div class="cs-formula">N = A_trib × max(1, storeys) × w        <em>kN</em>
+      <pre class="cs-formula">N = A_trib × max(1, storeys) × w        <em>kN</em>
 &nbsp;
 A_required = N / f_permissible
 &nbsp;
 <em>steel  </em> f = 0.6 × 275 MPa   <em>(S275)</em>
 <em>RC     </em> f = 0.4 × 30 MPa    <em>(C30)</em>
 <em>timber </em> f = 0.6 × 24 MPa    <em>(GL24)</em>
-<em>masonry</em> f = 2.5 MPa         <em>(pier)</em></div>
+<em>masonry</em> f = 2.5 MPa         <em>(pier)</em></pre>
       <p class="cs-note">There is <b>no imposed-load reduction</b>. A real takedown reduces the
         imposed load on a column carrying many storeys, because the chance of every floor being
         fully loaded at once is small; the loading code gives the factor. This tool multiplies by the
@@ -433,22 +437,22 @@ A_required = N / f_permissible
       <h3>Where load travels along the structure</h3>
       <p>Every member is classified by its own direction rather than by its name, so a rafter, a
         brace and a portal leg classify themselves and so will anything added later:</p>
-      <div class="cs-formula">|u_y| &gt; 0.94   <em>vertical</em>
+      <pre class="cs-formula">|u_y| &gt; 0.94   <em>vertical</em>
 |u_y| &lt; 0.09   <em>horizontal</em>
-<em>otherwise</em>      <em>inclined</em></div>
+<em>otherwise</em>      <em>inclined</em></pre>
       <p>A member takes the strip of floor its own family spacing implies, delivers half of what it
         collects to each end — the classic <span class="cs-mono">wL/2</span> — and an inclined
         member also pushes its support sideways. That horizontal push is the whole reason a pitched
         roof needs a tie:</p>
-      <div class="cs-formula">H = V × (run / rise)   =   V / tan(pitch)</div>
+      <pre class="cs-formula">H = V × (run / rise)   =   V / tan(pitch)</pre>
       <p class="cs-note">The strips are then normalised so they add back up to the level's load —
         which means an error in any one member's assumed strip is redistributed among the others
         rather than showing up as a shortfall. The arithmetic always balances; that it balances is
         not evidence that any individual member's share is right.</p>
 
       <h3>The masonry check</h3>
-      <div class="cs-formula">h_ef / t_ef ≤ 27        <em>(≤ 20 where a leaf is under 90 mm and there are 2+ storeys)</em>
-t_ef = ⅔(t₁ + t₂)      <em>cavity wall — both leaves count</em></div>
+      <pre class="cs-formula">h_ef / t_ef ≤ 27        <em>(≤ 20 where a leaf is under 90 mm and there are 2+ storeys)</em>
+t_ef = ⅔(t₁ + t₂)      <em>cavity wall — both leaves count</em></pre>
       <p class="cs-note"><b>The two halves of this check may not come from the same code.</b>
         The limit of 27 is the Eurocode 6 value, but the cavity-wall effective thickness used here,
         t<sub>ef</sub> = &frac23;(t&#8321; + t&#8322;), is the BS 5628 form; EN 1996-1-1 gives
@@ -484,8 +488,8 @@ t_ef = ⅔(t₁ + t₂)      <em>cavity wall — both leaves count</em></div>
       <h3>Why some combinations are refused</h3>
       <p>Systems know nothing about each other. Each declares only what it offers or needs, in a
         vocabulary of two words:</p>
-      <div class="cs-formula">a vertical system  <em>provides</em>  'lines'  or  'points'
-a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
+      <pre class="cs-formula">a vertical system  <em>provides</em>  'lines'  or  'points'
+a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</pre>
       <p>Five of the nine vertical systems provide points, four provide lines. Of the seventeen
         horizontal systems, nine bear on either, six need points and two need lines. A refused
         pairing is explained rather than hidden — <em>"Composite steel floor needs point supports —
@@ -570,7 +574,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</div>
       <p>The fifteen materials above are for <em>members</em> — beams, columns, slabs. A build-up
         layer does not reference them at all. It carries one of eight family tokens, used only to
         choose a drawing colour:</p>
-      <div class="cs-formula">timber · board · insul · void · metal · concrete · masonry · steel</div>
+      <pre class="cs-formula">timber · board · insul · void · metal · concrete · masonry · steel</pre>
       <p>"Rigid insulation" and "mineral wool between studs" are both simply
         <span class="cs-mono">insul</span>, and nothing in the tool distinguishes them. A layer has
         a thickness, a name and a colour; it has no properties.</p>

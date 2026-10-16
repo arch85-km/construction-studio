@@ -287,7 +287,6 @@
 /* long addresses in the references break rather than push the page sideways on a phone */
 .cs-doc a{overflow-wrap:anywhere;}
 /* a column of figures has its heading over the figures, not at the far edge */
-.cs-doc .cs-tbl table:has(tbody td.cs-n:nth-child(1), tbody td.cs-d:nth-child(1)) thead th:nth-child(1),
 .cs-doc .cs-tbl table:has(tbody td.cs-n:nth-child(2), tbody td.cs-d:nth-child(2)) thead th:nth-child(2),
 .cs-doc .cs-tbl table:has(tbody td.cs-n:nth-child(3), tbody td.cs-d:nth-child(3)) thead th:nth-child(3),
 .cs-doc .cs-tbl table:has(tbody td.cs-n:nth-child(4), tbody td.cs-d:nth-child(4)) thead th:nth-child(4),
@@ -295,6 +294,11 @@
 .cs-doc .cs-tbl table:has(tbody td.cs-n:nth-child(6), tbody td.cs-d:nth-child(6)) thead th:nth-child(6),
 .cs-doc .cs-tbl table:has(tbody td.cs-n:nth-child(7), tbody td.cs-d:nth-child(7)) thead th:nth-child(7),
 .cs-doc .cs-tbl table:has(tbody td.cs-n:nth-child(8), tbody td.cs-d:nth-child(8)) thead th:nth-child(8){text-align:right;}
+/* the first column names the row, so it reads from the left like the text, even when it holds a number (unless its heading is marked as a figure) */
+.cs-doc .cs-tbl table:not(:has(thead th.cs-n:first-child)) tr > :first-child{text-align:left;}
+/* the site theme stripes table rows and tints them on hover; the notes keep one even tint */
+.cs-doc .cs-tbl th,.cs-doc .cs-tbl td{background-color:transparent;}
+/* formulas are <pre>, not <div>: the site's HTML minifier leaves <pre> alone but collapses the line breaks in a <div> */
 /* no side padding of its own: the Elementor section sets the margins, so the notes line up with the blocks above them on every screen */
 .cs-doc{padding-left:0;padding-right:0;}
 /* and no width cap of its own: on a wide screen a capped, centred block starts further in than the blocks above it */
@@ -369,14 +373,14 @@
       </table></div>
       <p>Columns, posts and piers all share one shape &mdash; gather a load, divide by a permissible
         stress, take the square root for a square section:</p>
-      <div class="cs-formula">N = A_trib &#215; max(1, storeys) &#215; w        <em>kN</em>
+      <pre class="cs-formula">N = A_trib &#215; max(1, storeys) &#215; w        <em>kN</em>
 &nbsp;
 A_required = N / f_permissible
 &nbsp;
 <em>steel  </em> f = 0.6 &#215; 275 MPa   <em>(S275)</em>
 <em>RC     </em> f = 0.4 &#215; 30 MPa    <em>(C30)</em>
 <em>timber </em> f = 0.6 &#215; 24 MPa    <em>(GL24)</em>
-<em>masonry</em> f = 2.5 MPa         <em>(pier)</em></div>
+<em>masonry</em> f = 2.5 MPa         <em>(pier)</em></pre>
       <p>The load <i>w</i> is one number per use class, applied as a single combined allowance per
         square metre per storey: residential&nbsp;9, office&nbsp;11, retail&nbsp;12,
         industrial&nbsp;14, roof&nbsp;5&nbsp;kN/m&sup2;. <b>Dead and imposed are never separated and
@@ -393,7 +397,7 @@ A_required = N / f_permissible
         implies and delivers half of what it collects to each end &mdash; the classic
         <span class="cs-mono">wL/2</span>. An inclined member also pushes its support sideways, and
         that push is the whole reason a pitched roof needs a tie:</p>
-      <div class="cs-formula">H = V &#215; (run / rise)   =   V / tan(pitch)</div>
+      <pre class="cs-formula">H = V &#215; (run / rise)   =   V / tan(pitch)</pre>
       <p class="cs-note">The strips are normalised so they add back up to the level&rsquo;s load,
         which means an error in any one member&rsquo;s assumed strip is redistributed among the
         others rather than showing up as a shortfall. The arithmetic always balances; that it
