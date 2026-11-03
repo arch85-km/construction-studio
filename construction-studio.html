@@ -24158,6 +24158,11 @@ const View = (() => {
      one place. */
   function set(key, val){
     const before = Util.clone({ detail:state.detail, style:state.style });
+    // A slider fires on every step of a drag. Answering each step with 'view'
+    // rebuilt the command bar, which threw away the slider under the pointer
+    // after its first step - the drag stopped dead. Those changes go out as
+    // 'view:live' instead, which only brings the other copies of a slider along.
+    let live = key === 'explode' || key === 'open';
     if(key === 'detail'){ state.detail = val; Bus.emit('view:rebuild'); }
     else if(key === 'style'){ state.style = val; Realize.disposeCaches(); Bus.emit('view:rebuild'); }
     else if(key === 'explode'){ state.explode = Util.clamp(val, 0, 1); applyExplode(); }
@@ -24171,11 +24176,12 @@ const View = (() => {
       Object.assign(state.section, val);
       if(toggled){ Realize.disposeCaches(); Bus.emit('view:rebuild'); }
       else { refreshClipping(); Render.invalidate(); }
+      live = !toggled;
     }
     else if(key === 'layer'){ state.layers[val.i] = val.on; applyVisibility(); }
     else if(key === 'part'){ state.parts[val.k] = val.on; applyVisibility(); }
     else if(key === 'labels'){ Object.assign(state.labels, val); Bus.emit('view:rebuild'); }
-    Bus.emit('view', state);
+    Bus.emit(live ? 'view:live' : 'view', state);
     IO.prefs({ view:{ detail:state.detail, style:state.style, camera:state.camera } });
   }
 
@@ -26758,15 +26764,27 @@ const App = (() => {
       b.setAttribute('aria-pressed', String(b.dataset.v === View.state.detail)));
     $$('#seg-style button, #seg-style-vp button').forEach(b =>
       b.setAttribute('aria-pressed', String(b.dataset.v === View.state.style)));
-    for(const k of ['explode','open']){
-      const sl = $('#vp-' + k), out = $(`#vp-${k}-val`);
-      if(sl && document.activeElement !== sl){
-        sl.value = String(View.state[k]);
-        if(out) out.textContent = `${Math.round(View.state[k]*100)}%`;
-      }
-    }
+    syncSliders();
 
     Dock.render();
+  }
+
+  /** Explode and Open each have two sliders, one over the viewport and one on
+      the View tab; whichever is moved, the other follows. The one in hand is
+      left alone, or the value would be written back under the pointer. */
+  function syncSliders(){
+    for(const k of ['explode','open']){
+      const v = View.state[k], pct = `${Math.round(v*100)}%`;
+      const sl = $('#vp-' + k), out = $(`#vp-${k}-val`);
+      if(sl && document.activeElement !== sl){
+        sl.value = String(v);
+        if(out) out.textContent = pct;
+      }
+      for(const r of $$(`input[data-view="${k}"]`)) if(r !== document.activeElement){
+        r.value = String(v);
+        if(r.nextElementSibling) r.nextElementSibling.textContent = pct;
+      }
+    }
   }
 
   const describeBuilding = () => {
@@ -27111,7 +27129,7 @@ const App = (() => {
     rebuild();
   }
 
-  return { rebuild, rebuildSoon, refreshChrome, highlightSelection, describeBuilding,
+  return { rebuild, rebuildSoon, refreshChrome, syncSliders, highlightSelection, describeBuilding,
            newBuilding, showTemplates, showHelp, diagnostics, compareDialog, toggleTheme, TEMPLATES,
            get tool(){ return tool }, setTool,
            get tab(){ return tab }, set tab(v){ tab = v; refreshChrome(); },
@@ -27184,6 +27202,8 @@ const Ribbon = (() => {
   /** `cls` marks a group as prose, which is the only kind allowed to shrink. */
   const grp = (label, kids, id, cls) => el('div', { class:'grp' + (cls ? ' ' + cls : ''), id },
     [...kids.filter(Boolean), label ? el('span', { class:'grp-label', text:label }) : null].filter(Boolean));
+  /** Tags a View-tab slider so App.syncSliders can bring it along. */
+  const viewSlider = (k, s) => { s.querySelector('input').dataset.view = k; return s; };
 
   function build(tab, doc){
     const host = UI.dom.ribbon;
@@ -27286,10 +27306,10 @@ const Ribbon = (() => {
         btn('Fit', 'i-eye', () => Render.fit())
       ]),
       grp('Explode', [
-        UI.slider(s.explode, 0, 1, 0.01, v => View.set('explode', v), v => `${Math.round(v*100)}%`)
+        viewSlider('explode', UI.slider(s.explode, 0, 1, 0.01, v => View.set('explode', v), v => `${Math.round(v*100)}%`))
       ], 'explode-ctl'),
       grp('Open', [
-        UI.slider(s.open, 0, 1, 0.01, v => View.set('open', v), v => `${Math.round(v*100)}%`)
+        viewSlider('open', UI.slider(s.open, 0, 1, 0.01, v => View.set('open', v), v => `${Math.round(v*100)}%`))
       ], 'open-ctl'),
       grp('Layers', [
         el('div', { class:'chips' }, View.LAYERS.map(l =>
@@ -27589,6 +27609,7 @@ const Ribbon = (() => {
                                App.rebuild({ fit:true }); });
   Bus.on('selection', () => { App.highlightSelection(); Dock.render(); });
   Bus.on('view', () => App.refreshChrome());
+  Bus.on('view:live', () => App.syncSliders());
   Bus.on('view:rebuild', () => App.rebuild());
   Bus.on('toast', p => UI.toast(p.msg, p.kind || 'info', p.ms));
   Bus.on('gl:lost', () => UI.toast('Graphics context lost — rebuilding the view…', 'warn', 5000));
