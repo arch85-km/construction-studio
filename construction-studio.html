@@ -24042,6 +24042,11 @@ const View = (() => {
      This is why `layer` is part of the material cache key. */
   const CLIP = [];
   let bbox = new THREE.Box3(new THREE.Vector3(-1,-1,-1), new THREE.Vector3(1,1,1));
+  // Groups built outside Realize that must explode and open with the model:
+  // the second building of a side-by-side comparison. Compare hands them over
+  // rather than View reaching for Compare, which does not exist yet at load.
+  let extra = [];
+  function setExtra(groups){ extra = groups || []; applyExplode(); }
 
   for(let l = 0; l < 7; l++)
     CLIP.push([0,1,2,3,4,5].map(() => new THREE.Plane(new THREE.Vector3(0,1,0), 1e6)));
@@ -24105,7 +24110,7 @@ const View = (() => {
     // The load diagram carries the same layer and wall stamps as the elements it
     // describes, so opening the walls takes their load band with them and the
     // column sleeves stay on the frame now visible behind.
-    const moving = Realize.groups.concat(Render.groups.loads.children);
+    const moving = Realize.groups.concat(Render.groups.loads.children, extra);
     for(const o of moving){
       const l = o.userData.layer ?? 3;
       const w = o.userData.wall;
@@ -24186,7 +24191,7 @@ const View = (() => {
   }
 
   return { LAYERS, state, CLIP, set, clipFor, setBounds, updateClip, refreshClipping,
-           applyExplode, applyVisibility, applyStyle, isolate, isolatePart };
+           applyExplode, applyVisibility, applyStyle, isolate, isolatePart, setExtra };
 })();
 /* ==========================================================================
    13  UI - DOM helpers, widgets, modals, toasts
@@ -26171,11 +26176,13 @@ const Compare = (() => {
     Render.aspectScale = 0.5;        // each scene now gets half the width
     Bus.emit('compare', { on, part, metricsA, metricsB });
     App.rebuild();
+    View.setExtra(groupsB);          // B explodes and opens with A, as it orbits with it
     Render.fit();
   }
 
   function close(){
     on = false; sceneB = null; groupsB = [];
+    View.setExtra([]);
     Render.aspectScale = 1;
     Bus.emit('compare', { on:false });
     App.rebuild();
