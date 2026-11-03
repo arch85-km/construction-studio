@@ -23651,6 +23651,26 @@ const Realize = (() => {
       m.polygonOffsetUnits = 1 + opts.wallIndex*4;
     }
     if(opts.ghost){ m.transparent = true; m.opacity = 0.12; m.depthWrite = false; }
+    /* A cavity or service void is air. Drawn as a solid black box, it showed
+       only as a thin line on an uncut wall, but once the section box cut it,
+       looking down into it gave a black band whose width changed with every
+       degree of orbit. It is drawn as the layer diagram draws it: a faint tint
+       you see the layers either side through. It is still there to be picked. */
+    if(fam === 'void' && !m.transparent){ m.transparent = true; m.opacity = 0.14; m.depthWrite = false; }
+    /* With the section box on, a cut layer is an open shell, and looking in
+       through the cut shows its inside: faces turned away from the light and
+       in the layer's own shadow, so nearly black - a band that widens, narrows
+       and vanishes as the camera turns, which reads as flashing. Those inside
+       faces are only ever seen through a cut, so they are filled with one flat,
+       slightly darker shade of the layer's colour, the way a section drawing
+       fills what is cut. */
+    if(cut && !m.transparent){
+      m.onBeforeCompile = sh => {
+        sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>',
+          '#include <opaque_fragment>\n    if(!gl_FrontFacing) gl_FragColor.rgb = diffuse*0.78;');
+      };
+      m.customProgramCacheKey = () => 'section-cut-fill';
+    }
     m.clippingPlanes = View.clipFor(layer);
     m.clipShadows = true;
     MAT.set(key, m);
