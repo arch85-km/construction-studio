@@ -25423,12 +25423,38 @@ const Tour = (() => {
 const Dock = (() => {
   let mode = 'building';           // 'building' | 'element'
   let openCard = 'floor';
+  let shownDoc = null;             // the document the panel was last drawn from
+
+  /* Every keystroke in a field edits the model, and every edit redraws this
+     panel from scratch - so the field being typed in was thrown away after one
+     character, and the next key went nowhere. The field with the focus is
+     carried across into the new panel instead, with its half-typed text
+     ("102." is not a number yet) and its caret, so typing simply continues.
+     Only while the document is the same one: after an undo or a load the
+     field would be writing to a document that is no longer shown. */
+  function fieldKey(input){
+    const row = input.closest('.row'), card = input.closest('details');
+    if(!row || !card) return null;
+    const label = row.querySelector(':scope > label');
+    const i = [...row.querySelectorAll('input')].indexOf(input);
+    return `${card.dataset.key}|${label ? label.textContent : ''}|${i}`;
+  }
 
   function render(){
     const host = UI.dom.dock;
+    const a = document.activeElement;
+    const typing = a && a.tagName === 'INPUT' && (a.type === 'number' || a.type === 'text')
+      && host.contains(a) && Store.doc === shownDoc ? a : null;
+    const key = typing && fieldKey(typing);
     host.textContent = '';
     if(mode === 'element' && Store.selection.size) host.appendChild(elementSheet());
     else host.appendChild(buildingSheet());
+    shownDoc = Store.doc;
+    if(!key) return;
+    const fresh = [...host.querySelectorAll('details input')].find(e => fieldKey(e) === key);
+    if(!fresh) return;
+    fresh.replaceWith(typing);
+    typing.focus({ preventScroll:true });
   }
 
   /* ---------------------------------------------------------------- building */
@@ -25853,6 +25879,7 @@ const Dock = (() => {
   function card(key, title, sub, body, ic, material, alert){
     const open = openCard === key || key === 'element' || alert;
     const d = el('details', { class:'card-sect' + (alert ? ' alert' : ''), open });
+    d.dataset.key = key;
     d.appendChild(el('summary', {}, [
       ic ? icon(ic) : null,
       el('span', { class:'t', text:title }),
@@ -25860,7 +25887,10 @@ const Dock = (() => {
       el('span', { class:'s', text:sub })
     ].filter(Boolean)));
     d.appendChild(body);
-    d.addEventListener('toggle', () => { if(d.open) openCard = key; });
+    // A card held open by an alert opens itself on every redraw, and that fires
+    // `toggle` too; counted as a choice, the last alert would take over and close
+    // the card being edited at the next keystroke.
+    d.addEventListener('toggle', () => { if(d.open && !alert) openCard = key; });
     return d;
   }
 
