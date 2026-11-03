@@ -22776,6 +22776,22 @@ const Render = (() => {
     const grid = new THREE.GridHelper(n, n, 0xffffff, 0xffffff);
     grid.material.transparent = true; grid.material.opacity = 0.5;
     grid.material.color.set(C.grid);
+    /* Seen from a low angle, one-metre lines crowd together into dark stripes
+       that crawl as the camera moves. The grid fades out as the view across it
+       flattens - worked out per vertex, so in perspective only the far, grazing
+       part goes. In a parallel view every ray shares the camera's direction. */
+    grid.material.onBeforeCompile = sh => {
+      sh.vertexShader = 'varying float vFade;\n' + sh.vertexShader.replace('#include <project_vertex>',
+        `#include <project_vertex>
+        vec4 gwp = modelMatrix * vec4(transformed, 1.0);
+        vec3 gdir = projectionMatrix[3][3] == 1.0
+          ? vec3(viewMatrix[0][2], viewMatrix[1][2], viewMatrix[2][2])
+          : gwp.xyz - cameraPosition;
+        vFade = smoothstep(0.10, 0.35, abs(normalize(gdir).y));`);
+      sh.fragmentShader = 'varying float vFade;\n' + sh.fragmentShader.replace('#include <opaque_fragment>',
+        '#include <opaque_fragment>\n        gl_FragColor.a *= vFade;');
+    };
+    grid.material.customProgramCacheKey = () => 'groundgrid-fade';
     grid.position.set(Math.round(cx), -0.002, Math.round(cz));
     grid.name = 'groundgrid';
     grid.visible = groundVisible;
