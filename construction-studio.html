@@ -22996,7 +22996,10 @@ const Render = (() => {
     if(!renderer || !stage) return;
     const w = stage.clientWidth || 1, h = stage.clientHeight || 1;
     renderer.setSize(w, h, false);
-    labelRenderer.setSize(w, h);
+    // The labels belong to the main scene, which in a comparison is drawn in the
+    // left pane only; spread across the full width they land between the two
+    // buildings and on the second one.
+    labelRenderer.setSize(w*aspectScale, h);
     persp.aspect = (w/h)*aspectScale; persp.updateProjectionMatrix();
     fitOrtho(w/h);
     updateDepthRange();
@@ -24540,18 +24543,22 @@ const Draft = (() => {
     // carries an `aspect` at all - setting it on the ortho one would do nothing
     // but leave a stray property behind.
     const setAspect = a => { if(cam.isPerspectiveCamera){ cam.aspect = a; cam.updateProjectionMatrix(); } };
+    // In a comparison the camera is narrowed to one pane and the two buildings
+    // share the canvas, so the sheet is drawn the way the screen is: both of
+    // them, each in its half - not the first one alone, stretched to full width.
+    const pane = Render.aspectScale;
 
     // render at the export size, read back in the same synchronous block
     r.setSize(W, H, false);
-    setAspect(W/H);
+    setAspect(W/H*pane);
     Render.scene.traverse(o => { if(o.material && o.material.isLineMaterial) o.material.resolution.set(W,H); });
-    r.render(Render.scene, cam);
+    if(!Compare.render()) r.render(Render.scene, cam);
     const src = new Image();
     const url = cv.toDataURL('image/png');
 
     // restore immediately
     r.setSize(w0, h0, false);
-    setAspect(w0/h0);
+    setAspect(w0/h0*pane);
     Render.scene.traverse(o => { if(o.material && o.material.isLineMaterial) o.material.resolution.set(w0,h0); });
     Render.invalidate();
 
@@ -24567,7 +24574,7 @@ const Draft = (() => {
       c.fillRect(0,0,W,H);
       c.drawImage(src, 0, 0, W, H);
 
-      if(withLabels) drawLabels(c, W, H, scale);
+      if(withLabels) drawLabels(c, W*pane, H, scale);
 
       if(titleBlock){
         // drawLabels centres its text; without resetting, the title block would
@@ -24614,6 +24621,7 @@ const Draft = (() => {
           View.state.detail === 'full' ? 'full assembly'
             : View.state.detail === 'diagram' ? 'diagram' : 'members',
           View.state.explode > 0.01 ? `exploded ×${U.fx(View.state.explode,2)}` : null,
+          Compare.on ? `A ${Compare.metricsA.system} | B ${Compare.metricsB.system}` : null,
           'Construction Studio'
         ].filter(Boolean);
         fitText(bits.join('   ·   '), '', Math.round(fs*0.72), H + pad*0.68);
