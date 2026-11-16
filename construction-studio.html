@@ -19838,6 +19838,18 @@ const SIZING = (() => {
   const mm = v => `${Math.round(v)} mm`;
   const m  = v => `${U.fx(v, 2)} m`;
 
+  /* What a column or footing carries, per square metre of its tributary area:
+     the roof load once, then the floor load for every storey below the roof.
+     The same sum as the load takedown (Loads.compute), so the size a student
+     is given and the load the Load path card shows are the same number. */
+  const perM2 = (c, wDef) => (c.wRoof ?? LOADING.roof) +
+                             (Math.max(1, c.storeys) - 1)*(c.w || wDef);
+  const takedown = (c, wDef) => c.Atrib*perM2(c, wDef);
+  const perM2Text = (c, wDef) => {
+    const n = Math.max(1, c.storeys) - 1, roof = c.wRoof ?? LOADING.roof;
+    return n ? `(${roof} + ${n} × ${c.w || wDef}) kN/m²` : `${roof} kN/m²`;
+  };
+
   const R = {
 
   /* --- steel ----------------------------------------------------------- */
@@ -19891,11 +19903,11 @@ const SIZING = (() => {
   },
   'steel.column':{
     label:'Steel column', family:['HEB','HEA','SHS'], byArea:true,
-    ratio:'A ≈ N / 0.6 f_y,  with N = tributary area × storeys × load',
+    ratio:'A ≈ N / 0.6 f_y,  with N = tributary area × (roof + floors × floor load)',
     source:'Tributary-area estimate for preliminary column sizing.',
-    load: c => c.Atrib * Math.max(1, c.storeys) * (c.w || 11),
+    load: c => takedown(c, 11),
     area: c => c.N / (0.6 * 275e3) * 1e6,          // kN / kPa = m2, then mm2. S275
-    fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${c.storeys} storeys × ${c.w || 11} kN/m² ` +
+    fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${perM2Text(c, 11)} ` +
                      `= ${Math.round(c.N)} kN  →  ${s ? s.name : '—'}`
   },
 
@@ -19949,11 +19961,11 @@ const SIZING = (() => {
   },
   'rc.column':{
     label:'RC column', family:['RC'], synth:'RC', byArea:true,
-    ratio:'A_c ≈ N / 0.4 f_ck,  with N = tributary area × storeys × load',
-    load: c => c.Atrib * Math.max(1, c.storeys) * (c.w || 11),
+    ratio:'A_c ≈ N / 0.4 f_ck,  with N = tributary area × (roof + floors × floor load)',
+    load: c => takedown(c, 11),
     area: c => c.N / (0.4 * 30e3) * 1e6,           // kN / kPa = m2, then mm2. C30
     square: true, minDim: 225, round: 25,
-    fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${c.storeys} × ${c.w || 11} kN/m² ` +
+    fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${perM2Text(c, 11)} ` +
                      `= ${Math.round(c.N)} kN  →  ${s ? s.name : '—'}`
   },
   'precast.hollowcore':{
@@ -20027,11 +20039,11 @@ const SIZING = (() => {
   },
   'timber.post':{
     label:'Timber post', family:['GL'], synth:'GL', byArea:true, square:true,
-    ratio:'A ≈ N / 0.6 f_c,  with N = tributary area × storeys × load',
-    load: c => c.Atrib * Math.max(1, c.storeys) * (c.w || 9),
+    ratio:'A ≈ N / 0.6 f_c,  with N = tributary area × (roof + floors × floor load)',
+    load: c => takedown(c, 9),
     area: c => c.N / (0.6 * 24e3) * 1e6,           // kN / kPa = m2, then mm2. GL24
     minDim: 140, round: 20,
-    fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${c.storeys} × ${c.w || 9} kN/m² ` +
+    fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${perM2Text(c, 9)} ` +
                      `= ${Math.round(c.N)} kN  →  ${s ? s.name : '—'}`
   },
 
@@ -20053,10 +20065,10 @@ const SIZING = (() => {
   'masonry.pier':{
     label:'Masonry pier', family:['MAS'], synth:'MAS', byArea:true, square:true,
     ratio:'A ≈ N / f_d',
-    load: c => c.Atrib * Math.max(1, c.storeys) * (c.w || 9),
+    load: c => takedown(c, 9),
     area: c => c.N / 2.5e3 * 1e6,                  // kN / kPa = m2, then mm2
     minDim: 215, round: 5,
-    fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${c.storeys} × ${c.w || 9} kN/m² ` +
+    fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${perM2Text(c, 9)} ` +
                      `= ${Math.round(c.N)} kN  →  ${s ? s.name : '—'}`
   },
 
@@ -20064,7 +20076,7 @@ const SIZING = (() => {
   'found.pad':{
     label:'Pad footing', ratio:'A = N / bearing capacity',
     source:'Bearing pressure only. Punching shear and reinforcement are not checked.',
-    load: c => c.Atrib * Math.max(1, c.storeys) * (c.w || 11),
+    load: c => takedown(c, 11),
     check: c => ({ val:0, lim:1 }),
     depth: c => Math.max(400, Math.sqrt(c.N/(c.qAllow || 150))*1000*0.35),
     extra: c => {
@@ -20094,7 +20106,7 @@ const SIZING = (() => {
     source:'Pile cap over a group of bored piles.',
     depth: c => Math.max(750, (c.pileDia || 450)*2),
     extra: c => ({ n:Math.max(1, Math.ceil(c.N/(c.pileCap || 600))), dia:c.pileDia || 450 }),
-    load: c => c.Atrib * Math.max(1, c.storeys) * (c.w || 11),
+    load: c => takedown(c, 11),
     fmt: (c,d,s,x) => `${Math.round(c.N)} kN ÷ ${c.pileCap || 600} kN per pile = ` +
                       `${x.n} pile${x.n>1?'s':''} of ⌀${x.dia} mm`
   }
@@ -26643,7 +26655,10 @@ const LoadPath = (() => {
         el('div', { class:'head' }, [
           el('span', { class:'ttl', text:`Worst column — ${w ? w.ref : '—'}` })]),
         el('div', { class:'formula', text: w
-          ? `${U.fx(w.trib,2)} m² × ${d.rows.length} levels = ${U.fx(w.N,0)} kN` : '—' }),
+          // the roof once, then each floor: the sum that makes the total
+          ? `${U.fx(w.trib,2)} m² × (${d.wRoof}` +
+            (d.rows.length > 1 ? ` + ${d.rows.length - 1} × ${d.wFloor}` : '') +
+            `) kN/m² = ${U.fx(w.N,0)} kN` : '—' }),
         el('div', { class:'advice',
           text:'An interior column takes a whole bay; a corner takes a quarter of one. ' +
                'That is the whole difference between them.' })
@@ -26994,7 +27009,7 @@ const App = (() => {
         UI.section('Sizing', null, [
           UI.explain('Span-to-depth ratios and tributary-area estimates: steel beams at L/18–L/20, ' +
             'composite at L/22–L/25, RC beams at L/12–L/15, flat slabs at Lₙ/30–Lₙ/33, timber joists ' +
-            'at L/15–L/20, glulam at L/16–L/17, CLT at L/30. Columns from tributary area × storeys × load.'),
+            'at L/15–L/20, glulam at L/16–L/17, CLT at L/30. Columns from tributary area × (roof load + floors × floor load).'),
           UI.disclaimer('<b>These are rules of thumb for learning and for early design.</b> ' +
             'They are not analysis and not design. Nothing here checks strength, stability, ' +
             'deflection, fire, buckling or connections. ' + NOT_FOR_CONSTRUCTION_FULL)]),

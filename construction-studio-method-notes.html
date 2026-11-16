@@ -382,7 +382,7 @@
         <thead><tr><th>Quantity</th><th>From</th><th>Basis</th></tr></thead>
         <tbody>
           <tr><td><b>Member depth</b></td><td class="cs-p">span ÷ a divisor</td><td>27 rules, one per member type</td></tr>
-          <tr><td><b>Column size</b></td><td class="cs-p">tributary area × storeys × load</td><td>Required area ÷ a permissible stress</td></tr>
+          <tr><td><b>Column size</b></td><td class="cs-p">tributary area × (roof + floors × load)</td><td>Required area ÷ a permissible stress</td></tr>
           <tr><td><b>Foundation size</b></td><td class="cs-p">load ÷ bearing capacity</td><td>Bearing pressure only</td></tr>
           <tr><td><b>Load takedown</b></td><td class="cs-p">tributary area per support</td><td>Accumulated storey by storey</td></tr>
           <tr><td><b>Masonry slenderness</b></td><td class="cs-p">h<sub>ef</sub> / t<sub>ef</sub></td><td>The one code check in the tool</td></tr>
@@ -419,7 +419,7 @@
       <h3>Columns, posts and piers</h3>
       <p>All four column rules share one shape — accumulate a load, divide by a permissible
         stress, take the square root for a square section:</p>
-      <pre class="cs-formula">N = A_trib × max(1, storeys) × w        <em>kN</em>
+      <pre class="cs-formula">N = A_trib × (w_roof + (storeys − 1) × w) <em>kN</em>
 &nbsp;
 A_required = N / f_permissible
 &nbsp;
@@ -429,8 +429,8 @@ A_required = N / f_permissible
 <em>masonry</em> f = 2.5 MPa         <em>(pier)</em></pre>
       <p class="cs-note">There is <b>no imposed-load reduction</b>. A real takedown reduces the
         imposed load on a column carrying many storeys, because the chance of every floor being
-        fully loaded at once is small; the loading code gives the factor. This tool multiplies by the
-        full storey count every time, so tall buildings are sized conservatively — increasingly so
+        fully loaded at once is small; the loading code gives the factor. This tool counts every floor
+        at its full load every time, so tall buildings are sized conservatively — increasingly so
         the taller they get.</p>
 
       <h3>Imposed loading</h3>
@@ -725,10 +725,10 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</pre>
       <div class="cs-tbl"><table>
         <thead><tr><th class="cs-n">Storeys</th><th class="cs-n">N</th><th class="cs-n">Area needed</th><th>Section given</th><th class="cs-n">Area provided</th><th class="cs-n">Short by</th><th>Flag</th></tr></thead>
         <tbody>
-          <tr><td class="cs-n">6</td><td class="cs-n">3 713 kN</td><td class="cs-n">22 500 mm²</td><td class="cs-p">HEB 500</td><td class="cs-n">23 860 mm²</td><td class="cs-d">—</td><td><span class="cs-chip is-in">ok</span></td></tr>
-          <tr><td class="cs-n">8</td><td class="cs-n">4 950 kN</td><td class="cs-n">30 000 mm²</td><td class="cs-p">HEB 600</td><td class="cs-n">27 000 mm²</td><td class="cs-d">10%</td><td><span class="cs-chip is-in">ok</span></td></tr>
-          <tr><td class="cs-n">10</td><td class="cs-n">6 188 kN</td><td class="cs-n">37 500 mm²</td><td class="cs-p">HEB 600</td><td class="cs-n">27 000 mm²</td><td class="cs-d">28%</td><td><span class="cs-chip is-in">ok</span></td></tr>
-          <tr><td class="cs-n">12</td><td class="cs-n">7 425 kN</td><td class="cs-n">45 000 mm²</td><td class="cs-p">HEB 600</td><td class="cs-n">27 000 mm²</td><td class="cs-d">40%</td><td><span class="cs-chip is-in">ok</span></td></tr>
+          <tr><td class="cs-n">6</td><td class="cs-n">3 375 kN</td><td class="cs-n">20 455 mm²</td><td class="cs-p">HEB 450</td><td class="cs-n">21 800 mm²</td><td class="cs-d">—</td><td><span class="cs-chip is-in">ok</span></td></tr>
+          <tr><td class="cs-n">8</td><td class="cs-n">4 613 kN</td><td class="cs-n">27 955 mm²</td><td class="cs-p">HEB 600</td><td class="cs-n">27 000 mm²</td><td class="cs-d">3%</td><td><span class="cs-chip is-in">ok</span></td></tr>
+          <tr><td class="cs-n">10</td><td class="cs-n">5 850 kN</td><td class="cs-n">35 455 mm²</td><td class="cs-p">HEB 600</td><td class="cs-n">27 000 mm²</td><td class="cs-d">24%</td><td><span class="cs-chip is-in">ok</span></td></tr>
+          <tr><td class="cs-n">12</td><td class="cs-n">7 088 kN</td><td class="cs-n">42 955 mm²</td><td class="cs-p">HEB 600</td><td class="cs-n">27 000 mm²</td><td class="cs-d">37%</td><td><span class="cs-chip is-in">ok</span></td></tr>
         </tbody>
         <caption>HEB 600 is the deepest of the 19 HEB sections in the catalogue. From eight storeys up the tool has run out of steel, hands back the largest section it has, and still reports green. Above roughly seven storeys on this grid, read the column size as "at least this" rather than as an answer.</caption>
       </table></div>

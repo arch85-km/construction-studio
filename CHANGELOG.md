@@ -7,6 +7,19 @@ resolves to the newest version. The full notes for each release are on the
 
 ## Unreleased
 
+- **Fixed** — columns, pads and piles are sized for the load the Load path
+  card shows. They counted the roof as another floor (A × storeys × w), so
+  the office template's B2 column was sized for 2475 kN against the card's
+  2138 kN, and the portal shed's pads for 1050 kN against 375 kN. The rule
+  is now A × (w_roof + (storeys − 1) × w), the takedown's own sum; the
+  method notes' tall-column table is re-measured with it.
+- **Fixed** — the card's "Worst column" line printed "56.25 m² × 4 levels
+  = 2138 kN", which does not multiply out; it now shows the sum,
+  "56.25 m² × (5 + 3 × 11) kN/m² = 2138 kN".
+- **Fixed** — the load-path diagram stays with an exploded or opened model
+  instead of being drawn where the building would be at rest.
+- **Tests** — `npm test` runs the release check and a load-takedown suite
+  (`tests/loads.test.mjs`) over every template and use class.
 - **Changed** — every size and load the app shows is marked as a teaching
   estimate, not for construction: on the sizing cards, "Why this size", the
   load path, About, the PNG title block (or the image itself when the title
