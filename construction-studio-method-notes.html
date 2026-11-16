@@ -512,9 +512,19 @@ w_roof  = g + 0.6</pre>
       <pre class="cs-formula">|u_y| &gt; 0.94   <em>vertical</em>
 |u_y| &lt; 0.09   <em>horizontal</em>
 <em>otherwise</em>      <em>inclined</em></pre>
-      <p>A member takes the strip of floor its own family spacing implies, delivers half of what it
-        collects to each end — the classic <span class="cs-mono">wL/2</span> — and an inclined
-        member also pushes its support sideways. That horizontal push is the whole reason a pitched
+      <p>Load travels along the members as a chain, not shared out among them as if they lay side
+        by side. The floor or roof rests on the members nothing else rests on — joists, secondaries,
+        purlins, rafters — each taking its own strip of floor, measured on plan. Each hands its load
+        to what holds it up: another member where its end lands on one, or where it is laid over one
+        it crosses (a purlin over a rafter, a panel over a beam); otherwise the wall or column under
+        its end. That member hands on its own load in turn. Along a member a uniform load goes to
+        its supports by the length each one carries — the classic <span class="cs-mono">wL/2</span>
+        for one span — and a point load by the lever rule between the supports either side. So a
+        secondary at 2.5 m centres on a 7.5 m span carries 2.5 × 7.5 × <i>w</i>, and the primary it
+        lands on carries the secondaries, not a strip of its own.</p>
+      <p>Two sloping members meeting at an apex hold each other up sideways, not vertically: each
+        sends its whole load to its foot. A truss's tie and a ridge board carry no roof load. An
+        inclined member also pushes its support sideways. That horizontal push is the whole reason a pitched
         roof needs a tie. A pair of rafters is taken as a three-pinned arch, feet pinned and the
         apex a hinge, loaded by the roof's own load:</p>
       <pre class="cs-formula">H = w s L² / 8h   <em>kN</em></pre>
@@ -537,10 +547,12 @@ w_roof  = g + 0.6</pre>
         spans the short direction, wall to wall on a wall building and column line to column line
         on a frame. A slab that sits on beams is not read this way: its load reaches the beams,
         which are already counted.</p>
-      <p class="cs-note">The strips are then normalised so they add back up to the level's load —
-        which means an error in any one member's assumed strip is redistributed among the others
-        rather than showing up as a shortfall. The arithmetic always balances; that it balances is
-        not evidence that any individual member's share is right.</p>
+      <p class="cs-note">Where the strips overlap — joists counted past a wall, a purlin's strip
+        guessed from the bay — they are scaled back to the level's load. Where they fall short, the
+        rest goes straight to the columns: the steel office's secondaries sit inside each bay, and
+        the strip beside each column line belongs to the beam a real frame has there, which is not
+        drawn. The arithmetic always balances; that it balances is not evidence that any individual
+        member's share is right.</p>
 
       <h3>The masonry check</h3>
       <pre class="cs-formula">h_ef / t_ef ≤ 27        <em>(≤ 20 where a leaf is under 90 mm and there are 2+ storeys)</em>
@@ -729,7 +741,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</pre>
         <div><span class="cs-chip is-in">In</span><dt>Foundation sizing</dt><dd>Pad area from bearing pressure, strip width from load per metre, raft thickness from span, pile count from an assumed 600 kN per pile. Soil bearing capacity is an input.</dd></div>
         <div><span class="cs-chip is-in">In</span><dt>Real build-ups</dt><dd>19 layer stacks, each layer its own object at its real thickness, driving the model and the drawing from one source.</dd></div>
         <div><span class="cs-chip is-part">Partly</span><dt>The green / amber / red flag</dt><dd>It compares the <b>span</b> against the range the rule suits — and, for the masonry and pad rules, a ratio against its limit. It is not a capacity check, and a green flag does not mean the member works.</dd></div>
-        <div><span class="cs-chip is-part">Partly</span><dt>Load-path shares</dt><dd>A member's strip of floor comes from its own family spacing where the generator recorded one, and otherwise from half the smaller grid dimension — a guess, flagged internally as inferred but not surfaced in the interface.</dd></div>
+        <div><span class="cs-chip is-part">Partly</span><dt>Load-path shares</dt><dd>Load passes down the chain of members — deck to secondary to primary to column — with each member's strip of floor from its own family spacing where the generator recorded one, and otherwise from half the smaller grid dimension: a guess, flagged internally as inferred but not surfaced in the interface. Members are simply supported or continuous over what they rest on; no moment is carried across a joint.</dd></div>
       </dl>
 
       <h3>Not modelled</h3>

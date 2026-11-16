@@ -141,6 +141,7 @@ for (const tpl of templates) {
       CS.App.rebuild();
       const d = CS.Loads.paths(CS.Store.doc, CS.Gen.plans);
       const strip = s => ({ kind: s.kind, level: s.level, count: s.count || 1, R: s.R,
+                            role: s.role, each: s.each, Ra: s.Ra, Rb: s.Rb, toGround: s.toGround,
                             thrust: s.thrust, spread: s.spread || null, pitch: s.pitch,
                             a: s.a, b: s.b, N: s.N });
       // what each column, pad and pile was sized for, beside what the takedown
@@ -248,9 +249,15 @@ for (const tpl of templates) {
            `${row.load.toFixed(1)} kN on ${row.name} reaches no spanning member`);
         continue;
       }
-      const delivered = mine.reduce((a, s) => a + 2 * s.R * s.count, 0);
+      // what the level's members hand to the walls and columns, after passing
+      // it down their chain (deck → secondary → primary → column, and so on)
+      const delivered = mine.reduce((a, s) => a + (s.toGround || 0), 0);
       ok(`${tag}: ${row.name} members deliver the level's load`, near(delivered, row.load, 1e-6),
          `${delivered.toFixed(3)} vs ${row.load.toFixed(3)} kN`);
+      // and no member hands on more or less than it carries
+      const kept = mine.filter(s => !near((s.Ra + s.Rb), s.each, 1e-6));
+      ok(`${tag}: ${row.name} each member hands on what it carries`, kept.length === 0,
+         kept.slice(0, 2).map(s => `${s.role}: ${s.each} vs ${s.Ra}+${s.Rb}`).join('; '));
     }
 
     /* the spread of a pitched roof: H = w s L² / 8h, three-pinned, from the
@@ -276,6 +283,57 @@ for (const tpl of templates) {
          !bad, bad ? JSON.stringify({ got: bad.s.spread, want: { how: bad.how, L: bad.L, h: bad.h, H: bad.H } }) : '');
     }
   }
+}
+
+/* --- the chain, against the hand calculation -------------------------------
+   Load goes deck → secondary → primary → column, roof → purlin → rafter →
+   column, and a pair of rafters meeting at the apex sends everything to its
+   feet. Each figure below is the one a student would work by hand. */
+{
+  const h = await page.evaluate(() => {
+    const CS = ConstructionStudio;
+    const run = id => {
+      CS.Store.load(CS.App.TEMPLATES.find(t => t.id === id).make()); CS.App.rebuild();
+      return CS.Loads.paths(CS.Store.doc, CS.Gen.plans);
+    };
+    const pick = (d, lv, role) => d.segs.filter(s => s.level === lv && s.role === role);
+    const o = run('office'), L1 = o.rows.find(r => r.name === 'Level 1');
+    const sec = pick(o, L1.id, 'secondary')[0], pri = pick(o, L1.id, 'primary');
+    const s = run('shed'), roof = s.rows[0], raf = pick(s, roof.id, 'rafter');
+    const hs = run('house'), hr = hs.rows[0];
+    const ms = run('masonry'), mr = ms.rows[0];
+    return {
+      w1: L1.w, sx: o.grid.sx, sz: o.grid.sz, secStep: Math.hypot(...sec.step), secL: sec.length, secN: sec.count,
+      direct: o.segs.filter(s => s.kind === 'direct' && s.level === L1.id).reduce((a, s) => a + s.toGround, 0),
+      area: o.grid.area,
+      secEach: sec.each, priMax: Math.max(...pri.map(p => p.each)), priMin: Math.min(...pri.map(p => p.each)),
+      wr: roof.w, shedSx: s.grid.sx, shedD: s.grid.D,
+      rafMax: Math.max(...raf.map(p => p.each)), rafApex: Math.max(...raf.map(p => Math.min(p.Ra, p.Rb))),
+      rafFoot: Math.max(...raf.map(p => Math.max(p.Ra, p.Rb))),
+      truss: pick(hs, hr.id, 'truss').map(p => [p.each, p.Ra, p.Rb]), ties: pick(hs, hr.id, 'tie').length,
+      rafters: pick(ms, mr.id, 'rafter').map(p => [p.each, p.Ra, p.Rb]), ridges: pick(ms, mr.id, 'ridge').length,
+    };
+  });
+  console.log('The chain, by hand');
+  ok('office secondary = its spacing × span × w', near(h.secEach, h.secStep * h.secL * h.w1, 1e-6),
+     `${h.secEach.toFixed(1)} vs ${h.secStep} × ${h.secL} × ${h.w1}`);
+  // an interior primary carries the secondaries resting on it from both sides
+  ok('office interior primary = the secondaries resting on it', near(h.priMax, h.secN * h.secEach, 1e-6),
+     `${h.priMax.toFixed(1)} vs ${h.secN} × ${h.secEach.toFixed(1)}`);
+  ok('office edge primary = half that', near(h.priMin, h.secN * h.secEach / 2, 1e-6), `${h.priMin.toFixed(1)}`);
+  // the strip beside each column line, which no drawn beam carries, goes to the columns
+  ok('office column-line strips straight to the columns', near(h.direct, h.w1 * (h.area - 9 * h.secN * h.secStep * h.secL), 1e-6),
+     `${h.direct.toFixed(1)} kN`);
+  ok('shed interior rafter = frame spacing × half span × w', near(h.rafMax, h.shedSx * h.shedD / 2 * h.wr, 1e-6),
+     `${h.rafMax.toFixed(1)} vs ${h.shedSx} × ${h.shedD / 2} × ${h.wr}`);
+  ok('shed rafter: all of it to the foot, none to the apex', h.rafApex < 1e-9 && near(h.rafFoot, h.rafMax, 1e-6),
+     `apex ${h.rafApex}, foot ${h.rafFoot}`);
+  ok('truss chords: all to the foot', h.truss.length > 0 && h.truss.every(([e, a, b]) => Math.min(a, b) < 1e-9 && near(Math.max(a, b), e, 1e-9)),
+     JSON.stringify(h.truss));
+  ok('the truss tie carries no roof load', h.ties === 0, `${h.ties} tie families sharing it`);
+  ok('cut rafters: all to the foot', h.rafters.length > 0 && h.rafters.every(([e, a, b]) => Math.min(a, b) < 1e-9 && near(Math.max(a, b), e, 1e-9)),
+     JSON.stringify(h.rafters));
+  ok('the ridge board carries no roof load', h.ridges === 0, `${h.ridges} ridge families sharing it`);
 }
 
 /* --- what the Load path card says, for one wall and one column building -- */

@@ -22649,13 +22649,14 @@ const Loads = (() => {
   /**
    * Where the load goes ALONG the structure, not just down it.
    *
-   * A level's load is shared out among the members that span it, in proportion
-   * to the strip of floor each one carries. Each member then delivers half of
-   * what it collects to the support at either end - the classic w·L/2 - and an
-   * inclined member also pushes its support sideways, which is the whole reason
-   * a pitched roof needs a tie.
+   * A level's load goes down a chain of members (see chain() below): the floor
+   * rests on the members nothing else rests on, each takes its own strip, and
+   * each hands its load to what holds it up - another member, or a wall or
+   * column - by tributary length and the lever rule. An inclined member also
+   * pushes its support sideways, which is the whole reason a pitched roof
+   * needs a tie (see spread()).
    *
-   * The shares are normalised so they add back up to the level's load. Nothing
+   * Every level hands its whole load to the walls and columns. Nothing
    * may be lost travelling horizontally any more than vertically, and
    * tests/loads.test.mjs checks both. A level carried by a panel alone (a flat
    * slab, a CLT roof) is read as strips of that panel, so it balances too.
@@ -22684,7 +22685,10 @@ const Loads = (() => {
       const trib = step > 0.05 ? step : Math.min(grid.sx, grid.sz)/2;
       const kind = classify(pl.a, pl.b);
       const list = spans.get(pl.level) || (spans.set(pl.level, []), spans.get(pl.level));
-      list.push({ pl, L, n, trib, kind, share:L*trib*n });
+      // its strip of floor, measured on plan: a rafter carries the roof it
+      // covers, not the length of its slope
+      const planL = Math.hypot(pl.b[0]-pl.a[0], pl.b[2]-pl.a[2]);
+      list.push({ pl, L, n, trib, kind, share:planL*trib*n });
     }
 
     /* A level with no beam, joist or rafter is carried by a panel alone - a
@@ -22762,24 +22766,173 @@ const Loads = (() => {
                spread:{ w:r.w, s, L, h, H, perMetre:H/s, how } };
     }
 
+    /* --- how a level's load travels along its members -----------------------
+       Not shared out among every member as if they lay side by side, but down
+       a chain. The floor or roof surface rests on the members nothing else
+       rests on - joists, secondaries, purlins, rafters. Each of those hands its
+       load to what holds it up: another member where its end lands on one, or
+       where it is laid over one it crosses (a purlin over a rafter, a panel
+       over a beam), and otherwise the wall or column under its end. That
+       member hands on its own load in turn, down to the vertical structure.
+       Along a member, a uniform load goes to its supports by the length each
+       one carries, and a point load by the lever rule between the supports
+       either side of it. Two sloping members that meet at an apex hold each
+       other up sideways but not vertically, so each sends its whole load to
+       its foot. A tie and a ridge board carry no roof load. */
+    const NOT_BEARING = new Set(['tie', 'ridge']);
+    const LAID_OVER = new Set(['purlin', 'joist', 'secondary', 'plank', 'rib', 'panel', 'deck']);
+    const TOL = 0.05, GAP = 1.0;
+    const planLen = M => Math.hypot(M.b[0]-M.a[0], M.b[2]-M.a[2]) || 1;
+    const inner = (M, t) => t > TOL/planLen(M) && t < 1 - TOL/planLen(M);
+    const yAt = (M, t) => M.a[1] + t*(M.b[1] - M.a[1]);
+    // where along B (0..1) a point lies on it in plan, within GAP vertically; else -1
+    function onPlan(B, p){
+      const dx = B.b[0]-B.a[0], dz = B.b[2]-B.a[2], L2 = dx*dx + dz*dz;
+      if(L2 < 1e-9) return -1;
+      const t = ((p[0]-B.a[0])*dx + (p[2]-B.a[2])*dz)/L2;
+      if(Math.hypot(B.a[0] + t*dx - p[0], B.a[2] + t*dz - p[2]) > TOL) return -1;
+      return Math.abs(yAt(B, t) - p[1]) <= GAP ? t : -1;
+    }
+    // where two members cross in plan, inside both, within GAP vertically
+    function crossing(A, B){
+      const ax = A.b[0]-A.a[0], az = A.b[2]-A.a[2], bx = B.b[0]-B.a[0], bz = B.b[2]-B.a[2];
+      const den = ax*bz - az*bx;
+      if(Math.abs(den) < 1e-9) return null;                       // parallel
+      const ex = B.a[0]-A.a[0], ez = B.a[2]-A.a[2];
+      const u = (ex*bz - ez*bx)/den, v = (ex*az - ez*ax)/den;
+      if(!inner(A, u) || !inner(B, v)) return null;
+      return Math.abs(yAt(A, u) - yAt(B, v)) <= GAP ? [u, v] : null;
+    }
+
+    function chain(list, r){
+      // one entry per actual member: a run is n of them, one step apart
+      const ms = [];
+      for(const x of list){
+        if(NOT_BEARING.has(x.pl.role)) continue;
+        const st = x.pl.step || [0,0,0];
+        for(let k = 0; k < x.n; k++){
+          const o = [st[0]*k, st[1]*k, st[2]*k];
+          ms.push({ fam:x, a:[x.pl.a[0]+o[0], x.pl.a[1]+o[1], x.pl.a[2]+o[2]],
+                    b:[x.pl.b[0]+o[0], x.pl.b[1]+o[1], x.pl.b[2]+o[2]],
+                    sup:[], pts:[], q:0, load:0, Ra:0, Rb:0, ground:0 });
+        }
+      }
+      // what holds each one up, and where along it
+      for(const A of ms){
+        for(const [tA, P] of [[0, A.a], [1, A.b]]){
+          let by = null, tB = 0;
+          for(const B of ms){
+            if(B === A) continue;
+            const t = onPlan(B, P);
+            if(t >= 0 && inner(B, t)){ by = B; tB = t; break; }
+          }
+          if(by){ A.sup.push({ t:tA, by, tB }); continue; }
+          // the high end of a sloping member meeting another's end: an apex
+          const other = tA ? A.a : A.b;
+          const apex = A.fam.kind === 'inclined' && P[1] > other[1] + 1e-6 &&
+            ms.some(B => B !== A && B.fam.kind === 'inclined' &&
+              (Math.hypot(B.a[0]-P[0], B.a[1]-P[1], B.a[2]-P[2]) < 0.3 ||
+               Math.hypot(B.b[0]-P[0], B.b[1]-P[1], B.b[2]-P[2]) < 0.3));
+          if(!apex) A.sup.push({ t:tA, by:null });
+        }
+        if(LAID_OVER.has(A.fam.pl.role)) for(const B of ms){
+          if(B.fam === A.fam || LAID_OVER.has(B.fam.pl.role)) continue;
+          const c = crossing(A, B);
+          if(c) A.sup.push({ t:c[0], by:B, tB:c[1] });
+        }
+        A.sup.sort((p, q) => p.t - q.t);
+        if(!A.sup.length) A.sup.push({ t:0, by:null }, { t:1, by:null });
+      }
+
+      // the surface rests on the members nothing else rests on
+      const carriers = new Set();
+      for(const A of ms) for(const s of A.sup) if(s.by) carriers.add(s.by.fam);
+      let top = list.filter(x => !NOT_BEARING.has(x.pl.role) && !carriers.has(x));
+      if(!top.length) top = list.filter(x => !NOT_BEARING.has(x.pl.role));
+      // Each takes its own strip of floor. Where the strips overlap (joists
+      // counted past a wall, a purlin's guessed strip) they are scaled back to
+      // the level's load; where they fall short - secondaries at 2.5 m inside
+      // a 7.5 m bay, with no beam drawn along the column lines - the strip
+      // beside each column line goes straight to the columns, as the beam a
+      // real frame has there would take it.
+      // (shares are m² of floor, on plan; r.w turns them into kN)
+      const shareSum = top.reduce((a, x) => a + x.share, 0) || 1;
+      const scale = Math.min(1, r.area/shareSum);
+      for(const A of ms) if(top.includes(A.fam)) A.q = r.w*A.fam.share*scale/A.fam.n;
+      const direct = r.w*(r.area - Math.min(r.area, shareSum));
+
+      // hand the load down, a member only once everything on it has landed
+      const waiting = new Map(ms.map(m => [m, 0]));
+      for(const A of ms) for(const s of A.sup) if(s.by) waiting.set(s.by, waiting.get(s.by) + 1);
+      const queue = ms.filter(m => waiting.get(m) === 0), done = new Set();
+      const handOn = M => {
+        done.add(M);
+        const S = M.sup, n = S.length;
+        const give = (i, R) => {
+          if(!(R > 0)) return;
+          const s = S[i];
+          if(S[i].t <= 0.5) M.Ra += R; else M.Rb += R;
+          if(s.by){
+            s.by.pts.push({ t:s.tB, P:R });
+            waiting.set(s.by, waiting.get(s.by) - 1);
+            if(waiting.get(s.by) === 0 && !done.has(s.by)) queue.push(s.by);
+          } else M.ground += R;
+        };
+        M.load = M.q + M.pts.reduce((a, p) => a + p.P, 0);
+        const R = new Array(n).fill(0);
+        // the uniform load: each support takes the length nearest to it
+        for(let i = 0; i < n; i++){
+          const lo = i === 0 ? 0 : (S[i-1].t + S[i].t)/2;
+          const hi = i === n - 1 ? 1 : (S[i].t + S[i+1].t)/2;
+          R[i] += M.q*(hi - lo);
+        }
+        // a point load: the lever rule between the supports either side
+        for(const p of M.pts){
+          if(n === 1 || p.t <= S[0].t){ R[0] += p.P; continue; }
+          if(p.t >= S[n-1].t){ R[n-1] += p.P; continue; }
+          let i = 0; while(S[i+1].t < p.t) i++;
+          const span = S[i+1].t - S[i].t || 1;
+          R[i]   += p.P*(S[i+1].t - p.t)/span;
+          R[i+1] += p.P*(p.t - S[i].t)/span;
+        }
+        R.forEach((v, i) => give(i, v));
+      };
+      while(queue.length) handOn(queue.shift());
+      for(const m of ms) if(!done.has(m)) handOn(m);          // a cycle: hand on anyway
+
+      // per family, for the diagram and the card
+      const out = new Map();
+      for(const m of ms){
+        const f = out.get(m.fam) || { load:0, Ra:0, Rb:0, ground:0, n:0 };
+        f.load += m.load; f.Ra += m.Ra; f.Rb += m.Rb; f.ground += m.ground; f.n++;
+        out.set(m.fam, f);
+      }
+      out.direct = direct;
+      return out;
+    }
+
     for(const [levelId, list] of spans){
       const r = byLevel.get(levelId);
-      const totalShare = list.reduce((a, x) => a + x.share, 0) || 1;
-      // normalise: whatever the strips came to, together they carry this level
-      const k = r.load/totalShare;
+      const fams = chain(list, r);
       for(const x of list){
-        const load = x.share*k;              // kN carried by the whole family
-        const each = load/x.n;               // kN carried by one member of it
-        const R = each/2;                    // delivered to each end
+        if(NOT_BEARING.has(x.pl.role)) continue;
+        const f = fams.get(x) || { load:0, Ra:0, Rb:0, ground:0, n:1 };
+        const each = f.load/f.n;                   // kN on one member of the family
+        const Ra = f.Ra/f.n, Rb = f.Rb/f.n;        // and what it hands on at each end
         const rise = Math.abs(x.pl.b[1] - x.pl.a[1]);
         const run  = Math.hypot(x.pl.b[0]-x.pl.a[0], x.pl.b[2]-x.pl.a[2]);
         segs.push({ addr:x.pl.addr, role:x.pl.role, level:levelId, kind:x.kind,
                     a:x.pl.a, b:x.pl.b, count:x.n, step:x.pl.step || null,
                     length:x.L, trib:x.trib, inferred:!(x.pl.kind === 'run' && x.pl.step),
-                    lineLoad:each/x.L, each, R,
+                    lineLoad:each/x.L, each, Ra, Rb, R:Math.max(Ra, Rb),
+                    toGround:f.ground,
                     ...(x.kind === 'inclined' ? spread(x.pl, r, levelId, rise, run) : { thrust:0 }),
                     pitch: rise > 1e-6 ? Math.atan2(rise, run)*180/Math.PI : 0 });
       }
+      // the strips beside the column lines, straight to the columns
+      if(fams.direct > 1e-6)
+        segs.push({ kind:'direct', role:'column line', level:levelId, count:1,
+                    each:0, Ra:0, Rb:0, R:0, toGround:fams.direct, thrust:0 });
     }
 
     // the vertical half, from the takedown already computed
@@ -22790,8 +22943,8 @@ const Loads = (() => {
 
     const per = kindTotals(segs);
     return Object.assign({}, base, { segs, per,
-      delivered: segs.filter(s => s.kind !== 'vertical')
-                     .reduce((a, s) => a + s.R*2*(s.count || 1)/(s.count || 1), 0) });
+      // what the members hand to the walls and columns, all levels together
+      delivered: segs.filter(s => s.kind !== 'vertical').reduce((a, s) => a + (s.toGround || 0), 0) });
   }
 
   /** How much of each kind there is, for the panel and the filter chips. */
@@ -26732,13 +26885,17 @@ const LoadPath = (() => {
           const rad = 0.075 + 0.13*Math.sqrt(t);
           const hex = Loads.colourFor(0.25 + 0.65*t);
           const layer = s.level === levels[levels.length-1].id ? 5 : 3;
-          // from mid-span outward to each support: that is where the load goes
-          for(const end of [a, b]){
+          // from mid-span outward to the ends that take load: a rafter that
+          // meets its pair at the apex points at its foot only, and each
+          // arrow is as heavy as the share its end hands on
+          for(const [end, Re] of [[a, s.Ra ?? s.R], [b, s.Rb ?? s.R]]){
+            if(!(Re > 1e-6)) continue;
+            const te = Re/maxR;
             const d = [end[0]-mid[0], end[1]-mid[1], end[2]-mid[2]];
             const dl = Math.hypot(d[0], d[1], d[2]) || 1;
             const start = [mid[0] + d[0]/dl*0.18, mid[1] + d[1]/dl*0.18 + 0.30,
                            mid[2] + d[2]/dl*0.18];
-            arrow(start, d, len, rad, hex, layer);
+            arrow(start, d, len, 0.075 + 0.13*Math.sqrt(te), Loads.colourFor(0.25 + 0.65*te), layer);
           }
           // and the sideways push an inclined member puts into its support:
           // at the wall head for an untied roof, at the column base for a

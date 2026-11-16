@@ -7,6 +7,21 @@ resolves to the newest version. The full notes for each release are on the
 
 ## Unreleased
 
+- **Fixed** — load travels along the members as a chain instead of being
+  shared among them as if they lay side by side. The floor rests on the
+  members nothing else rests on, each taking its own strip on plan; each
+  hands its load to what holds it up - another member where its end lands
+  on one or it is laid over one, else the wall or column - by tributary
+  length and the lever rule. Before, a primary took a strip of its own
+  beside the secondaries resting on it, and the shed's purlins took most of
+  its roof: a portal rafter carried 9 kN. Now, on the steel office, a
+  secondary at 2.5 m carries 2.5 × 7.5 × 7.6 = 142.5 kN and an interior
+  primary the four secondary reactions on it, 285 kN; a shed rafter 82.5 kN,
+  all to its foot; truss chords and cut rafters send everything to their
+  feet, and a tie or ridge board carries none. Where the strips fall short
+  (the strip beside the office's column lines, whose beam is not drawn) the
+  rest goes straight to the columns. The diagram points each arrow only at
+  ends that take load, sized by what each takes.
 - **Fixed** — the eaves thrust says where the push goes, and is worked from
   the roof's own load. It was H = V / tan(pitch) on every sloping member,
   so a trussed roof showed its walls pushed apart (the tie takes that push)
