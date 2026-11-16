@@ -291,7 +291,9 @@ Roughly 8,300 lines in one file. Nothing is minified; it is meant to be read.
 - **The takedown has two invariants.** The loads on every support must add up to
   the loads on every floor — nothing lost on the way down — and the reactions
   every level's members deliver must add up to that level's load — nothing lost
-  travelling sideways either. Both are asserted, in the browser and out of it.
+  travelling sideways either. Both are checked by `npm test`
+  (`tests/loads.test.mjs`). The second fails for a level spanned only by panels —
+  a flat slab, a CLT roof — whose load reaches no member: a known gap.
 - **A member's load path is read from its direction**, not from its name:
   `|uy| > 0.94` is vertical, `< 0.09` horizontal, anything between is inclined.
   A rafter, a brace and a portal leg classify themselves, and so will whatever
@@ -398,6 +400,12 @@ Roughly 8,300 lines in one file. Nothing is minified; it is meant to be read.
   that pauses when the iframe scrolls out of view.
 
 ### Verified
+
+In the repository, `npm test` runs the release guard and
+`tests/loads.test.mjs`: the load takedown, the loads columns and footings are
+sized for, and the Load path card, across every template and use class. The
+checks described below were run during development; their harnesses are not in
+the repository.
 
 Sizing checked against hand calculation (27 checks, including the section each
 column rule produces, not just its load); a generator sweep across every

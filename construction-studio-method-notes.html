@@ -460,9 +460,13 @@ A_required = N / f_permissible
           <tr><td class="cs-p">points <span class="cs-mono">(columns)</span></td><td>Each grid node takes the floor area nearest to it — its tributary area — accumulated down the building.</td></tr>
         </tbody>
       </table></div>
-      <p>Two invariants hold and are asserted by the test suite: the loads on all supports must add
-        up to the loads on all floors, and the reactions every level's members deliver must add up
-        to that level's load. Nothing is lost going down, and nothing is lost going sideways.</p>
+      <p>Two invariants are checked by <span class="cs-mono">npm test</span>, for every template under
+        every use class: the loads on all supports must add up to the loads on all floors, and the
+        reactions every level's members deliver must add up to that level's load. Nothing is lost
+        going down. Going sideways, the check fails where a level's only spanning element is a
+        panel — every level of a flat slab, and a CLT roof. Panels are not counted as spanning
+        members, so that level's load reaches no member in the load-path diagram. The totals and
+        the column loads are unaffected.</p>
 
       <h3>Where load travels along the structure</h3>
       <p>Every member is classified by its own direction rather than by its name, so a rafter, a
@@ -660,7 +664,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</pre>
       <h3>Included</h3>
       <dl class="cs-ledger">
         <div><span class="cs-chip is-in">In</span><dt>Preliminary member sizing</dt><dd>27 rules covering steel, concrete, timber and masonry, each with a stated source, a span range it suits, and the arithmetic shown on screen as it is worked.</dd></div>
-        <div><span class="cs-chip is-in">In</span><dt>Gravity load takedown</dt><dd>Tributary area per support, accumulated storey by storey, to line loads under walls or point loads under columns. Both directions are asserted to balance.</dd></div>
+        <div><span class="cs-chip is-in">In</span><dt>Gravity load takedown</dt><dd>Tributary area per support, accumulated storey by storey, to line loads under walls or point loads under columns. Both directions are checked by the repository's test; the sideways balance fails where a level is spanned only by panels (a flat slab, a CLT roof).</dd></div>
         <div><span class="cs-chip is-in">In</span><dt>Horizontal thrust</dt><dd>At the foot of any inclined member, H = V/tan(pitch), computed from the member's real geometry. This is why the tool can show you that a pitched roof spreads.</dd></div>
         <div><span class="cs-chip is-in">In</span><dt>Masonry slenderness</dt><dd>h_ef/t_ef against 27, or 20 for thin leaves in two storeys or more, with the cavity-wall effective thickness ⅔(t₁+t₂). The only code check in the application.</dd></div>
         <div><span class="cs-chip is-in">In</span><dt>Foundation sizing</dt><dd>Pad area from bearing pressure, strip width from load per metre, raft thickness from span, pile count from an assumed 600 kN per pile. Soil bearing capacity is an input.</dd></div>
@@ -757,12 +761,17 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</pre>
       </dl>
 
       <h3>What is actually asserted</h3>
-      <p>The parts of the arithmetic that <em>can</em> be checked, are, in an automated suite:
-        27 sizing checks against hand calculation, 18 load-takedown checks in both directions
-        including the eaves thrust, a generator sweep across all 30 systems and every
-        cross-part combination, and 71 checks driving the app in a real browser. That tells you
-        the tool computes what it says it computes. It says nothing about whether a rule of thumb
-        suits your building.</p>
+      <p>In the repository, <span class="cs-mono">npm test</span> runs two suites: the
+        release guard, which checks that the version, date and DOI agree everywhere they are
+        written, and <span class="cs-mono">tests/loads.test.mjs</span>, which loads every template
+        under every use class in a real browser and checks the documented load figures and column
+        rules, the per-level load table, both takedown invariants, the eaves-thrust formula, the
+        figures on the Load path card, and that every column, pad, pile and strip footing is sized
+        for the load the takedown delivers to it. During development the sizing rules were also
+        checked against hand calculation, the generator was swept across every system and
+        cross-part combination, and the app was driven in a real browser; those harnesses were not
+        kept in the repository. That tells you the tool computes what it says it computes. It says
+        nothing about whether a rule of thumb suits your building.</p>
     </div>
   </div>
 

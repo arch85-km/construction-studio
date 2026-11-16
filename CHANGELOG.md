@@ -18,8 +18,21 @@ resolves to the newest version. The full notes for each release are on the
   "56.25 m² × (5 + 3 × 11) kN/m² = 2138 kN".
 - **Fixed** — the load-path diagram stays with an exploded or opened model
   instead of being drawn where the building would be at rest.
+- **Fixed** — strip footings are sized for the takedown's load per metre.
+  They used a fixed 12 kN/m per storey whatever the use class, so the
+  timber house's footing read 24 kN/m against the card's 31.4, and the
+  masonry house's 36 against 55.2. The formula line now shows the sum,
+  "1129 kN ÷ 36.0 m = 31.4 kN/m ÷ 150 kPa = 0.45 m wide strip".
 - **Tests** — `npm test` runs the release check and a load-takedown suite
   (`tests/loads.test.mjs`) over every template and use class.
+- **Docs** — the method notes, README, ARCHITECTURE.md and code comments no
+  longer describe test suites the repository does not hold. They name
+  `npm test`, say which checks were run only during development, and state
+  that the sideways load balance fails where a level is spanned only by
+  panels (a flat slab, a CLT roof). Comments naming a design check, a
+  `DESIGN` module, `FEM.sectionToLocal()` and "Benchmark 11/12", none of
+  which exist, are corrected, and an unused copy of `memberMatrix` that
+  called the missing `FEM` is removed.
 - **Changed** — every size and load the app shows is marked as a teaching
   estimate, not for construction: on the sizing cards, "Why this size", the
   load path, About, the PNG title block (or the image itself when the title

@@ -19446,8 +19446,9 @@ const Axes = (() => {
   /* --- direction cosines ------------------------------------------------
      The vertical-member branch below is the single most bug-prone line in
      the application. A member within about 2.6 degrees of vertical uses the
-     global-Z reference; everything else uses global-Y. Benchmark 12 asserts
-     that results are continuous across that switch. */
+     global-Z reference; everything else uses global-Y. No test in the
+     repository covers that switch; check a near-vertical member by eye
+     after changing it. */
   function dirCos(pI, pJ, rollDeg, out /* Float64Array(9), row-major */){
     let ex0 = pJ[0]-pI[0], ex1 = pJ[1]-pI[1], ex2 = pJ[2]-pI[2];
     const L = Math.hypot(ex0, ex1, ex2);
@@ -19545,7 +19546,8 @@ const LIB = (() => {
 
   /* --- materials ------------------------------------------------------
      E, G in MPa (converted to kPa); density in kN/m3; fy/fc in MPa.
-     gammaM is the partial factor used by the simplified design check. */
+     gammaM is the material partial factor. It is recorded with each material
+     but no rule uses it: the app makes no design-strength check. */
   const MATERIALS = [
     // id, name, family, E(MPa), nu, density(kN/m3), fy(MPa), gammaM
     ['S235','Steel S235','steel',210000,0.30,78.5,235,1.00],
@@ -19570,7 +19572,7 @@ const LIB = (() => {
     nu, density,                  // kN/m3
     fy: fy * U.MPA,               // kPa - yield (steel) / fck (concrete) / fmk (timber) / fk (masonry)
     gammaM,
-    /** Design strength used by DESIGN, kPa. */
+    /** Design strength fy / gammaM, kPa. Not used by any rule at present. */
     get fd(){ return this.fy / this.gammaM; }
   }));
 
@@ -19595,9 +19597,9 @@ const LIB = (() => {
          element Iz  <-  catalogue Iy   (strong)
          element Iy  <-  catalogue Iz   (weak)
 
-     That swap happens in exactly ONE place: FEM.sectionToLocal().
-     Nothing else in the app may reorder these. Benchmark 11 asserts the
-     resulting stiffness ratio numerically.
+     The app builds no frame elements - it has no frame analysis - so nothing
+     makes that swap today. Any code that ever does must make it in exactly
+     one place, and nothing else may reorder these.
      ====================================================================== */
 
   /* --- rolled steel catalogue -----------------------------------------
@@ -20089,9 +20091,16 @@ const SIZING = (() => {
   'found.strip':{
     label:'Strip footing', ratio:'width = load per metre / bearing capacity',
     source:'Continuous footing under a load-bearing wall.',
+    // the whole building's load, spread evenly along its wall run: the
+    // takedown's own kN/m, so the footing and the Load path card agree
+    load: c => c.Atrib ? takedown(c, 11) : null,
     depth: () => 300,
-    extra: c => ({ B:Math.max(0.45, Math.ceil(((c.wLine || 40)/(c.qAllow || 150))/0.05)*0.05) }),
-    fmt: (c,d,s,x) => `${Math.round(c.wLine || 40)} kN/m ÷ ${c.qAllow || 150} kPa = ` +
+    extra: c => {
+      const wLine = c.wLine ?? (c.N && c.run ? c.N/c.run : 40);
+      return { wLine, B:Math.max(0.45, Math.ceil((wLine/(c.qAllow || 150))/0.05)*0.05) };
+    },
+    fmt: (c,d,s,x) => (c.N && c.run ? `${Math.round(c.N)} kN ÷ ${U.fx(c.run,1)} m = ` : '') +
+                      `${U.fx(x.wLine,1)} kN/m ÷ ${c.qAllow || 150} kPa = ` +
                       `${U.fx(x.B,2)} m wide strip`
   },
   'found.raft':{
@@ -20788,9 +20797,11 @@ def({
   ],
   sizing:{ strip:'found.strip' }, layer:0, seq:0,
   build(ctx){
-    const { p, size, base, M } = ctx;
-    const wLine = 12 * Math.max(1, ctx.storeys);      // kN/m, rough wall line load
-    const z = size('found.strip', { wLine, qAllow:M.soil.qAllow });
+    const { p, size, base, M, grid } = ctx;
+    // the load takedown's line load: every level's load over the perimeter run
+    const z = size('found.strip', { Atrib:grid.W*grid.D, storeys:ctx.storeys,
+                                    w:SIZING.LOADING[M.use], run:2*(grid.W + grid.D),
+                                    qAllow:M.soil.qAllow });
     const B = z.B || 0.6;
     base.lines.forEach((ln, i) => {
       const n = Geom.normalOf(ln.a, ln.b);
@@ -22393,7 +22404,7 @@ const Gen = (() => {
 
    The arithmetic has an invariant worth stating: the loads on all the supports
    must add up to the loads on all the floors. Nothing may be lost on the way
-   down. The test suite asserts it.
+   down. tests/loads.test.mjs asserts it for every template and use class.
    ========================================================================== */
 const Loads = (() => {
 
@@ -22487,8 +22498,10 @@ const Loads = (() => {
    * a pitched roof needs a tie.
    *
    * The shares are normalised so they add back up to the level's load. Nothing
-   * may be lost travelling horizontally any more than vertically, and the test
-   * suite checks both.
+   * may be lost travelling horizontally any more than vertically, and
+   * tests/loads.test.mjs checks both. It fails, as it should, for a level whose
+   * only spanning element is a panel (a flat slab, a CLT roof): panels are not
+   * counted here, so that level's load reaches no member.
    */
   function paths(doc, plans){
     const base = compute(doc);
@@ -23517,20 +23530,6 @@ const Render = (() => {
       setShown(it.o, want);
       if(want){ kept.push(it); shown++; }
     }
-  }
-
-  /* --- member transform ---------------------------------------------------- */
-  const _lam = new Float64Array(9);
-  function memberMatrix(pI, pJ, roll, L){
-    FEM.dirCos(pI, pJ, roll || 0, _lam);
-    const m = new THREE.Matrix4();
-    m.set(
-      _lam[0]*L, _lam[3], _lam[6], pI[0],
-      _lam[1]*L, _lam[4], _lam[7], pI[1],
-      _lam[2]*L, _lam[5], _lam[8], pI[2],
-      0, 0, 0, 1
-    );
-    return m;
   }
 
   return { get scene(){return scene}, get camera(){return camera},
@@ -24583,7 +24582,7 @@ const Draft = (() => {
   /**
    * Renders the viewport at `scale`, adds the labels, title block and the
    * copyright, and downloads it. Pass `returnDataURL` to get the finished
-   * sheet back as a promise instead - what the verification harness uses.
+   * sheet back as a promise instead, for a test to inspect.
    */
   function exportPNG({ scale = 2, titleBlock = true, withLabels = true,
                        returnDataURL = false } = {}){

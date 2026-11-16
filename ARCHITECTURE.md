@@ -125,11 +125,19 @@ page's byline and BibTeX.
 Until Zenodo mints a release's version DOI, the notes must cite the concept
 DOI; the guard derives that rule from `CITATION.cff`.
 
-The README's "Verified" section describes the checks run on the app during
+`npm test` runs the guard and then `tests/loads.test.mjs`, which serves the
+app over local HTTP, opens it in headless Chromium (Playwright's own, or the
+system Chrome) and refuses every off-origin request. For every template under
+every use class it checks the documented load figures and column rules, the
+per-level load table, both takedown invariants, the eaves-thrust formula, the
+Load path card's figures, and that every column, pad, pile and strip footing
+is sized for the takedown load at its node. It currently fails the sideways
+invariant for levels spanned only by panels (flat slabs, a CLT roof), a known
+gap in `Loads.paths()`.
+
+The README's "Verified" section also describes checks run during
 development: sizing against hand calculation, a generator sweep, and the app
-driven in Chromium. Those harnesses are not in the repository. Two code
-comments still refer to them: "The test suite asserts it" in `Loads`, and
-"what the verification harness uses" in `Draft`.
+driven in Chromium. Those harnesses are not in the repository.
 
 Release order: bump every stamp, run the guard, push, cut the GitHub
 release (tag `vX.Y.Z`), then record the version DOI Zenodo mints in a

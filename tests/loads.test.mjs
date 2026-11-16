@@ -114,6 +114,11 @@ for (const tpl of templates) {
       // what each column, pad and pile was sized for, beside what the takedown
       // says reaches that node at that height
       const sized = [];
+      // a strip footing takes the wall's load per metre: the card's kN/m
+      for (const pl of CS.Gen.plans)
+        if (pl.role === 'strip' && pl.meta)
+          sized.push({ what: `strip ${pl.addr}`, N: pl.meta.wLine,
+                       want: d.onWalls ? d.perMetre : null, strip: true });
       if (!d.onWalls) {
         const at = (x, z) => d.supports.find(s => Math.abs(s.x - x) < 1e-6 && Math.abs(s.z - z) < 1e-6);
         for (const pl of CS.Gen.plans) {
@@ -170,6 +175,12 @@ for (const tpl of templates) {
       const last = r.supports[r.supports.length - 1];
       ok(`${tag}: wall at the foundation carries the total`, near(last.N, r.total),
          `${last.N} vs ${r.total}`);
+      const strips = r.sized.filter(s => s.strip);
+      if (strips.length) {
+        const off = strips.filter(s => s.N == null || !near(s.N, s.want, 1e-9));
+        ok(`${tag}: ${strips.length} strip footings sized for the card's kN/m`, off.length === 0,
+           off.slice(0, 2).map(s => `${s.what}: ${s.N} kN/m, card ${s.want.toFixed(1)} kN/m`).join('; '));
+      }
     } else {
       const tribSum = r.supports.reduce((a, s) => a + s.trib, 0);
       const nSum = r.supports.reduce((a, s) => a + s.N, 0);
