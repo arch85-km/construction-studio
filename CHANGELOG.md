@@ -7,6 +7,20 @@ resolves to the newest version. The full notes for each release are on the
 
 ## Unreleased
 
+- **Changed** — loads depend on what the building is made of. Each level's
+  kN/m² was one number per use (residential 9, office 11, roof 5), whatever
+  the construction. It is now the floor or roof system's own weight, plus
+  0.8 kN/m² of partitions on a floor, plus the imposed load for the use from
+  EN 1991-1-1 (residential 1.5, office 2.5, retail 4.0, industrial 7.5, roof
+  0.6), and the Load path card shows each figure taken apart. The timber
+  house now weighs 371 kN (10.3 kN/m at the foundation) instead of 1129 kN
+  (31.4); the steel office 12 353 kN instead of 19 238, its B2 column
+  1373 kN instead of 2138; the concrete flat slab 21 602 kN instead of
+  19 129. Columns and footings are sized from the loads of the levels they
+  actually carry, so a per-level change of floor system is counted too.
+  The method notes' load section, tall-column table (the steel catalogue now
+  runs out at twelve storeys, not eight) and references follow. The Build
+  tab's Use list no longer offers "Roof" as a use.
 - **Fixed** — columns, pads and piles are sized for the load the Load path
   card shows. They counted the roof as another floor (A × storeys × w), so
   the office template's B2 column was sized for 2475 kN against the card's

@@ -405,7 +405,7 @@
       </table></div>
       <p>Columns, posts and piers all share one shape &mdash; gather a load, divide by a permissible
         stress, take the square root for a square section:</p>
-      <pre class="cs-formula">N = A_trib &#215; (w_roof + (storeys &#8722; 1) &#215; w) <em>kN</em>
+      <pre class="cs-formula">N = A_trib &#215; (w_roof + &Sigma; w_floor) <em>kN</em>
 &nbsp;
 A_required = N / f_permissible
 &nbsp;
@@ -413,11 +413,13 @@ A_required = N / f_permissible
 <em>RC     </em> f = 0.4 &#215; 30 MPa    <em>(C30)</em>
 <em>timber </em> f = 0.6 &#215; 24 MPa    <em>(GL24)</em>
 <em>masonry</em> f = 2.5 MPa         <em>(pier)</em></pre>
-      <p>The load <i>w</i> is one number per use class, applied as a single combined allowance per
-        square metre per storey: residential&nbsp;9, office&nbsp;11, retail&nbsp;12,
-        industrial&nbsp;14, roof&nbsp;5&nbsp;kN/m&sup2;. <b>Dead and imposed are never separated and
-        no load factors are applied</b>, so these are service-level allowances, not design values.
-        They cannot be carried into a code calculation as they stand.</p>
+      <p>The load <i>w</i> on each level is what it is built of plus what is put on it: the floor
+        or roof system&rsquo;s own weight (from 0.6&nbsp;kN/m&sup2; for timber joists to 7.5 for
+        an RC flat slab), 0.8&nbsp;kN/m&sup2; of partitions on every floor, and the imposed load
+        for the use from EN&nbsp;1991-1-1: residential&nbsp;1.5, office&nbsp;2.5, retail&nbsp;4.0,
+        industrial&nbsp;7.5, roof&nbsp;0.6&nbsp;kN/m&sup2;. So a timber house weighs about a third
+        of a concrete one. <b>No load factors are applied</b>: these are service loads, not design
+        values, and cannot be carried into a code calculation as they stand.</p>
       <p>Load comes down top-down. Where the vertical system offers <b>lines</b> &mdash; walls
         &mdash; it is spread evenly along the perimeter, so every metre of wall carries the same
         whatever is above it. Where it offers <b>points</b> &mdash; columns &mdash; each grid node
@@ -459,14 +461,14 @@ A_required = N / f_permissible
       <div class="cs-tbl"><table>
         <thead><tr><th class="cs-n">Storeys</th><th class="cs-n">N</th><th class="cs-n">Area needed</th><th>Section given</th><th class="cs-n">Area provided</th><th class="cs-n">Short by</th><th>Flag</th></tr></thead>
         <tbody>
-          <tr><td class="cs-n">6</td><td class="cs-n">3 375 kN</td><td class="cs-n">20 455 mm&sup2;</td><td class="cs-p">HEB 450</td><td class="cs-n">21 800 mm&sup2;</td><td class="cs-d">&mdash;</td><td><span class="cs-chip is-in">ok</span></td></tr>
-          <tr><td class="cs-n">8</td><td class="cs-n">4 613 kN</td><td class="cs-n">27 955 mm&sup2;</td><td class="cs-p">HEB 600</td><td class="cs-n">27 000 mm&sup2;</td><td class="cs-d">3%</td><td><span class="cs-chip is-in">ok</span></td></tr>
-          <tr><td class="cs-n">10</td><td class="cs-n">5 850 kN</td><td class="cs-n">35 455 mm&sup2;</td><td class="cs-p">HEB 600</td><td class="cs-n">27 000 mm&sup2;</td><td class="cs-d">24%</td><td><span class="cs-chip is-in">ok</span></td></tr>
-          <tr><td class="cs-n">12</td><td class="cs-n">7 088 kN</td><td class="cs-n">42 955 mm&sup2;</td><td class="cs-p">HEB 600</td><td class="cs-n">27 000 mm&sup2;</td><td class="cs-d">37%</td><td><span class="cs-chip is-in">ok</span></td></tr>
+          <tr><td class="cs-n">6</td><td class="cs-n">2 228 kN</td><td class="cs-n">13 500 mm&sup2;</td><td class="cs-p">HEB 300</td><td class="cs-n">14 910 mm&sup2;</td><td class="cs-d">&mdash;</td><td><span class="cs-chip is-in">ok</span></td></tr>
+          <tr><td class="cs-n">8</td><td class="cs-n">3 083 kN</td><td class="cs-n">18 682 mm&sup2;</td><td class="cs-p">HEB 400</td><td class="cs-n">19 780 mm&sup2;</td><td class="cs-d">&mdash;</td><td><span class="cs-chip is-in">ok</span></td></tr>
+          <tr><td class="cs-n">10</td><td class="cs-n">3 938 kN</td><td class="cs-n">23 864 mm&sup2;</td><td class="cs-p">HEB 550</td><td class="cs-n">25 410 mm&sup2;</td><td class="cs-d">&mdash;</td><td><span class="cs-chip is-in">ok</span></td></tr>
+          <tr><td class="cs-n">12</td><td class="cs-n">4 792 kN</td><td class="cs-n">29 045 mm&sup2;</td><td class="cs-p">HEB 600</td><td class="cs-n">27 000 mm&sup2;</td><td class="cs-d">7%</td><td><span class="cs-chip is-in">ok</span></td></tr>
         </tbody>
-        <caption>HEB 600 is the deepest of the 19 HEB sections in the catalogue. From eight storeys
+        <caption>HEB 600 is the deepest of the 19 HEB sections in the catalogue. From twelve storeys
           up the tool has run out of steel, hands back the largest section it has, and still reports
-          green. Above roughly seven storeys on this grid, read the column size as &ldquo;at least
+          green. Above roughly eleven storeys on this grid, read the column size as &ldquo;at least
           this&rdquo; rather than as an answer.</caption>
       </table></div>
     </div>
@@ -478,7 +480,7 @@ A_required = N / f_permissible
       <dl class="cs-ledger">
         <div><span class="cs-chip is-part">runs high</span><dt>No imposed-load reduction</dt><dd>Every storey is counted at its full allowance. Real practice reduces the imposed component on a column gathering many floors, because the chance of every floor being fully loaded at once is small. The tool's loads therefore run high — increasingly so with height.</dd></div>
         <div><span class="cs-chip is-part">runs low</span><dt>No slenderness reduction</dt><dd>Column area uses a flat permissible stress with no reduction for buckling. A slender column is therefore undersized by this rule — in the opposite direction to the point above. The two do not cancel in any predictable way.</dd></div>
-        <div><span class="cs-chip is-part">neither</span><dt>One combined load</dt><dd>Dead and imposed are never separated and no partial factors are applied, so the figures are neither characteristic nor design values.</dd></div>
+        <div><span class="cs-chip is-part">neither</span><dt>Service loads</dt><dd>Dead and imposed are taken apart on the card, but no partial factors are applied, so the figures are service loads, not design values.</dd></div>
         <div><span class="cs-chip is-part">neither</span><dt>Rounding</dt><dd>Concrete to 25 mm, glulam to 45 mm — one lamination — masonry to 5 mm, and catalogue families to the next section up. Panels are synthesised at the exact size wanted, so a CLT or hollowcore depth can look more precise than the rule behind it.</dd></div>
       </dl>
       <p class="cs-note">One more worth knowing before you quote a masonry figure. The slenderness
@@ -512,7 +514,7 @@ A_required = N / f_permissible
         <div><span class="cs-chip is-out">Out</span><dt>Strength and deflection checks</dt><dd>No member is ever verified against a capacity or a deflection limit. Several rules note in their own source text that deflection normally governs — and then do not check it.</dd></div>
         <div><span class="cs-chip is-out">Out</span><dt>Buckling, fire and connection design</dt><dd>Named in the tool's own disclaimer as absent, and absent they are.</dd></div>
         <div><span class="cs-chip is-out">Out</span><dt>Lateral load</dt><dd>No wind, no seismic, no notional horizontal force. Braced frames, shear walls and portal frames are drawn and named, but nothing sizes their bracing or checks the building's stability.</dd></div>
-        <div><span class="cs-chip is-out">Out</span><dt>Snow and load combinations</dt><dd>One combined allowance per square metre per use class, at service level. No partial factors, no combination formed.</dd></div>
+        <div><span class="cs-chip is-out">Out</span><dt>Snow and load combinations</dt><dd>Service loads only; the roof&rsquo;s 0.6&nbsp;kN/m&sup2; stands in for snow. No partial factors, no combination formed.</dd></div>
         <div><span class="cs-chip is-out">Out</span><dt>Reinforcement</dt><dd>No bar is sized, counted or arranged. Concrete elements are solid volumes.</dd></div>
         <div><span class="cs-chip is-out">Out</span><dt>Building physics</dt><dd>No U-value, no thermal bridge, no condensation risk, no acoustics, no airtightness. The insulation layer in a build-up has a thickness and a colour and nothing else — the tool holds no material conductivity data at all.</dd></div>
         <div><span class="cs-chip is-out">Out</span><dt>Cost and carbon</dt><dd>No quantities are priced and no embodied carbon is calculated, though the element counts a take-off would need are present in the model.</dd></div>
@@ -624,6 +626,12 @@ A_required = N / f_permissible
       h<sub>ef</sub>&nbsp;/&nbsp;t<sub>ef</sub>&nbsp;&le;&nbsp;27 (clause 5.5.1.4), which applies to
       walls under mainly vertical loading rather than to every masonry wall. The only rule in the
       tool tied to a code.</p>
+    <p class="cs-ref">European Committee for Standardization. (2002). <i>Eurocode 1: Actions on
+      structures. Part 1-1: General actions &mdash; Densities, self-weight, imposed loads for
+      buildings</i> (EN 1991-1-1:2002), with the UK National Annex. CEN. &mdash; the imposed load
+      for each use (Table 6.2), the partition allowance (6.3.1.2(8)) and the roof&rsquo;s
+      maintenance load (category H); its densities (Annex A) underlie the dead loads, which are
+      this tool&rsquo;s typical values, not the standard&rsquo;s.</p>
 
     <p class="cs-cite">For anything that must stand up, none of the above substitutes for an
       engineer. They are where the tool&rsquo;s rules of thumb come from, not a design authority.</p>

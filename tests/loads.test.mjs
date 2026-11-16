@@ -57,7 +57,17 @@ await page.waitForFunction(() => window.ConstructionStudio && ConstructionStudio
 
 /* --- the documented constants (method notes, "What it calculates") ------- */
 const NOTES = {
-  LOADING: { residential: 9, office: 11, retail: 12, industrial: 14, roof: 5 },
+  // service loads, kN/m² on plan: imposed by use (EN 1991-1-1 Table 6.2, UK NA),
+  // partitions on every floor, a roof's imposed load, and each system's dead load
+  IMPOSED: { residential: 1.5, office: 2.5, retail: 4.0, industrial: 7.5 },
+  PARTITIONS: 0.8, ROOF_IMPOSED: 0.6,
+  DEAD: {
+    'floor.steel.composite': 4.3, 'floor.concrete.oneWay': 6.5, 'floor.concrete.flatSlab': 7.5,
+    'floor.concrete.waffle': 6.5, 'floor.precast.hollowcore': 5.0, 'floor.timber.joist': 0.6,
+    'floor.timber.clt': 2.8, 'roof.steel.deck': 1.0, 'roof.steel.portal': 0.5,
+    'roof.timber.truss': 1.1, 'roof.timber.rafter': 1.1, 'roof.concrete.slab': 6.5,
+    'roof.timber.clt': 1.0,
+  },
   // permissible stress, kPa, by rule label
   f: { 'Steel column': 0.6 * 275e3, 'RC column': 0.4 * 30e3,
        'Timber post': 0.6 * 24e3, 'Masonry pier': 2.5e3 },
@@ -70,29 +80,34 @@ const consts = await page.evaluate(() => {
     if (r.byArea) rules[r.label] = {
       id,
       area1000: r.area({ N: 1000 }),
-      load: r.load({ Atrib: 12.5, storeys: 3, w: 7 }),
-      load0: r.load({ Atrib: 12.5, storeys: 0, w: 7 }),
-      text: r.fmt({ Atrib: 12.5, storeys: 3, w: 7, N: r.load({ Atrib: 12.5, storeys: 3, w: 7 }) }, 0, null),
+      load: r.load({ Atrib: 12.5, ws: [2, 7, 7] }),
+      load0: r.load({ Atrib: 12.5, ws: [2] }),
+      text: r.fmt({ Atrib: 12.5, ws: [2, 7, 7], N: r.load({ Atrib: 12.5, ws: [2, 7, 7] }) }, 0, null),
     };
-  return { LOADING: SIZING.LOADING, rules };
+  const { IMPOSED, PARTITIONS, ROOF_IMPOSED, DEAD } = SIZING;
+  return { IMPOSED, PARTITIONS, ROOF_IMPOSED, DEAD, rules };
 });
 
 console.log('Documented constants');
-for (const [k, v] of Object.entries(NOTES.LOADING))
-  ok(`LOADING.${k} = ${v} kN/m²`, consts.LOADING[k] === v, `app has ${consts.LOADING[k]}`);
+for (const [k, v] of Object.entries(NOTES.IMPOSED))
+  ok(`imposed, ${k} = ${v} kN/m²`, consts.IMPOSED[k] === v, `app has ${consts.IMPOSED[k]}`);
+ok(`partitions = ${NOTES.PARTITIONS} kN/m²`, consts.PARTITIONS === NOTES.PARTITIONS);
+ok(`roof imposed = ${NOTES.ROOF_IMPOSED} kN/m²`, consts.ROOF_IMPOSED === NOTES.ROOF_IMPOSED);
+for (const [k, v] of Object.entries(NOTES.DEAD))
+  ok(`dead, ${k} = ${v} kN/m²`, consts.DEAD[k] === v, `app has ${consts.DEAD[k]}`);
+ok('no dead load the notes do not list', Object.keys(consts.DEAD).every(k => k in NOTES.DEAD),
+   Object.keys(consts.DEAD).filter(k => !(k in NOTES.DEAD)).join(', '));
 for (const [label, f] of Object.entries(NOTES.f)) {
   const r = consts.rules[label];
   ok(`${label}: rule exists`, !!r);
   if (!r) continue;
   ok(`${label}: A = N / ${f / 1e3} MPa`, near(r.area1000, 1000 / f * 1e6),
      `1000 kN → ${r.area1000.toFixed(1)} mm², want ${(1000 / f * 1e6).toFixed(1)}`);
-  // the same sum as the takedown: the roof once, then a floor per storey below it
-  ok(`${label}: N = A_trib × (roof + (storeys − 1) × w)`,
-     near(r.load, 12.5 * (NOTES.LOADING.roof + 2 * 7)), `${r.load}`);
-  ok(`${label}: one storey carries the roof only`,
-     near(r.load0, 12.5 * NOTES.LOADING.roof), `${r.load0}`);
+  // the same sum as the takedown: each level carried, roof first
+  ok(`${label}: N = A_trib × Σ w of the levels carried`, near(r.load, 12.5 * (2 + 7 + 7)), `${r.load}`);
+  ok(`${label}: one storey carries the roof only`, near(r.load0, 12.5 * 2), `${r.load0}`);
   ok(`${label}: printed sum is the one computed`,
-     r.text.startsWith(`12.5 m² × (${NOTES.LOADING.roof} + 2 × 7) kN/m² = ${Math.round(r.load)} kN`), r.text);
+     r.text.startsWith(`12.5 m² × (2.0 + 2 × 7.0) kN/m² = 200 kN`), r.text);
 }
 
 /* --- every template, under every use class ------------------------------- */
@@ -106,6 +121,7 @@ for (const tpl of templates) {
       const T = CS.App.TEMPLATES.find(t => t.id === tpl);
       const doc = T.make();
       doc.use = use;
+      const slotSys = { floor: (doc.slots.floor || {}).sys, roof: (doc.slots.roof || {}).sys };
       CS.Store.load(doc);
       CS.App.rebuild();
       const d = CS.Loads.paths(CS.Store.doc, CS.Gen.plans);
@@ -137,7 +153,7 @@ for (const tpl of templates) {
         }
       }
       return {
-        sized,
+        sized, slotSys,
         name: T.name, grid: { W: d.grid.W, D: d.grid.D, area: d.grid.area },
         levels: d.levels.length, rows: d.rows, total: d.total, onWalls: d.onWalls,
         runLen: d.runLen, perMetre: d.perMetre,
@@ -151,7 +167,6 @@ for (const tpl of templates) {
     const tag = `${r.name} / ${use}`;
     console.log(tag);
     const area = r.grid.W * r.grid.D;
-    const wFloor = NOTES.LOADING[use];
 
     /* the table: area × w per level, roof on top, running total down */
     ok(`${tag}: one row per level above ground`, r.rows.length === r.levels - 1,
@@ -159,13 +174,17 @@ for (const tpl of templates) {
     ok(`${tag}: level area = W × D`, near(r.grid.area, area), `${r.grid.area} vs ${area}`);
     let run = 0, rowsOk = true, roofOk = true;
     r.rows.forEach((row, i) => {
-      const want = i === 0 ? NOTES.LOADING.roof : wFloor;
-      if (row.isRoof !== (i === 0)) roofOk = false;
+      // the level's own construction + partitions + what is put on it
+      const sys = row.isRoof ? r.slotSys.roof : r.slotSys.floor;
+      const want = Math.round(((NOTES.DEAD[sys] ?? NaN) + (row.isRoof ? 0 : NOTES.PARTITIONS) +
+                               (row.isRoof ? NOTES.ROOF_IMPOSED : NOTES.IMPOSED[use])) * 100) / 100;
+      if (row.isRoof !== (i === 0) || row.sys !== sys) roofOk = false;
       run += area * want;
       if (row.w !== want || !near(row.load, area * want) || !near(row.cumulative, run)) rowsOk = false;
     });
-    ok(`${tag}: roof row on top only`, roofOk);
-    ok(`${tag}: rows are area × w, accumulated top down`, rowsOk);
+    ok(`${tag}: roof row on top only, each row its own system`, roofOk);
+    ok(`${tag}: w = dead + partitions + imposed; rows area × w, accumulated top down`, rowsOk,
+       r.rows.map(x => `${x.name} ${x.w}`).join(', '));
     ok(`${tag}: total = last running figure`, near(r.total, run), `${r.total} vs ${run}`);
 
     /* invariant 1: nothing lost going down */
@@ -245,7 +264,7 @@ for (const tpl of ['house', 'office']) {
   console.log(tag);
   ok(`${tag}: header total`, c.summary === `${Math.round(c.total)} kN to the ground`, c.summary);
   const tableOk = c.rows.every((r, i) => c.cells[i] && c.cells[i][0] === r[0] &&
-    +c.cells[i][1] === Math.round(r[1]) && +c.cells[i][2] === Math.round(r[2]) &&
+    +c.cells[i][1] === Math.round(r[1] * 10) / 10 && +c.cells[i][2] === Math.round(r[2]) &&
     +c.cells[i][3] === Math.round(r[3]));
   ok(`${tag}: table matches the takedown`, tableOk, JSON.stringify(c.cells));
   if (c.perMetre) {

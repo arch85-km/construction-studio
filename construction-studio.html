@@ -19844,13 +19844,24 @@ const SIZING = (() => {
      the roof load once, then the floor load for every storey below the roof.
      The same sum as the load takedown (Loads.compute), so the size a student
      is given and the load the Load path card shows are the same number. */
-  const perM2 = (c, wDef) => (c.wRoof ?? LOADING.roof) +
-                             (Math.max(1, c.storeys) - 1)*(c.w || wDef);
+  // c.ws, when the caller gives it, is the load of each level carried, roof
+  // first (from carried()); otherwise a roof and (storeys - 1) equal floors.
+  const loadsOf = (c, wDef) => c.ws && c.ws.length ? c.ws
+    : [c.wRoof ?? 1.6].concat(Array(Math.max(1, c.storeys) - 1).fill(c.w || wDef));
+  const perM2 = (c, wDef) => loadsOf(c, wDef).reduce((a, w) => a + w, 0);
   const takedown = (c, wDef) => c.Atrib*perM2(c, wDef);
-  const perM2Text = (c, wDef) => {
-    const n = Math.max(1, c.storeys) - 1, roof = c.wRoof ?? LOADING.roof;
-    return n ? `(${roof} + ${n} × ${c.w || wDef}) kN/m²` : `${roof} kN/m²`;
-  };
+  /** "(1.7 + 2 × 2.9) kN/m²": loads roof first, the sum as a student would
+      write it. The column rules and the Load path card both print with it. */
+  const perM2Text = (c, wDef) => sumText(loadsOf(c, wDef));
+  function sumText(ws){
+    const terms = [];
+    for(let i = 0; i < ws.length; ){
+      let j = i; while(j < ws.length && ws[j] === ws[i]) j++;
+      terms.push(j - i > 1 ? `${j - i} × ${U.fx(ws[i], 1)}` : U.fx(ws[i], 1));
+      i = j;
+    }
+    return terms.length > 1 ? `(${terms.join(' + ')}) kN/m²` : `${terms[0]} kN/m²`;
+  }
 
   const R = {
 
@@ -20121,8 +20132,67 @@ const SIZING = (() => {
   }
   };
 
-  /** Typical total design load per storey, kN/m2 (dead + imposed). */
-  const LOADING = { residential:9, office:11, retail:12, industrial:14, roof:5 };
+  /* --- loads -----------------------------------------------------------------
+     Service loads, unfactored, kN/m² on plan: what the building weighs plus
+     what is put in it. The permissible stresses the column rules divide by
+     are service-level too, so the two belong together.
+
+     Imposed, by use: EN 1991-1-1 Table 6.2 with the UK National Annex -
+     category A dwellings 1.5, B offices 2.5, D1 shops 4.0, E1 storage 7.5.
+     Partitions: 0.8, the uniform allowance EN 1991-1-1 6.3.1.2(8) gives for
+     movable partitions up to 2 kN per metre run. Roof: 0.6 imposed, category
+     H (not accessible except for maintenance), which also covers lowland UK
+     snow. */
+  const IMPOSED = { residential:1.5, office:2.5, retail:4.0, industrial:7.5 };
+  const PARTITIONS = 0.8, ROOF_IMPOSED = 0.6;
+
+  /* Dead load of each floor and roof system, kN/m² on plan, including its
+     finishes, ceiling and services. Typical values, worked from material
+     densities (EN 1991-1-1 Annex A) and the build-up each system draws; the
+     comment says what each assumes. This is the number that makes a timber
+     house a third of the weight of a concrete one. */
+  const DEAD = {
+    'floor.steel.composite':    4.3,  // 130 mm slab on deck 2.7, steel 0.4, finishes/ceiling 1.2
+    'floor.concrete.oneWay':    6.5,  // 175 mm slab 4.4, downstand beams 0.9, finishes 1.2
+    'floor.concrete.flatSlab':  7.5,  // 250 mm slab 6.25, finishes/ceiling 1.2
+    'floor.concrete.waffle':    6.5,  // waffle ~ 210 mm solid equivalent 5.3, finishes 1.2
+    'floor.precast.hollowcore': 5.0,  // 200 mm units 2.9, 50 mm screed 1.2, finishes 0.9
+    'floor.timber.joist':       0.6,  // joists, boarding, plasterboard ceiling
+    'floor.timber.clt':         2.8,  // 160 mm CLT 0.8, 70 mm screed topping 1.7, ceiling 0.3
+    'roof.steel.deck':          1.0,  // deck, insulation, membrane, purlins, ceiling
+    'roof.steel.portal':        0.5,  // insulated cladding, purlins, rafters
+    'roof.timber.truss':        1.1,  // concrete tiles (on plan), battens, trusses, insulation, ceiling
+    'roof.timber.rafter':       1.1,  // as the truss roof, cut rafters and purlins instead
+    'roof.concrete.slab':       6.5,  // 200 mm slab 5.0, insulation, membrane, ballast 1.5
+    'roof.timber.clt':          1.0   // 120 mm CLT 0.6, insulation and membrane 0.4
+  };
+  const DEAD_DEFAULT = 5.0;           // a system with no entry: a middling concrete floor
+  const r2 = v => Math.round(v*100)/100;
+
+  /** The system that forms a level's floor or roof, with any per-level override. */
+  function sysAt(doc, part, levelId){
+    const over = levelId && doc.perLevel && doc.perLevel[levelId] && doc.perLevel[levelId][part];
+    return (over && over.sys) || (doc.slots[part] || {}).sys || null;
+  }
+
+  /** What every level above the ground carries per square metre, and why. */
+  function levelLoads(doc, levels){
+    const imposed = IMPOSED[doc.use] ?? IMPOSED.office;
+    return levels.slice(1).map(L => {
+      const part = L.isRoof ? 'roof' : 'floor';
+      const sys = sysAt(doc, part, L.id);
+      const dead = DEAD[sys] ?? DEAD_DEFAULT;
+      const q = L.isRoof ? ROOF_IMPOSED : imposed;
+      const parts = L.isRoof ? 0 : PARTITIONS;
+      return { id:L.id, isRoof:!!L.isRoof, sys, dead, partitions:parts, imposed:q,
+               w:r2(dead + parts + q) };
+    });
+  }
+
+  /** The loads a support standing on level `idx` carries, roof first. */
+  function carried(doc, levels, idx = 0){
+    return levelLoads(doc, levels).slice(idx).reverse().map(l => l.w);
+  }
 
   /* --- picking a real section ------------------------------------------- */
   function binFirstGTE(list, key, want){
@@ -20187,7 +20257,7 @@ const SIZING = (() => {
   function size(ruleId, c){
     const rule = R[ruleId];
     if(!rule) return { ruleId, depth:0, status:'ok', formula:'—', rule:'' };
-    c = Object.assign({ storeys:1, w:LOADING.office }, c);
+    c = Object.assign({ storeys:1 }, c);
 
     if(rule.load) c.N = rule.load(c);
     if(rule.area) c.areaWanted = rule.area(c)*1e-6;        // mm2 -> m2
@@ -20222,7 +20292,8 @@ const SIZING = (() => {
     return [list[i-n], list[i+n]].filter(Boolean);
   }
 
-  return { R, LOADING, size, nearby, pick, grade, COPY };
+  return { R, IMPOSED, PARTITIONS, ROOF_IMPOSED, DEAD, DEAD_DEFAULT, levelLoads, carried, sumText,
+           size, nearby, pick, grade, COPY };
 })();
 
 /* ==========================================================================
@@ -20770,7 +20841,7 @@ def({
               : grid.outline.map((q,i) => ({ p:q, i, j:0 }));
     for(const pt of pts){
       const z = size('found.pad', { Atrib:pt.trib || grid.tribArea(pt.i, pt.j),
-                                    storeys, w:SIZING.LOADING[M.use], qAllow:M.soil.qAllow });
+                                    storeys, ws:SIZING.carried(M, ctx.levels), qAllow:M.soil.qAllow });
       const B = z.B || 1.2;
       ctx.out({ kind:'volume', role:'pad', layer:0, level:'L0',
         poly:Geom.rect(pt.p[0]-B/2, pt.p[1]-B/2, pt.p[0]+B/2, pt.p[1]+B/2),
@@ -20800,7 +20871,7 @@ def({
     const { p, size, base, M, grid } = ctx;
     // the load takedown's line load: every level's load over the perimeter run
     const z = size('found.strip', { Atrib:grid.W*grid.D, storeys:ctx.storeys,
-                                    w:SIZING.LOADING[M.use], run:2*(grid.W + grid.D),
+                                    ws:SIZING.carried(M, ctx.levels), run:2*(grid.W + grid.D),
                                     qAllow:M.soil.qAllow });
     const B = z.B || 0.6;
     base.lines.forEach((ln, i) => {
@@ -20852,7 +20923,7 @@ def({
     const { grid, p, size, base, M } = ctx;
     for(const pt of base.points){
       const z = size('found.pile', { Atrib:grid.tribArea(pt.i, pt.j), storeys:ctx.storeys,
-                                     w:SIZING.LOADING[M.use], pileDia:p.dia });
+                                     ws:SIZING.carried(M, ctx.levels), pileDia:p.dia });
       const cap = Math.max(1.2, 0.9 + (z.n-1)*0.6);
       ctx.out({ kind:'volume', role:'cap', layer:0, level:'L0',
         poly:Geom.rect(pt.p[0]-cap/2, pt.p[1]-cap/2, pt.p[0]+cap/2, pt.p[1]+cap/2),
@@ -21010,7 +21081,7 @@ function frameBuild(ctx, colRule, matId, opts = {}){
   const storeysAbove = ctx.storeys - level.idx;
   grid.forEachNode((q, i, j) => {
     const z = size(colRule, { Atrib:grid.tribArea(i,j), storeys:Math.max(1, storeysAbove),
-                              w:SIZING.LOADING[M.use], h:level.storey });
+                              ws:SIZING.carried(M, ctx.levels, level.idx), h:level.storey });
     mem(ctx, 'column', P3(q, level.y), P3(q, level.y + level.storey),
         z.sectionId, matId,
         { addr:ctx.A('column', i, j), meta:z,
@@ -22415,16 +22486,22 @@ const Loads = (() => {
   function compute(doc){
     const grid   = Model.makeGrid(doc.grid);
     const levels = Gen.levelsFor(doc);   // what is built, not what was typed
-    const wFloor = SIZING.LOADING[doc.use] ?? 11;
-    const wRoof  = SIZING.LOADING.roof ?? 5;
+    // what each level weighs per m², from its own system and the use
+    const per    = new Map(SIZING.levelLoads(doc, levels).map(l => [l.id, l]));
+    const floorL = [...per.values()].find(l => !l.isRoof);
+    const roofL  = [...per.values()].find(l => l.isRoof);
+    const wFloor = floorL ? floorL.w : null;
+    const wRoof  = roofL ? roofL.w : null;
 
-    /* 1. what lands on each level, top down. The roof is lighter than a floor:
-          nobody stands on it and there is no screed or partition allowance. */
+    /* 1. what lands on each level, top down: the level's own construction,
+          plus partitions on a floor, plus what is put on it. A roof carries
+          no partitions and only a maintenance load. */
     const rows = [];
     for(let i = levels.length - 1; i >= 1; i--){
       const L = levels[i];
-      const w = L.isRoof ? wRoof : wFloor;
-      rows.push({ id:L.id, name:L.name, y:L.y, isRoof:L.isRoof,
+      const lw = per.get(L.id), w = lw.w;
+      rows.push({ id:L.id, name:L.name, y:L.y, isRoof:L.isRoof, sys:lw.sys,
+                  dead:lw.dead, partitions:lw.partitions, imposed:lw.imposed,
                   area:grid.area, w, load:grid.area*w });
     }
     let run = 0;
@@ -25618,9 +25695,10 @@ const Dock = (() => {
       v => commit(() => { L.height = Util.clamp(v,2.2,14); }, 'Levels'),
       { min:2.2, max:14, step:0.1 }), null, 'metres, floor to floor'));
     body.appendChild(UI.row('Use', UI.select(
-      Object.keys(SIZING.LOADING).map(k => ({ value:k, label:k[0].toUpperCase()+k.slice(1) })),
+      Object.keys(SIZING.IMPOSED).map(k => ({ value:k, label:k[0].toUpperCase()+k.slice(1) })),
       doc.use, v => commit(() => { doc.use = v; }, 'Use')), null,
-      `${SIZING.LOADING[doc.use]} kN/m² per storey, used to size the columns`));
+      `${U.fx(SIZING.IMPOSED[doc.use] ?? SIZING.IMPOSED.office, 1)} kN/m² imposed on each ` +
+      `floor, plus partitions and the floor's own weight`));
 
     const presets = presetGrids(doc);
     if(presets.length) body.appendChild(UI.rowWide(
@@ -26666,6 +26744,8 @@ const LoadPath = (() => {
     return out;
   }
 
+  const sumText = ws => SIZING.sumText(ws);
+
   /* --- the takedown, as a table ------------------------------------------- */
   function card(){
     if(!on) return null;
@@ -26684,7 +26764,7 @@ const LoadPath = (() => {
       'Follow one column down and watch the number grow — that is the load path.' }));
 
     const rows = d.rows.map(r => [
-      r.name, `${U.fx(r.w,0)}`, `${U.fx(r.load,0)}`, `${U.fx(r.cumulative,0)}`]);
+      r.name, `${U.fx(r.w,1)}`, `${U.fx(r.load,0)}`, `${U.fx(r.cumulative,0)}`]);
     const t = el('table', { class:'tbl loads' }, [
       el('thead', {}, [el('tr', {}, ['Level','kN/m²','This level','Running']
         .map(h => el('th', { text:h })))]),
@@ -26694,6 +26774,21 @@ const LoadPath = (() => {
     body.appendChild(el('div', { class:'tbl-wrap' }, [t]));
     body.appendChild(el('div', { class:'hint',
       text:`Each level is ${U.fx(d.grid.area,0)} m², and every figure is in kN.` }));
+    // what each kN/m² is made of: the construction's own weight, partitions,
+    // and what is put on it - the reason a timber house weighs a third of a
+    // concrete one
+    const seen = new Set(), made = [];
+    for(const r of d.rows){
+      const key = [r.sys, r.w].join('|');
+      if(seen.has(key)) continue;
+      seen.add(key);
+      const s = SYSTEMS[r.sys];
+      made.push(`${r.isRoof ? 'Roof' : 'Floor'} ${U.fx(r.w,1)} kN/m² = ${U.fx(r.dead,1)} own weight` +
+        (s ? ` (${s.label})` : '') +
+        (r.partitions ? ` + ${U.fx(r.partitions,1)} partitions` : '') +
+        ` + ${U.fx(r.imposed,1)} imposed${r.isRoof ? '' : ` (${Store.doc.use || 'office'})`}`);
+    }
+    body.appendChild(el('div', { class:'hint', text:made.join('. ') + '.' }));
     body.appendChild(el('div', { class:'hint caution', text:NOT_FOR_CONSTRUCTION_FULL }));
 
     if(d.onWalls){
@@ -26712,9 +26807,7 @@ const LoadPath = (() => {
           el('span', { class:'ttl', text:`Worst column — ${w ? w.ref : '—'}` })]),
         el('div', { class:'formula', text: w
           // the roof once, then each floor: the sum that makes the total
-          ? `${U.fx(w.trib,2)} m² × (${d.wRoof}` +
-            (d.rows.length > 1 ? ` + ${d.rows.length - 1} × ${d.wFloor}` : '') +
-            `) kN/m² = ${U.fx(w.N,0)} kN` : '—' }),
+          ? `${U.fx(w.trib,2)} m² × ${sumText(d.rows.map(r => r.w))} = ${U.fx(w.N,0)} kN` : '—' }),
         el('div', { class:'advice',
           text:'An interior column takes a whole bay; a corner takes a quarter of one. ' +
                'That is the whole difference between them.' })
@@ -27496,12 +27589,12 @@ const Ribbon = (() => {
         el('span', { class:'stat' }, [
           el('b', { text:U.fx(d.total, 0) }), ' kN to the ground']),
         el('span', { class:'stat' }, [
-          el('b', { text:U.fx(d.rows[0].w, 0) }), ' kN/m² roof']),
-        el('span', { class:'stat' }, [
-          el('b', { text:U.fx(d.wFloor, 0) }), ' kN/m² floors'])
+          el('b', { text:U.fx(d.rows[0].w, 1) }), ' kN/m² roof']),
+        d.wFloor == null ? null : el('span', { class:'stat' }, [
+          el('b', { text:U.fx(d.wFloor, 1) }), ' kN/m² floors'])
       ])] : []),
       grp('Use', [
-        UI.select(Object.keys(SIZING.LOADING).filter(k => k !== 'roof')
+        UI.select(Object.keys(SIZING.IMPOSED)
             .map(k => ({ value:k, label:k[0].toUpperCase()+k.slice(1) })),
           doc.use, v => { Store.begin('Use'); doc.use = v; Store.touch('param');
                           LoadPath.build(); App.refreshChrome(); Dock.render(); })
