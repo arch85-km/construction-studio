@@ -131,9 +131,9 @@ system Chrome) and refuses every off-origin request. For every template under
 every use class it checks the documented load figures and column rules, the
 per-level load table, both takedown invariants, the eaves-thrust formula, the
 Load path card's figures, and that every column, pad, pile and strip footing
-is sized for the takedown load at its node. It currently fails the sideways
-invariant for levels spanned only by panels (flat slabs, a CLT roof), a known
-gap in `Loads.paths()`.
+is sized for the takedown load at its node. It also checks that each wall
+band and column sleeve of the load-path diagram lands on its own wall or
+column, at rest and with the model exploded and opened.
 
 The README's "Verified" section also describes checks run during
 development: sizing against hand calculation, a generator sweep, and the app

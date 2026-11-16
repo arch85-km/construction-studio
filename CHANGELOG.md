@@ -23,13 +23,23 @@ resolves to the newest version. The full notes for each release are on the
   timber house's footing read 24 kN/m against the card's 31.4, and the
   masonry house's 36 against 55.2. The formula line now shows the sum,
   "1129 kN ÷ 36.0 m = 31.4 kN/m ÷ 150 kPa = 0.45 m wide strip".
+- **Fixed** — a level carried by a panel alone, every level of the
+  Concrete flat slab and the Mass timber roof, now shows its load travelling
+  sideways. Panels were not counted as spanning members, so the load went
+  from the floor straight into the columns and the Horizontal filter showed
+  nothing. The panel is read as strips running the way its system spans:
+  both ways to the column lines for a two-way slab, across the short
+  direction for a one-way panel. Each level still delivers exactly its load.
+- **Fixed** — the load path's wall bands and column sleeves sit on their own
+  walls and columns. The explode moved them toward the plan's origin, even
+  at rest: the house bands lay up to 3 m from their walls, and the office's
+  16 sleeves sat on one spot.
 - **Tests** — `npm test` runs the release check and a load-takedown suite
   (`tests/loads.test.mjs`) over every template and use class.
 - **Docs** — the method notes, README, ARCHITECTURE.md and code comments no
   longer describe test suites the repository does not hold. They name
-  `npm test`, say which checks were run only during development, and state
-  that the sideways load balance fails where a level is spanned only by
-  panels (a flat slab, a CLT roof). Comments naming a design check, a
+  `npm test` and say which checks were run only during development.
+  Comments naming a design check, a
   `DESIGN` module, `FEM.sectionToLocal()` and "Benchmark 11/12", none of
   which exist, are corrected, and an unused copy of `memberMatrix` that
   called the missing `FEM` is removed.

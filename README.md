@@ -292,8 +292,8 @@ Roughly 8,300 lines in one file. Nothing is minified; it is meant to be read.
   the loads on every floor — nothing lost on the way down — and the reactions
   every level's members deliver must add up to that level's load — nothing lost
   travelling sideways either. Both are checked by `npm test`
-  (`tests/loads.test.mjs`). The second fails for a level spanned only by panels —
-  a flat slab, a CLT roof — whose load reaches no member: a known gap.
+  (`tests/loads.test.mjs`), including levels carried by a flat slab or a CLT
+  panel alone, which are read as strips of the panel running the way it spans.
 - **A member's load path is read from its direction**, not from its name:
   `|uy| > 0.94` is vertical, `< 0.09` horizontal, anything between is inclined.
   A rafter, a brace and a portal leg classify themselves, and so will whatever

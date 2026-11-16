@@ -463,10 +463,7 @@ A_required = N / f_permissible
       <p>Two invariants are checked by <span class="cs-mono">npm test</span>, for every template under
         every use class: the loads on all supports must add up to the loads on all floors, and the
         reactions every level's members deliver must add up to that level's load. Nothing is lost
-        going down. Going sideways, the check fails where a level's only spanning element is a
-        panel — every level of a flat slab, and a CLT roof. Panels are not counted as spanning
-        members, so that level's load reaches no member in the load-path diagram. The totals and
-        the column loads are unaffected.</p>
+        going down, and nothing is lost going sideways.</p>
 
       <h3>Where load travels along the structure</h3>
       <p>Every member is classified by its own direction rather than by its name, so a rafter, a
@@ -479,6 +476,12 @@ A_required = N / f_permissible
         member also pushes its support sideways. That horizontal push is the whole reason a pitched
         roof needs a tie:</p>
       <pre class="cs-formula">H = V × (run / rise)   =   V / tan(pitch)</pre>
+      <p>A level with no beam, joist or rafter is carried by its panel alone — a flat slab, a CLT
+        roof. The panel is read as strips of itself running the way its system spans. A two-way
+        slab sends half of each bay's load to the column lines in each direction; a one-way panel
+        spans the short direction, wall to wall on a wall building and column line to column line
+        on a frame. A slab that sits on beams is not read this way: its load reaches the beams,
+        which are already counted.</p>
       <p class="cs-note">The strips are then normalised so they add back up to the level's load —
         which means an error in any one member's assumed strip is redistributed among the others
         rather than showing up as a shortfall. The arithmetic always balances; that it balances is
@@ -664,7 +667,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</pre>
       <h3>Included</h3>
       <dl class="cs-ledger">
         <div><span class="cs-chip is-in">In</span><dt>Preliminary member sizing</dt><dd>27 rules covering steel, concrete, timber and masonry, each with a stated source, a span range it suits, and the arithmetic shown on screen as it is worked.</dd></div>
-        <div><span class="cs-chip is-in">In</span><dt>Gravity load takedown</dt><dd>Tributary area per support, accumulated storey by storey, to line loads under walls or point loads under columns. Both directions are checked by the repository's test; the sideways balance fails where a level is spanned only by panels (a flat slab, a CLT roof).</dd></div>
+        <div><span class="cs-chip is-in">In</span><dt>Gravity load takedown</dt><dd>Tributary area per support, accumulated storey by storey, to line loads under walls or point loads under columns. Both directions are checked by the repository's test to balance, including levels carried by a slab or panel alone.</dd></div>
         <div><span class="cs-chip is-in">In</span><dt>Horizontal thrust</dt><dd>At the foot of any inclined member, H = V/tan(pitch), computed from the member's real geometry. This is why the tool can show you that a pitched roof spreads.</dd></div>
         <div><span class="cs-chip is-in">In</span><dt>Masonry slenderness</dt><dd>h_ef/t_ef against 27, or 20 for thin leaves in two storeys or more, with the cavity-wall effective thickness ⅔(t₁+t₂). The only code check in the application.</dd></div>
         <div><span class="cs-chip is-in">In</span><dt>Foundation sizing</dt><dd>Pad area from bearing pressure, strip width from load per metre, raft thickness from span, pile count from an assumed 600 kN per pile. Soil bearing capacity is an input.</dd></div>

@@ -22499,9 +22499,8 @@ const Loads = (() => {
    *
    * The shares are normalised so they add back up to the level's load. Nothing
    * may be lost travelling horizontally any more than vertically, and
-   * tests/loads.test.mjs checks both. It fails, as it should, for a level whose
-   * only spanning element is a panel (a flat slab, a CLT roof): panels are not
-   * counted here, so that level's load reaches no member.
+   * tests/loads.test.mjs checks both. A level carried by a panel alone (a flat
+   * slab, a CLT roof) is read as strips of that panel, so it balances too.
    */
   function paths(doc, plans){
     const base = compute(doc);
@@ -22528,6 +22527,46 @@ const Loads = (() => {
       const kind = classify(pl.a, pl.b);
       const list = spans.get(pl.level) || (spans.set(pl.level, []), spans.get(pl.level));
       list.push({ pl, L, n, trib, kind, share:L*trib*n });
+    }
+
+    /* A level with no beam, joist or rafter is carried by a panel alone - a
+       flat slab, a CLT roof. The panel spans as its system says it does, so
+       it is read as strips of itself running that way, and the level's load
+       still reaches the supports along the structure rather than vanishing
+       between the floor and the columns. A slab on beams is left alone: its
+       load reaches the beams, which are already counted. */
+    for(const pl of plans){
+      if(pl.kind !== 'panel' || !SPANNING.has(pl.role) || pl.role === 'topping') continue;
+      const r = byLevel.get(pl.level);
+      if(!r || spans.has(pl.level)) continue;
+      const sys = SYSTEMS[(doc.slots[pl.part] || {}).sys];
+      const y = pl.y + (pl.thk || 0)/2;
+      const { xs, zs, sx, sz, bx, bz, W, D } = grid;
+      const strips = [];
+      // one family of strips: n of them, each spanning a..b, `trib` wide
+      const fam = (a, b, n, step, trib) => {
+        const L = Math.hypot(b[0]-a[0], b[2]-a[2]);
+        strips.push({ pl:{ kind:'run', role:pl.role, addr:pl.addr, a, b, count:n, step },
+                      L, n, trib, kind:'horizontal', share:L*trib*n });
+      };
+      if(sys && sys.spans === 'twoWay'){
+        // both ways at once: half of every bay to the column lines each way
+        for(let i = 0; i < bx; i++)
+          fam([xs[i], y, sz/2], [xs[i+1], y, sz/2], bz, [0,0,sz], sz/2);
+        for(let j = 0; j < bz; j++)
+          fam([sx/2, y, zs[j]], [sx/2, y, zs[j+1]], bx, [sx,0,0], sx/2);
+      } else {
+        // one way, across the short direction: wall to wall on walls (as the
+        // CLT floors are drawn), column line to column line on a frame
+        const dir = grid.shortDir;
+        const across = dir === 'x' ? D : W;
+        const n = Math.max(1, Math.round(across/2.4)), w = across/n;
+        const stops = base.onWalls ? [0, dir === 'x' ? W : D] : (dir === 'x' ? xs : zs);
+        for(let k = 0; k + 1 < stops.length; k++)
+          dir === 'x' ? fam([stops[k], y, w/2], [stops[k+1], y, w/2], n, [0,0,w], w)
+                      : fam([w/2, y, stops[k]], [w/2, y, stops[k+1]], n, [w,0,0], w);
+      }
+      spans.set(pl.level, strips);
     }
 
     for(const [levelId, list] of spans){

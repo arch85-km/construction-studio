@@ -423,9 +423,10 @@ A_required = N / f_permissible
         whatever is above it. Where it offers <b>points</b> &mdash; columns &mdash; each grid node
         takes the floor area nearest to it. Two invariants are checked by <span class="cs-mono">npm test</span>: the
         loads on all supports add up to the loads on all floors, and the reactions every
-        level&rsquo;s members deliver add up to that level&rsquo;s load. The second fails where a
-        level is spanned only by panels &mdash; a flat slab, a CLT roof &mdash; whose load then
-        reaches no member in the diagram; the totals are unaffected.</p>
+        level&rsquo;s members deliver add up to that level&rsquo;s load. A level carried by a panel
+        alone &mdash; a flat slab, a CLT roof &mdash; is read as strips of that panel running the
+        way it spans: both ways to the column lines for a two-way slab, across the short direction
+        for a one-way panel.</p>
       <p>Members are classified by their own direction rather than by name, so a rafter, a brace and
         a portal leg classify themselves. A member takes the strip of floor its family spacing
         implies and delivers half of what it collects to each end &mdash; the classic
