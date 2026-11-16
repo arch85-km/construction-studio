@@ -266,6 +266,56 @@ for (const tpl of ['house', 'office']) {
   }
 }
 
+/* --- the diagram sits on the structure it describes ------------------------
+   Each wall band beside the middle of its own wall, each column sleeve on its
+   own column: at rest, and with the model exploded and opened. A band placed
+   by its own position was once moved by the explode, which sets positions
+   outright; every band then collapsed toward the plan's origin. */
+for (const tpl of ['house', 'office']) {
+  const r = await page.evaluate(tpl => {
+    const CS = ConstructionStudio;
+    const T = CS.App.TEMPLATES.find(t => t.id === tpl);
+    CS.Store.load(T.make()); CS.View.set('detail', 'members'); CS.App.rebuild();
+    const d = CS.Loads.compute(CS.Store.doc), G = d.grid, v = CS.View.state;
+    const bands = () => { const m = []; CS.Render.groups.loads.traverse(o => {
+      if (o.isMesh && o.material.opacity < 0.5) m.push(o); }); return m; };
+    const centre = o => { o.updateMatrixWorld(true); const g = o.geometry;
+      if (!g.boundingBox) g.computeBoundingBox();
+      const b = g.boundingBox.clone().applyMatrix4(o.matrixWorld);
+      return [(b.min.x + b.max.x) / 2, (b.min.z + b.max.z) / 2]; };
+    const measure = () => {
+      // how far the walls have swung out at this Open, read off a real leaf
+      let swing = 0;
+      for (const o of CS.Realize.groups) { const w = o.userData.wall; if (!w) continue;
+        swing = (o.position.x * w.nx + o.position.z * w.nz) - ((w.n - 1) / 2 - w.i) * v.wallGap * v.explode; break; }
+      let worst = 0; const spots = new Set();
+      for (const m of bands()) {
+        const [x, z] = centre(m); spots.add(x.toFixed(2) + ',' + z.toFixed(2));
+        if (d.onWalls) {
+          const sides = [[G.W / 2, 0, 0, -1], [G.W, G.D / 2, 1, 0], [G.W / 2, G.D, 0, 1], [0, G.D / 2, -1, 0]];
+          const dist = Math.min(...sides.map(s => Math.hypot(x - s[0] - s[2] * swing, z - s[1] - s[3] * swing)));
+          worst = Math.max(worst, Math.max(0, dist - 1.2));   // a band stands off its wall by up to 1.2 m
+        } else {
+          worst = Math.max(worst, Math.min(...d.supports.map(s => Math.hypot(x - s.x, z - s.z))));
+        }
+      }
+      return { n: bands().length, worst, spots: spots.size };
+    };
+    CS.View.set('explode', 0); CS.View.set('open', 0); CS.LoadPath.on = true;
+    const rest = measure();
+    CS.View.set('explode', 0.62); CS.View.set('open', 0.52);
+    const opened = measure();
+    CS.View.set('explode', 0); CS.View.set('open', 0); CS.LoadPath.on = false;
+    return { name: T.name, onWalls: d.onWalls, columns: d.supports.length, rest, opened };
+  }, tpl);
+  const what = r.onWalls ? 'wall bands beside their own walls' : 'column sleeves on their own columns';
+  ok(`${r.name}: ${what}, at rest`, r.rest.n > 0 && r.rest.worst < 1e-6, `${r.rest.worst.toFixed(2)} m off`);
+  ok(`${r.name}: ${what}, exploded and opened`, r.opened.n > 0 && r.opened.worst < 1e-6,
+     `${r.opened.worst.toFixed(2)} m off`);
+  if (!r.onWalls) ok(`${r.name}: one sleeve position per column`, r.rest.spots === r.columns,
+     `${r.rest.spots} positions for ${r.columns} columns`);
+}
+
 ok('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 ok('no off-origin requests', offOrigin.length === 0, offOrigin.slice(0, 3).join(' | '));
 

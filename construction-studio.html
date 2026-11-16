@@ -26414,19 +26414,35 @@ const LoadPath = (() => {
 
   const wants = k => filter === 'all' || filter === k;
 
-  /* View.applyExplode() SETS each child's position to its layer offset, which
-     is right for the meshes (built in place, at the origin) but would drag a
-     label to that offset and off its member. So a label rides inside a holder
-     at the origin: the holder takes the offset, the label keeps its place. */
-  function tagged(lbl, layer, wall){
+  /* View.applyExplode() SETS each child's position to its layer offset. That
+     is right for the merged arrows, whose geometry is built in place around
+     the origin, but anything placed by its own position - a label, a wall
+     band, a column sleeve - would be dragged to the offset and off its
+     member. So each rides inside a holder at the origin: the holder takes the
+     offset, and what it holds keeps its place. */
+  function tagged(objs, layer, wall){
     const h = new THREE.Group();
     h.userData = wall ? { loadpath:true, layer, wall } : { loadpath:true, layer };
-    h.add(lbl);
+    const list = Array.isArray(objs) ? objs : [objs];
+    for(const o of list) h.add(o);
     // A label takes its DOM element down only when it is itself removed, and
     // clearing the group removes the holder: pass the removal on, or every
     // rebuild would leave its figures stranded on the page.
-    h.addEventListener('removed', () => h.remove(lbl));
+    h.addEventListener('removed', () => { for(const o of list) h.remove(o); });
     return h;
+  }
+
+  /** One arrow as its own mesh, for an arrow that must travel with its band. */
+  function arrowMesh(from, dir, len, rad, hex){
+    const L = Math.hypot(dir[0], dir[1], dir[2]);
+    _d.set(dir[0]/L, dir[1]/L, dir[2]/L);
+    _q.setFromUnitVectors(_up, _d);
+    const m = new THREE.Mesh(arrowGeo(), mat(hex, 0.72));
+    m.position.set(from[0], from[1], from[2]);
+    m.quaternion.copy(_q);
+    m.scale.set(rad, len, rad);
+    m.renderOrder = 901;
+    return m;
   }
 
   /* --- drawing ------------------------------------------------------------ */
@@ -26543,14 +26559,16 @@ const LoadPath = (() => {
         m.position.set((a[0]+b[0])/2 + n[0]*off, y, (a[1]+b[1])/2 + n[1]*off);
         m.rotation.y = -ang;
         m.renderOrder = 900;
-        // stamped like a real wall leaf, so Open swings it aside with the wall
-        m.userData = { loadpath:true, layer:2, wall:{ i:0, n:1, nx:n[0], nz:n[1] } };
-        g.add(m);
+        m.userData = { loadpath:true, layer:2 };     // the layer picks its clip planes
+        const parts = [m];
         if(shown.vertical[0] < 40){
           shown.vertical[0]++; shown.vertical[1]++;
-          arrow([(a[0]+b[0])/2 + n[0]*off, y + 0.22, (a[1]+b[1])/2 + n[1]*off],
-                [0,-1,0], 0.55, 0.06 + 0.08*Math.sqrt(t), Loads.colourFor(t), 2);
+          parts.push(arrowMesh([(a[0]+b[0])/2 + n[0]*off, y + 0.22, (a[1]+b[1])/2 + n[1]*off],
+                [0,-1,0], 0.55, 0.06 + 0.08*Math.sqrt(t), Loads.colourFor(t)));
+          parts[1].userData = { loadpath:true, layer:2 };
         }
+        // stamped like a real wall leaf, so Open swings it aside with the wall
+        g.add(tagged(parts, 2, { i:0, n:1, nx:n[0], nz:n[1] }));
       }
       g.add(tagged(Render.label(`${U.fx(r.cumulative/data.runLen, 0)} kN/m`,
         new THREE.Vector3(-0.3 - proj, y, grid.D/2), 'val', 10), 2, labelWall));
@@ -26571,7 +26589,7 @@ const LoadPath = (() => {
         m.position.set(sp.x, (here.y + belowY)/2, sp.z);
         m.renderOrder = 900;
         m.userData = { loadpath:true, layer:2 };
-        g.add(m);
+        g.add(tagged(m, 2));
         {
           shown.vertical[1]++;
           if(shown.vertical[0] < 72){
