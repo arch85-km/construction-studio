@@ -7,6 +7,17 @@ resolves to the newest version. The full notes for each release are on the
 
 ## Unreleased
 
+- **Fixed** — the load path ends at the foundation chosen. The card always
+  gave the strip-footing answer, even on a raft, and the diagram stopped at
+  the ground-floor walls. Now the card follows the foundation: strip
+  footings show the line load and the strip's own sizing; a raft shows the
+  whole building over its area as a ground pressure against the soil
+  (masonry house on a raft: 2094 kN ÷ 104.0 m² = 20.1 kPa on 150 kPa
+  soil); pads and pile caps show the heaviest one's sizing. The raft rule
+  now carries the whole building and checks that pressure, so it can turn
+  amber or red. The diagram draws a plate under every footing, or under the
+  raft, coloured by how hard the ground works there, with the load going
+  down into it.
 - **Fixed** — load travels along the members as a chain instead of being
   shared among them as if they lay side by side. The floor rests on the
   members nothing else rests on, each taking its own strip on plan; each

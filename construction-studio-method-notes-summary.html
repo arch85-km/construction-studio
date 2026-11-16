@@ -459,11 +459,12 @@ A_required = N / f_permissible
   <section class="cs-sec">
     <div class="cs-sechead"><span class="cs-secnum"></span><h2>The flag is green far more often than it should be</h2></div>
     <div class="cs-secbody">
-      <p>Eight of the 27 rules can <b>never</b> return anything but green, because they carry neither
-        a span band to compare against nor a real check: the four column rules, three of the four
-        foundation rules, and the pad footing. The pad footing does have a check, but it is written
+      <p>Seven of the 27 rules can <b>never</b> return anything but green, because they carry neither
+        a span band to compare against nor a real check: the four column rules, the strip and pile
+        rules, and the pad footing. The pad footing does have a check, but it is written
         to compare a constant zero against a limit of one, so it can only ever pass. Only the masonry
-        slenderness rule performs a genuine check. The other eighteen compare the span against the
+        slenderness rule and the raft, which compares its ground pressure with the soil, perform a
+        genuine check. The other eighteen compare the span against the
         range the rule suits, which is useful, but it is a statement about applicability, not about
         the member.</p>
       <p>The consequence is worth seeing concretely. <b>HEB</b> is the European wide-flange

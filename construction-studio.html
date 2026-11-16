@@ -20121,9 +20121,18 @@ const SIZING = (() => {
   'found.raft':{
     label:'Raft slab', ratio:'thickness ≈ span/20, minimum 300 mm',
     source:'Ground-bearing raft spreading the whole building load.',
+    // the whole building, floors and walls, spread over the raft's area: the
+    // pressure the ground feels, against what the soil can take
+    load: c => c.Atrib ? takedown(c, 11) : null,
+    check: c => c.N && c.A ? { val:c.N/c.A, lim:c.qAllow || 150 } : { val:0, lim:1 },
+    // kept with the result, so the card and the diagram read what was used
+    extra: c => ({ A:c.A, L:c.L, qAllow:c.qAllow || 150,
+                   pressure:c.N && c.A ? c.N/c.A : null }),
     depth: c => Math.max(300, c.L*1000/20),
     round: 25,
-    fmt: (c,d) => `${m(c.L)} ÷ 20 = ${mm(d)} raft (minimum 300 mm)`
+    fmt: (c,d) => `${m(c.L)} ÷ 20 = ${mm(d)} raft (minimum 300 mm)` +
+                  (c.N && c.A ? `; ${Math.round(c.N)} kN ÷ ${U.fx(c.A,1)} m² = ` +
+                                `${U.fx(c.N/c.A,1)} kPa on ${c.qAllow || 150} kPa soil` : '')
   },
   'found.pile':{
     label:'Pile cap', ratio:'cap depth ≈ 2 × pile diameter',
@@ -20967,8 +20976,13 @@ def({
   params:[{ k:'edge', label:'Thickened edge', type:'check', def:true }],
   sizing:{ raft:'found.raft' }, layer:0, seq:0,
   build(ctx){
-    const { grid, size, p } = ctx;
-    const z = size('found.raft', { L:Math.max(grid.sx, grid.sz) });
+    const { grid, size, p, M } = ctx;
+    // the raft stands 0.3 m proud of the grid all round; it carries the whole
+    // building - every level's floor and the walls or cladding of every storey
+    const z = size('found.raft', { L:Math.max(grid.sx, grid.sz),
+      Atrib:grid.W*grid.D, ws:SIZING.carried(M, ctx.levels),
+      clad:SIZING.wallLineFrom(M, ctx.levels)*2*(grid.W + grid.D),
+      A:(grid.W + 0.6)*(grid.D + 0.6), qAllow:M.soil.qAllow });
     const t = z.depth/1000;
     ctx.out({ kind:'volume', role:'raft', layer:0, level:'L0',
       poly:Geom.rect(-0.3, -0.3, grid.W+0.3, grid.D+0.3), y:-t, h:t, mat:'C30',
@@ -26917,6 +26931,7 @@ const LoadPath = (() => {
     if(wants('vertical')){
       if(data.onWalls) buildWallBands(g, data, levels, grid);
       else buildColumnSleeves(g, data, levels, groundY);
+      buildFoundation(g, data, grid);
     }
 
     flushArrows(g);
@@ -26965,6 +26980,50 @@ const LoadPath = (() => {
       g.add(tagged(Render.label(`${U.fx(r.cumulative/data.runLen, 0)} kN/m`,
         new THREE.Vector3(-0.3 - proj, y, grid.D/2), 'val', 10), 2, labelWall));
     }
+  }
+
+  /* The last step: the load leaving the building for the ground. A plate
+     under each footing - or under the raft - coloured by how hard the ground
+     works there (the pressure against what the soil takes; for piles, the
+     load against what the piles take), with the load going down into it. */
+  function buildFoundation(g, data, grid){
+    const f = footings();
+    if(!f.kind) return;
+    const q = (Store.doc.soil && Store.doc.soil.qAllow) || 150;
+    const useOf = pl => {
+      const z = pl.meta;
+      if(f.kind === 'strip') return z.wLine/(q*(z.B || 0.6));
+      if(f.kind === 'raft')  return z.N && z.A ? (z.N/z.A)/q : 0;
+      if(f.kind === 'pad')   return z.N/(q*(z.B || 1)*(z.L || z.B || 1));
+      return z.N/((z.n || 1)*(z.pileCap || 600));
+    };
+    for(const pl of f.list){
+      const xs = pl.poly.map(p => p[0]), zs = pl.poly.map(p => p[1]);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
+      const y = pl.y - 0.04, t = Util.clamp(useOf(pl), 0, 1);
+      const m = new THREE.Mesh(box(), mat(Loads.colourFor(t)));
+      m.scale.set(x1 - x0, 0.08, z1 - z0);
+      m.position.set((x0 + x1)/2, y, (z0 + z1)/2);
+      m.renderOrder = 900;
+      m.userData = { loadpath:true, layer:0 };
+      g.add(tagged(m, 0));
+      // and down into the ground: one arrow under a pad, cap or strip, a few
+      // under a raft
+      const spots = f.kind === 'raft'
+        ? [0.25, 0.75].flatMap(a => [0.25, 0.75].map(b => [x0 + a*(x1-x0), z0 + b*(z1-z0)]))
+        : [[(x0 + x1)/2, (z0 + z1)/2]];
+      for(const [x, z] of spots)
+        arrow([x, y - 0.06, z], [0,-1,0], 0.6, 0.06 + 0.08*Math.sqrt(t), Loads.colourFor(t), 0);
+    }
+    // what it comes to, once: per metre into a strip, kPa under a raft
+    const first = f.list[0], z = first.meta;
+    const xs = first.poly.map(p => p[0]), zs = first.poly.map(p => p[1]);
+    const at = new THREE.Vector3((Math.min(...xs) + Math.max(...xs))/2, first.y - 0.5,
+                                 (Math.min(...zs) + Math.max(...zs))/2);
+    if(f.kind === 'strip')
+      g.add(tagged(Render.label(`${U.fx(z.wLine,1)} kN/m into the ground`, at, 'val', 11), 0));
+    else if(f.kind === 'raft' && z.N && z.A)
+      g.add(tagged(Render.label(`${U.fx(z.N/z.A,1)} kPa on the ground`, at, 'val', 11), 0));
   }
 
   function buildColumnSleeves(g, data, levels, groundY){
@@ -27020,6 +27079,56 @@ const LoadPath = (() => {
   }
 
   const sumText = ws => SIZING.sumText(ws);
+
+  /** The footings the model drew, by kind: strip, raft, pad or pile cap. */
+  function footings(){
+    const role = { strip:'strip', raft:'raft', pad:'pad', cap:'pile' };
+    const out = { kind:null, list:[] };
+    for(const pl of Gen.plans){
+      if(pl.part !== 'foundation' || !pl.meta || !role[pl.role]) continue;
+      out.kind = role[pl.role]; out.list.push(pl);
+    }
+    return out;
+  }
+
+  /** The last step of the load path: what the foundation does with it. */
+  function foundationCard(d){
+    const f = footings();
+    if(!f.kind) return null;
+    const box = (ttl, lines, advice, cls = 'ok') => el('div', { class:'sizing ' + cls }, [
+      el('div', { class:'head' }, [el('span', { class:'ttl', text:ttl })]),
+      ...lines.map(t => el('div', { class:'formula', text:t })),
+      el('div', { class:'advice', text:advice })]);
+    const heaviest = f.list.reduce((a, b) => (b.meta.N || 0) > (a.meta.N || 0) ? b : a);
+    const graded = z => z.status === 'over' ? 'over' : z.status === 'marginal' ? 'marginal' : 'ok';
+    if(f.kind === 'strip') return box('At the foundation — strip footings', [
+        `(${U.fx(d.floors,0)} kN floors + ${U.fx(d.wallTotal,0)} kN walls) ÷ ` +
+        `${U.fx(d.runLen,1)} m of wall = ${U.fx(d.perMetre,1)} kN/m`,
+        heaviest.meta.formula],
+      'A wall spreads its load along its whole length, so the footing only has to be wide ' +
+      'enough for one metre of it: the line load divided by what the soil can take.');
+    if(f.kind === 'raft'){
+      const z = f.list[0].meta;
+      return box('At the foundation — raft', [
+          `(${U.fx(d.floors,0)} kN floors + ${U.fx(d.wallTotal,0)} kN ` +
+          `${d.onWalls ? 'walls' : 'cladding'}) ÷ ` +
+          `${U.fx(z.A,1)} m² of raft = ${U.fx(z.N/z.A,1)} kPa, on ${z.qAllow || 150} kPa soil`,
+          `${U.fx(z.L,2)} m ÷ 20 = ${Math.round(z.depth)} mm raft (minimum 300 mm)`],
+        'A raft spreads the whole building over its footprint, so the ground carries a few tens ' +
+        'of kPa instead of the line load a strip concentrates. That is why a raft suits poor ' +
+        'ground; its thickness is set by the span between walls or columns, not by the pressure.',
+        graded(z));
+    }
+    return box(f.kind === 'pad' ? 'At the foundation — the heaviest pad'
+                                : 'At the foundation — the heaviest pile cap',
+      [heaviest.meta.formula],
+      f.kind === 'pad'
+        ? 'A pad spreads one column’s load over enough ground for the soil to take it: ' +
+          'area = load ÷ bearing capacity. The heaviest column gets the biggest pad.'
+        : 'Piles carry each column past the weak ground to firmer ground below; the cap ' +
+          'gathers the column onto them. The count is the load over what one pile is taken to carry.',
+      graded(heaviest.meta));
+  }
 
   /* --- the takedown, as a table ------------------------------------------- */
   function card(){
@@ -27082,16 +27191,11 @@ const LoadPath = (() => {
     body.appendChild(el('div', { class:'hint', text:made.join('. ') + '.' }));
     body.appendChild(el('div', { class:'hint caution', text:NOT_FOR_CONSTRUCTION_FULL }));
 
+    // the foundation, as the one chosen sizes it: the figures come from the
+    // footings in the model, so the card and the drawing cannot disagree
+    const fnd = foundationCard(d);
     if(d.onWalls){
-      body.appendChild(el('div', { class:'sizing ok' }, [
-        el('div', { class:'head' }, [el('span', { class:'ttl', text:'At the foundation' })]),
-        el('div', { class:'formula',
-          text:`(${U.fx(d.floors,0)} kN floors + ${U.fx(d.wallTotal,0)} kN walls) ÷ ` +
-               `${U.fx(d.runLen,1)} m of wall = ${U.fx(d.perMetre,1)} kN/m` }),
-        el('div', { class:'advice',
-          text:'A wall spreads its load along its whole length, which is why it needs ' +
-               'only a narrow strip footing under it.' })
-      ]));
+      if(fnd) body.appendChild(fnd);
     } else {
       const w = d.worst;
       body.appendChild(el('div', { class:'sizing ok' }, [
@@ -27109,6 +27213,7 @@ const LoadPath = (() => {
       body.appendChild(el('div', { class:'note',
         html:`<b>${U.fx(d.total,0)} kN</b> reaches the ground across ` +
              `<b>${d.supports.length}</b> columns.` }));
+      if(fnd) body.appendChild(fnd);
     }
 
     // what a pitched roof pushes on, and with what: H = w s L² / 8h

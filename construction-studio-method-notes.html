@@ -738,7 +738,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</pre>
         <div><span class="cs-chip is-in">In</span><dt>Gravity load takedown</dt><dd>Tributary area per support, accumulated storey by storey, to line loads under walls or point loads under columns. Both directions are checked by the repository's test to balance, including levels carried by a slab or panel alone.</dd></div>
         <div><span class="cs-chip is-in">In</span><dt>Horizontal thrust</dt><dd>H = w s L²/8h, the three-pinned spread of a pitched roof, from its own load and real geometry: taken by the tie in a trussed roof, into the walls of an untied cut roof, and out at the bases of a portal frame. This is why the tool can show you that a pitched roof spreads, and what stops it.</dd></div>
         <div><span class="cs-chip is-in">In</span><dt>Masonry slenderness</dt><dd>h_ef/t_ef against 27, or 20 for thin leaves in two storeys or more, with the cavity-wall effective thickness ⅔(t₁+t₂). The only code check in the application.</dd></div>
-        <div><span class="cs-chip is-in">In</span><dt>Foundation sizing</dt><dd>Pad area from bearing pressure, strip width from load per metre, raft thickness from span, pile count from an assumed 600 kN per pile. Soil bearing capacity is an input.</dd></div>
+        <div><span class="cs-chip is-in">In</span><dt>Foundation sizing</dt><dd>Pad area from bearing pressure, strip width from load per metre, raft thickness from span and its ground pressure — the whole building over its area — checked against the soil, pile count from an assumed 600 kN per pile. Soil bearing capacity is an input. The Load path card and diagram end at the foundation chosen: a plate under each footing, coloured by how hard the ground works there.</dd></div>
         <div><span class="cs-chip is-in">In</span><dt>Real build-ups</dt><dd>19 layer stacks, each layer its own object at its real thickness, driving the model and the drawing from one source.</dd></div>
         <div><span class="cs-chip is-part">Partly</span><dt>The green / amber / red flag</dt><dd>It compares the <b>span</b> against the range the rule suits — and, for the masonry and pad rules, a ratio against its limit. It is not a capacity check, and a green flag does not mean the member works.</dd></div>
         <div><span class="cs-chip is-part">Partly</span><dt>Load-path shares</dt><dd>Load passes down the chain of members — deck to secondary to primary to column — with each member's strip of floor from its own family spacing where the generator recorded one, and otherwise from half the smaller grid dimension: a guess, flagged internally as inferred but not surfaced in the interface. Members are simply supported or continuous over what they rest on; no moment is carried across a joint.</dd></div>
@@ -783,16 +783,16 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</pre>
         functions, not estimated.</p>
 
       <h3>The flag is green far more often than it should be</h3>
-      <p>Eight of the 27 rules can <b>never</b> return anything but green, because they carry
+      <p>Seven of the 27 rules can <b>never</b> return anything but green, because they carry
         neither a span band to compare against nor a real check:</p>
       <div class="cs-tbl"><table>
         <thead><tr><th>Rule</th><th>Why it is always green</th></tr></thead>
         <tbody>
           <tr><td class="cs-p">steel.column · rc.column<br>timber.post · masonry.pier</td><td>No span band and no check. The grading function returns "ok" on its first line.</td></tr>
-          <tr><td class="cs-p">found.strip · found.raft<br>found.pile</td><td>Same — no band, no check.</td></tr>
+          <tr><td class="cs-p">found.strip · found.pile</td><td>Same — no band, no check.</td></tr>
           <tr><td class="cs-p">found.pad</td><td>It does have a check, but the check is written to return a constant zero against a limit of one. It can only ever pass.</td></tr>
         </tbody>
-        <caption>Only masonry.slender performs a genuine check. The other 18 rules compare the span against the range the rule suits — useful, but a statement about applicability, not about the member.</caption>
+        <caption>Only masonry.slender and found.raft perform a genuine check; the raft compares its ground pressure with the soil's bearing capacity. The other 18 rules compare the span against the range the rule suits — useful, but a statement about applicability, not about the member.</caption>
       </table></div>
 
       <p class="cs-note">The consequence is worth seeing concretely. An office column on a

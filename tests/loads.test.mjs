@@ -392,6 +392,64 @@ for (const tpl of ['house', 'office', 'masonry', 'shed']) {
   }
 }
 
+/* --- the last step: what the foundation does with the load -----------------
+   Each foundation reports as it is sized: strips per metre, a raft as the
+   pressure on the ground, pads and pile caps by the heaviest column. The
+   load it is sized for is the whole takedown, and the diagram draws a plate
+   under every footing, on the foundation layer. */
+for (const [tpl, fnd, kind] of [['masonry', null, 'strip'], ['masonry', 'foundation.concrete.raft', 'raft'],
+                                ['office', null, 'pad'], ['office', 'foundation.concrete.raft', 'raft'],
+                                ['rc', null, 'pile']]) {
+  const c = await page.evaluate(([tpl, fnd]) => {
+    const CS = ConstructionStudio;
+    const T = CS.App.TEMPLATES.find(t => t.id === tpl);
+    const doc = T.make();
+    if (fnd) doc.slots.foundation = { sys: fnd, p: {} };
+    CS.Store.load(doc); CS.App.rebuild(); CS.LoadPath.on = true;
+    const d = CS.LoadPath.data, card = CS.LoadPath.card();
+    const box = [...card.querySelectorAll('.sizing')].find(e => /At the foundation/.test(e.textContent));
+    const role = { strip: 'strip', raft: 'raft', pad: 'pad', cap: 'pile' };
+    const feet = CS.Gen.plans.filter(p => p.part === 'foundation' && p.meta && role[p.role]);
+    let plates = 0;
+    CS.Render.groups.loads.traverse(o => { if (o.isMesh && o.userData.layer === 0 && o.material.opacity < 0.5) plates++; });
+    const out = {
+      name: T.name, total: d.total, perMetre: d.perMetre || null, maxN: d.maxN || null,
+      W: d.grid.W, D: d.grid.D, q: CS.Store.doc.soil.qAllow,
+      title: box && box.querySelector('.ttl').textContent,
+      lines: box ? [...box.querySelectorAll('.formula')].map(e => e.textContent) : [],
+      feet: feet.map(p => ({ role: p.role, N: p.meta.N, wLine: p.meta.wLine, A: p.meta.A,
+                             n: p.meta.n, formula: p.meta.formula })),
+      plates,
+    };
+    CS.LoadPath.on = false;
+    return out;
+  }, [tpl, fnd]);
+  const tag = `${c.name} on ${kind}`;
+  console.log(tag);
+  ok(`${tag}: the card names the foundation`, !!c.title && c.title.endsWith(
+     { strip: 'strip footings', raft: 'raft', pad: 'the heaviest pad', pile: 'the heaviest pile cap' }[kind]), c.title);
+  ok(`${tag}: a plate under every footing`, c.feet.length > 0 && c.plates === c.feet.length,
+     `${c.plates} plates, ${c.feet.length} footings`);
+  if (kind === 'strip') {
+    ok(`${tag}: every strip sized for the card's kN/m`, c.feet.every(f => near(f.wLine, c.perMetre, 1e-9)));
+    ok(`${tag}: the card shows the strip's own sizing`, c.lines[1] === c.feet[0].formula, c.lines[1]);
+  }
+  if (kind === 'raft') {
+    const A = (c.W + 0.6) * (c.D + 0.6), p = c.total / A;
+    ok(`${tag}: the raft carries the whole building`, near(c.feet[0].N, c.total, 1e-9), `${c.feet[0].N} vs ${c.total}`);
+    ok(`${tag}: pressure = total ÷ raft area`, near(c.feet[0].A, A, 1e-9) &&
+       c.lines[0].endsWith(`= ${p.toFixed(1)} kPa, on ${c.q} kPa soil`), c.lines[0]);
+  }
+  if (kind === 'pad' || kind === 'pile') {
+    const heaviest = c.feet.reduce((a, b) => b.N > a.N ? b : a);
+    ok(`${tag}: the heaviest footing carries the heaviest column`, near(heaviest.N, c.maxN, 1e-9),
+       `${heaviest.N} vs ${c.maxN}`);
+    ok(`${tag}: the card shows that footing's sizing`, c.lines[0] === heaviest.formula, c.lines[0]);
+    if (kind === 'pile') ok(`${tag}: piles = load ÷ 600 kN, rounded up`,
+       c.feet.every(f => f.n === Math.max(1, Math.ceil(f.N / 600))));
+  }
+}
+
 /* --- the diagram sits on the structure it describes ------------------------
    Each wall band beside the middle of its own wall, each column sleeve on its
    own column: at rest, and with the model exploded and opened. A band placed
@@ -404,7 +462,8 @@ for (const tpl of ['house', 'office']) {
     CS.Store.load(T.make()); CS.View.set('detail', 'members'); CS.App.rebuild();
     const d = CS.Loads.compute(CS.Store.doc), G = d.grid, v = CS.View.state;
     const bands = () => { const m = []; CS.Render.groups.loads.traverse(o => {
-      if (o.isMesh && o.material.opacity < 0.5) m.push(o); }); return m; };
+      // bands and sleeves only: the foundation plates (layer 0) are checked above
+      if (o.isMesh && o.material.opacity < 0.5 && o.userData.layer !== 0) m.push(o); }); return m; };
     const centre = o => { o.updateMatrixWorld(true); const g = o.geometry;
       if (!g.boundingBox) g.computeBoundingBox();
       const b = g.boundingBox.clone().applyMatrix4(o.matrixWorld);
