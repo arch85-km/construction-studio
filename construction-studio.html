@@ -19849,10 +19849,13 @@ const SIZING = (() => {
   const loadsOf = (c, wDef) => c.ws && c.ws.length ? c.ws
     : [c.wRoof ?? 1.6].concat(Array(Math.max(1, c.storeys) - 1).fill(c.w || wDef));
   const perM2 = (c, wDef) => loadsOf(c, wDef).reduce((a, w) => a + w, 0);
-  const takedown = (c, wDef) => c.Atrib*perM2(c, wDef);
+  const takedown = (c, wDef) => c.Atrib*perM2(c, wDef) + (c.clad || 0);
   /** "(1.7 + 2 × 2.9) kN/m²": loads roof first, the sum as a student would
       write it. The column rules and the Load path card both print with it. */
   const perM2Text = (c, wDef) => sumText(loadsOf(c, wDef));
+  // ... and the cladding an edge column carries, when it carries any
+  const loadText = (c, wDef) => perM2Text(c, wDef) +
+    (c.clad > 0.05 ? ` + ${U.fx(c.clad, 0)} kN cladding` : '');
   function sumText(ws){
     const terms = [];
     for(let i = 0; i < ws.length; ){
@@ -19920,7 +19923,7 @@ const SIZING = (() => {
     source:'Tributary-area estimate for preliminary column sizing.',
     load: c => takedown(c, 11),
     area: c => c.N / (0.6 * 275e3) * 1e6,          // kN / kPa = m2, then mm2. S275
-    fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${perM2Text(c, 11)} ` +
+    fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${loadText(c, 11)} ` +
                      `= ${Math.round(c.N)} kN  →  ${s ? s.name : '—'}`
   },
 
@@ -19978,7 +19981,7 @@ const SIZING = (() => {
     load: c => takedown(c, 11),
     area: c => c.N / (0.4 * 30e3) * 1e6,           // kN / kPa = m2, then mm2. C30
     square: true, minDim: 225, round: 25,
-    fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${perM2Text(c, 11)} ` +
+    fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${loadText(c, 11)} ` +
                      `= ${Math.round(c.N)} kN  →  ${s ? s.name : '—'}`
   },
   'precast.hollowcore':{
@@ -20056,7 +20059,7 @@ const SIZING = (() => {
     load: c => takedown(c, 9),
     area: c => c.N / (0.6 * 24e3) * 1e6,           // kN / kPa = m2, then mm2. GL24
     minDim: 140, round: 20,
-    fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${perM2Text(c, 9)} ` +
+    fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${loadText(c, 9)} ` +
                      `= ${Math.round(c.N)} kN  →  ${s ? s.name : '—'}`
   },
 
@@ -20081,7 +20084,7 @@ const SIZING = (() => {
     load: c => takedown(c, 9),
     area: c => c.N / 2.5e3 * 1e6,                  // kN / kPa = m2, then mm2
     minDim: 215, round: 5,
-    fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${perM2Text(c, 9)} ` +
+    fmt:  (c,d,s) => `${U.fx(c.Atrib,1)} m² × ${loadText(c, 9)} ` +
                      `= ${Math.round(c.N)} kN  →  ${s ? s.name : '—'}`
   },
 
@@ -20107,10 +20110,11 @@ const SIZING = (() => {
     load: c => c.Atrib ? takedown(c, 11) : null,
     depth: () => 300,
     extra: c => {
-      const wLine = c.wLine ?? (c.N && c.run ? c.N/c.run : 40);
+      const wLine = c.wLine ?? (c.N && c.run ? c.N/c.run + (c.wallLine || 0) : 40);
       return { wLine, B:Math.max(0.45, Math.ceil((wLine/(c.qAllow || 150))/0.05)*0.05) };
     },
-    fmt: (c,d,s,x) => (c.N && c.run ? `${Math.round(c.N)} kN ÷ ${U.fx(c.run,1)} m = ` : '') +
+    fmt: (c,d,s,x) => (c.N && c.run ? `${Math.round(c.N)} kN ÷ ${U.fx(c.run,1)} m` +
+                        (c.wallLine ? ` + ${U.fx(c.wallLine,1)} kN/m walls` : '') + ' = ' : '') +
                       `${U.fx(x.wLine,1)} kN/m ÷ ${c.qAllow || 150} kPa = ` +
                       `${U.fx(x.B,2)} m wide strip`
   },
@@ -20192,6 +20196,69 @@ const SIZING = (() => {
   /** The loads a support standing on level `idx` carries, roof first. */
   function carried(doc, levels, idx = 0){
     return levelLoads(doc, levels).slice(idx).reverse().map(l => l.w);
+  }
+
+  /* --- the walls' own weight ----------------------------------------------
+     kN per m² of wall FACE, so a storey of wall weighs this × its height per
+     metre run. Typical values from material densities (EN 1991-1-1 Annex A):
+     facing brick 21 kN/m³, dense block 20, concrete 25, CLT 5. Where the
+     system lets the student set a thickness, the weight follows it. Only the
+     perimeter walls the takedown spreads its load along are counted; a core
+     or internal walls are not. Cladding on a frame hangs on the edge columns,
+     and is weighed only when it is drawn. */
+  const WALL = {
+    'vertical.masonry.cavity':  p => 0.021*(p.outerT ?? 102.5) + 0.020*(p.innerT ?? 100) + 0.2,
+    'vertical.concrete.shear':  p => 0.025*(p.thk ?? 250) + 0.15,
+    'vertical.timber.clt':      p => 0.005*(p.thk ?? 100) + 0.35,
+    'vertical.timber.platform': () => 0.5,   // studs, OSB, plasterboard, timber cladding
+    'vertical.steel.moment':    () => 0.6,   // rainscreen on light steel infill, lined
+    'vertical.steel.braced':    () => 0.6,
+    'vertical.concrete.frame':  () => 0.6,
+    'vertical.timber.postBeam': () => 0.85,  // CLT-type cladding panels
+    'vertical.steel.portal':    () => 0.3    // insulated profiled cladding and rails
+  };
+
+  /** A slot's parameters, defaults filled in, with any per-level override. */
+  function paramsAt(doc, part, levelId){
+    const s = SYSTEMS[sysAt(doc, part, levelId)];
+    const base = (doc.slots[part] || {}).p || {};
+    const over = levelId && doc.perLevel && doc.perLevel[levelId] && doc.perLevel[levelId][part];
+    const given = Object.assign({}, base, over && over.p);
+    const p = {};
+    for(const q of (s && s.params) || []) p[q.k] = given[q.k] !== undefined ? given[q.k] : q.def;
+    return p;
+  }
+
+  /** Each storey's walls, bottom up: kN/m² of face, height, kN per metre run. */
+  function storeyWalls(doc, levels){
+    const out = [];
+    for(let i = 0; i + 1 < levels.length; i++){
+      const sysId = sysAt(doc, 'vertical', levels[i].id);
+      const s = SYSTEMS[sysId], p = paramsAt(doc, 'vertical', levels[i].id);
+      const clad = s && s.provides !== 'lines';
+      const on = !!(WALL[sysId]) && !(clad && p.cladding === false);
+      const g = on ? r2(WALL[sysId](p)) : 0;
+      const h = levels[i+1].y - levels[i].y;
+      out.push({ storey:i, top:levels[i+1].id, sys:sysId, cladding:clad, g, h, line:r2(g*h) });
+    }
+    return out;
+  }
+
+  /** Perimeter length a grid node's columns pick cladding up from: half of
+      each edge bay beside it. Interior nodes carry none. */
+  function edgeLen(grid, i, j){
+    const { xs, zs } = grid, nx = xs.length, nz = zs.length;
+    let L = 0;
+    if(j === 0 || j === nz - 1)
+      L += (i > 0 ? (xs[i] - xs[i-1])/2 : 0) + (i < nx - 1 ? (xs[i+1] - xs[i])/2 : 0);
+    if(i === 0 || i === nx - 1)
+      L += (j > 0 ? (zs[j] - zs[j-1])/2 : 0) + (j < nz - 1 ? (zs[j+1] - zs[j])/2 : 0);
+    return L;
+  }
+
+  /** kN per metre run of the walls from storey `idx` up. */
+  function wallLineFrom(doc, levels, idx = 0){
+    return r2(storeyWalls(doc, levels).slice(idx).reduce((a, s) => a + s.line, 0));
   }
 
   /* --- picking a real section ------------------------------------------- */
@@ -20292,7 +20359,8 @@ const SIZING = (() => {
     return [list[i-n], list[i+n]].filter(Boolean);
   }
 
-  return { R, IMPOSED, PARTITIONS, ROOF_IMPOSED, DEAD, DEAD_DEFAULT, levelLoads, carried, sumText,
+  return { R, IMPOSED, PARTITIONS, ROOF_IMPOSED, DEAD, DEAD_DEFAULT, WALL, levelLoads, carried, sumText,
+           storeyWalls, edgeLen, wallLineFrom,
            size, nearby, pick, grade, COPY };
 })();
 
@@ -20841,7 +20909,8 @@ def({
               : grid.outline.map((q,i) => ({ p:q, i, j:0 }));
     for(const pt of pts){
       const z = size('found.pad', { Atrib:pt.trib || grid.tribArea(pt.i, pt.j),
-                                    storeys, ws:SIZING.carried(M, ctx.levels), qAllow:M.soil.qAllow });
+                                    storeys, ws:SIZING.carried(M, ctx.levels), qAllow:M.soil.qAllow,
+                                    clad:SIZING.wallLineFrom(M, ctx.levels)*SIZING.edgeLen(grid, pt.i, pt.j) });
       const B = z.B || 1.2;
       ctx.out({ kind:'volume', role:'pad', layer:0, level:'L0',
         poly:Geom.rect(pt.p[0]-B/2, pt.p[1]-B/2, pt.p[0]+B/2, pt.p[1]+B/2),
@@ -20872,6 +20941,7 @@ def({
     // the load takedown's line load: every level's load over the perimeter run
     const z = size('found.strip', { Atrib:grid.W*grid.D, storeys:ctx.storeys,
                                     ws:SIZING.carried(M, ctx.levels), run:2*(grid.W + grid.D),
+                                    wallLine:SIZING.wallLineFrom(M, ctx.levels),
                                     qAllow:M.soil.qAllow });
     const B = z.B || 0.6;
     base.lines.forEach((ln, i) => {
@@ -20923,7 +20993,8 @@ def({
     const { grid, p, size, base, M } = ctx;
     for(const pt of base.points){
       const z = size('found.pile', { Atrib:grid.tribArea(pt.i, pt.j), storeys:ctx.storeys,
-                                     ws:SIZING.carried(M, ctx.levels), pileDia:p.dia });
+                                     ws:SIZING.carried(M, ctx.levels), pileDia:p.dia,
+                                     clad:SIZING.wallLineFrom(M, ctx.levels)*SIZING.edgeLen(grid, pt.i, pt.j) });
       const cap = Math.max(1.2, 0.9 + (z.n-1)*0.6);
       ctx.out({ kind:'volume', role:'cap', layer:0, level:'L0',
         poly:Geom.rect(pt.p[0]-cap/2, pt.p[1]-cap/2, pt.p[0]+cap/2, pt.p[1]+cap/2),
@@ -21081,7 +21152,8 @@ function frameBuild(ctx, colRule, matId, opts = {}){
   const storeysAbove = ctx.storeys - level.idx;
   grid.forEachNode((q, i, j) => {
     const z = size(colRule, { Atrib:grid.tribArea(i,j), storeys:Math.max(1, storeysAbove),
-                              ws:SIZING.carried(M, ctx.levels, level.idx), h:level.storey });
+                              ws:SIZING.carried(M, ctx.levels, level.idx), h:level.storey,
+                              clad:SIZING.wallLineFrom(M, ctx.levels, level.idx)*SIZING.edgeLen(grid, i, j) });
     mem(ctx, 'column', P3(q, level.y), P3(q, level.y + level.storey),
         z.sectionId, matId,
         { addr:ctx.A('column', i, j), meta:z,
@@ -22474,7 +22546,7 @@ const Gen = (() => {
    at the start of a project, and it is the one worth being able to do.
 
    The arithmetic has an invariant worth stating: the loads on all the supports
-   must add up to the loads on all the floors. Nothing may be lost on the way
+   must add up to the loads on all the floors and walls. Nothing may be lost on the way
    down. tests/loads.test.mjs asserts it for every template and use class.
    ========================================================================== */
 const Loads = (() => {
@@ -22496,17 +22568,24 @@ const Loads = (() => {
     /* 1. what lands on each level, top down: the level's own construction,
           plus partitions on a floor, plus what is put on it. A roof carries
           no partitions and only a maintenance load. */
+    // ... and the storey of wall under each level: its own weight, per metre
+    // run of the perimeter, which is where the takedown stands the building
+    const walls = SIZING.storeyWalls(doc, levels);
+    const perimeter = 2*(grid.W + grid.D);
     const rows = [];
     for(let i = levels.length - 1; i >= 1; i--){
       const L = levels[i];
-      const lw = per.get(L.id), w = lw.w;
+      const lw = per.get(L.id), w = lw.w, wl = walls[i - 1];
       rows.push({ id:L.id, name:L.name, y:L.y, isRoof:L.isRoof, sys:lw.sys,
                   dead:lw.dead, partitions:lw.partitions, imposed:lw.imposed,
-                  area:grid.area, w, load:grid.area*w });
+                  area:grid.area, w, load:grid.area*w,
+                  wallSys:wl.sys, wallG:wl.g, wallH:wl.h, wallLine:wl.line,
+                  cladding:wl.cladding, wall:wl.line*perimeter });
     }
     let run = 0;
-    for(const r of rows){ run += r.load; r.cumulative = run; }
+    for(const r of rows){ run += r.load + r.wall; r.cumulative = run; }
     const total = run;
+    const floors = rows.reduce((a, r) => a + r.load, 0), wallTotal = total - floors;
 
     /* 2. how the supports share it. Walls take load per metre run; columns take
           it per node, in proportion to the floor area nearest to each. */
@@ -22522,7 +22601,7 @@ const Loads = (() => {
         supports.push({ kind:'line', level:r.id, name:r.name, y:r.y,
                         length:runLen, perMetre:r.cumulative/runLen, N:r.cumulative });
       }
-      return { rows, supports, total, onWalls, grid, levels,
+      return { rows, supports, total, floors, wallTotal, onWalls, grid, levels,
                runLen, perMetre:total/runLen, wFloor, wRoof };
     }
 
@@ -22530,22 +22609,24 @@ const Loads = (() => {
     for(let i = 0; i < grid.nx; i++)
       for(let j = 0; j < grid.nz; j++)
         nodes.push({ i, j, x:grid.xs[i], z:grid.zs[j], trib:grid.tribArea(i, j),
-                     ref:grid.ref(i, j) });
+                     edge:SIZING.edgeLen(grid, i, j), ref:grid.ref(i, j) });
 
-    // Each node's share of a level is its tributary area times that level's load.
+    // Each node's share of a level is its tributary area times that level's
+    // load, plus, on the edge, the cladding of the storey below hung from it.
     for(const nd of nodes){
-      let acc = 0;
+      let acc = 0, clad = 0;
       const perLevel = [];
       for(const r of rows){
-        acc += nd.trib*r.w;
+        acc += nd.trib*r.w + r.wallLine*nd.edge;
+        clad += r.wallLine*nd.edge;
         perLevel.push({ level:r.id, name:r.name, y:r.y, N:acc });
       }
       supports.push({ kind:'point', i:nd.i, j:nd.j, x:nd.x, z:nd.z, ref:nd.ref,
-                      trib:nd.trib, perLevel, N:acc });
+                      trib:nd.trib, edge:nd.edge, clad, perLevel, N:acc });
     }
 
     const worst = supports.reduce((a, b) => b.N > a.N ? b : a, supports[0] || { N:0 });
-    return { rows, supports, total, onWalls:false, grid, levels, nodes,
+    return { rows, supports, total, floors, wallTotal, onWalls:false, grid, levels, nodes,
              worst, maxN:worst ? worst.N : 0, wFloor, wRoof };
   }
 
@@ -26763,10 +26844,12 @@ const LoadPath = (() => {
       'Every square metre of floor is carried by the support nearest to it. ' +
       'Follow one column down and watch the number grow — that is the load path.' }));
 
+    // a level's floor, the storey of wall beneath it, and the running total
     const rows = d.rows.map(r => [
-      r.name, `${U.fx(r.w,1)}`, `${U.fx(r.load,0)}`, `${U.fx(r.cumulative,0)}`]);
+      r.name, `${U.fx(r.w,1)}`, `${U.fx(r.load,0)}`, `${U.fx(r.wall,0)}`,
+      `${U.fx(r.cumulative,0)}`]);
     const t = el('table', { class:'tbl loads' }, [
-      el('thead', {}, [el('tr', {}, ['Level','kN/m²','This level','Running']
+      el('thead', {}, [el('tr', {}, ['Level','kN/m²','Floor','Walls','Running']
         .map(h => el('th', { text:h })))]),
       el('tbody', {}, rows.map(r => el('tr', {}, r.map((c, i) =>
         el('td', { class:i ? 'num' : '', text:c })))))
@@ -26788,6 +26871,20 @@ const LoadPath = (() => {
         (r.partitions ? ` + ${U.fx(r.partitions,1)} partitions` : '') +
         ` + ${U.fx(r.imposed,1)} imposed${r.isRoof ? '' : ` (${Store.doc.use || 'office'})`}`);
     }
+    // and the walls: their own weight per m² of face, times the storey height
+    const wseen = new Set();
+    for(const r of d.rows.slice().reverse()){
+      if(!r.wallG) continue;
+      const key = [r.wallSys, r.wallG, U.fx(r.wallH, 2)].join('|');   // 2.8 and 2.8000000000000003 are one height
+      if(wseen.has(key)) continue;
+      wseen.add(key);
+      const s = SYSTEMS[r.wallSys];
+      // two decimals where the weight has them (4.35), so the product reads true
+      const g = String(Number(U.fx(r.wallG, 2)));
+      made.push(`${r.cladding ? 'Cladding' : 'Walls'} ${g} kN/m² of face` +
+        (s ? ` (${s.label})` : '') + ` × ${U.fx(r.wallH,1)} m storey = ${U.fx(r.wallLine,1)} kN/m` +
+        (r.cladding ? ', hung on the edge columns' : ''));
+    }
     body.appendChild(el('div', { class:'hint', text:made.join('. ') + '.' }));
     body.appendChild(el('div', { class:'hint caution', text:NOT_FOR_CONSTRUCTION_FULL }));
 
@@ -26795,7 +26892,8 @@ const LoadPath = (() => {
       body.appendChild(el('div', { class:'sizing ok' }, [
         el('div', { class:'head' }, [el('span', { class:'ttl', text:'At the foundation' })]),
         el('div', { class:'formula',
-          text:`${U.fx(d.total,0)} kN ÷ ${U.fx(d.runLen,1)} m of wall = ${U.fx(d.perMetre,1)} kN/m` }),
+          text:`(${U.fx(d.floors,0)} kN floors + ${U.fx(d.wallTotal,0)} kN walls) ÷ ` +
+               `${U.fx(d.runLen,1)} m of wall = ${U.fx(d.perMetre,1)} kN/m` }),
         el('div', { class:'advice',
           text:'A wall spreads its load along its whole length, which is why it needs ' +
                'only a narrow strip footing under it.' })
@@ -26807,7 +26905,9 @@ const LoadPath = (() => {
           el('span', { class:'ttl', text:`Worst column — ${w ? w.ref : '—'}` })]),
         el('div', { class:'formula', text: w
           // the roof once, then each floor: the sum that makes the total
-          ? `${U.fx(w.trib,2)} m² × ${sumText(d.rows.map(r => r.w))} = ${U.fx(w.N,0)} kN` : '—' }),
+          ? `${U.fx(w.trib,2)} m² × ${sumText(d.rows.map(r => r.w))}` +
+            (w.clad > 0.05 ? ` + ${U.fx(w.clad,0)} kN cladding` : '') +
+            ` = ${U.fx(w.N,0)} kN` : '—' }),
         el('div', { class:'advice',
           text:'An interior column takes a whole bay; a corner takes a quarter of one. ' +
                'That is the whole difference between them.' })

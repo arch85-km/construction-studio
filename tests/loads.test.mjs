@@ -3,7 +3,7 @@
  * Load takedown accuracy.
  *
  * The method notes promise two invariants: the loads on all the supports add
- * up to the loads on all the floors, and the reactions every level's members
+ * up to the loads on all the floors and walls, and the reactions every level's members
  * deliver add up to that level's load. This checks both, for every template
  * under every use class, together with the arithmetic the notes print: the
  * per-level table, the wall load per metre, the eaves thrust and the four
@@ -68,6 +68,12 @@ const NOTES = {
     'roof.timber.truss': 1.1, 'roof.timber.rafter': 1.1, 'roof.concrete.slab': 6.5,
     'roof.timber.clt': 1.0,
   },
+  // the walls' own weight, kN per m² of face, at each system's default settings
+  WALL: {
+    'vertical.masonry.cavity': 4.35, 'vertical.concrete.shear': 6.4, 'vertical.timber.clt': 0.85,
+    'vertical.timber.platform': 0.5, 'vertical.steel.moment': 0.6, 'vertical.steel.braced': 0.6,
+    'vertical.concrete.frame': 0.6, 'vertical.timber.postBeam': 0.85, 'vertical.steel.portal': 0.3,
+  },
   // permissible stress, kPa, by rule label
   f: { 'Steel column': 0.6 * 275e3, 'RC column': 0.4 * 30e3,
        'Timber post': 0.6 * 24e3, 'Masonry pier': 2.5e3 },
@@ -85,7 +91,11 @@ const consts = await page.evaluate(() => {
       text: r.fmt({ Atrib: 12.5, ws: [2, 7, 7], N: r.load({ Atrib: 12.5, ws: [2, 7, 7] }) }, 0, null),
     };
   const { IMPOSED, PARTITIONS, ROOF_IMPOSED, DEAD } = SIZING;
-  return { IMPOSED, PARTITIONS, ROOF_IMPOSED, DEAD, rules };
+  const r2 = v => Math.round(v * 100) / 100;
+  const wall = Object.fromEntries(Object.entries(SIZING.WALL).map(([k, fn]) => [k, r2(fn({}))]));
+  // a thicker leaf weighs more: 215 mm brick outside, 100 mm block in
+  const thick = r2(SIZING.WALL['vertical.masonry.cavity']({ outerT: 215, innerT: 100 }));
+  return { IMPOSED, PARTITIONS, ROOF_IMPOSED, DEAD, wall, thick, rules };
 });
 
 console.log('Documented constants');
@@ -95,6 +105,10 @@ ok(`partitions = ${NOTES.PARTITIONS} kN/m²`, consts.PARTITIONS === NOTES.PARTIT
 ok(`roof imposed = ${NOTES.ROOF_IMPOSED} kN/m²`, consts.ROOF_IMPOSED === NOTES.ROOF_IMPOSED);
 for (const [k, v] of Object.entries(NOTES.DEAD))
   ok(`dead, ${k} = ${v} kN/m²`, consts.DEAD[k] === v, `app has ${consts.DEAD[k]}`);
+for (const [k, v] of Object.entries(NOTES.WALL))
+  ok(`wall, ${k} = ${v} kN/m² of face`, consts.wall[k] === v, `app has ${consts.wall[k]}`);
+ok('wall weight follows the leaf thickness', consts.thick === Math.round((0.021 * 215 + 0.020 * 100 + 0.2) * 100) / 100,
+   `${consts.thick}`);
 ok('no dead load the notes do not list', Object.keys(consts.DEAD).every(k => k in NOTES.DEAD),
    Object.keys(consts.DEAD).filter(k => !(k in NOTES.DEAD)).join(', '));
 for (const [label, f] of Object.entries(NOTES.f)) {
@@ -121,7 +135,8 @@ for (const tpl of templates) {
       const T = CS.App.TEMPLATES.find(t => t.id === tpl);
       const doc = T.make();
       doc.use = use;
-      const slotSys = { floor: (doc.slots.floor || {}).sys, roof: (doc.slots.roof || {}).sys };
+      const slotSys = { floor: (doc.slots.floor || {}).sys, roof: (doc.slots.roof || {}).sys,
+                        vertical: (doc.slots.vertical || {}).sys };
       CS.Store.load(doc);
       CS.App.rebuild();
       const d = CS.Loads.paths(CS.Store.doc, CS.Gen.plans);
@@ -172,19 +187,26 @@ for (const tpl of templates) {
     ok(`${tag}: one row per level above ground`, r.rows.length === r.levels - 1,
        `${r.rows.length} rows, ${r.levels} levels`);
     ok(`${tag}: level area = W × D`, near(r.grid.area, area), `${r.grid.area} vs ${area}`);
-    let run = 0, rowsOk = true, roofOk = true;
+    let run = 0, rowsOk = true, roofOk = true, wallsOk = true;
     r.rows.forEach((row, i) => {
       // the level's own construction + partitions + what is put on it
       const sys = row.isRoof ? r.slotSys.roof : r.slotSys.floor;
       const want = Math.round(((NOTES.DEAD[sys] ?? NaN) + (row.isRoof ? 0 : NOTES.PARTITIONS) +
                                (row.isRoof ? NOTES.ROOF_IMPOSED : NOTES.IMPOSED[use])) * 100) / 100;
       if (row.isRoof !== (i === 0) || row.sys !== sys) roofOk = false;
-      run += area * want;
+      // the storey of wall under the level: kN/m² of face × height, along the perimeter
+      const g = NOTES.WALL[r.slotSys.vertical] ?? 0;
+      const line = Math.round(g * row.wallH * 100) / 100;
+      const wall = line * 2 * (r.grid.W + r.grid.D);
+      if (row.wallG !== g || !near(row.wallLine, line) || !near(row.wall, wall)) wallsOk = false;
+      run += area * want + wall;
       if (row.w !== want || !near(row.load, area * want) || !near(row.cumulative, run)) rowsOk = false;
     });
     ok(`${tag}: roof row on top only, each row its own system`, roofOk);
     ok(`${tag}: w = dead + partitions + imposed; rows area × w, accumulated top down`, rowsOk,
        r.rows.map(x => `${x.name} ${x.w}`).join(', '));
+    ok(`${tag}: each storey's walls = kN/m² of face × height × perimeter`, wallsOk,
+       r.rows.map(x => `${x.name} ${x.wallG}×${x.wallH}`).join(', '));
     ok(`${tag}: total = last running figure`, near(r.total, run), `${r.total} vs ${run}`);
 
     /* invariant 1: nothing lost going down */
@@ -254,7 +276,8 @@ for (const tpl of ['house', 'office']) {
     const out = {
       name: T.name, summary: card.querySelector('summary .s').textContent,
       formula: [...card.querySelectorAll('.formula')].map(e => e.textContent),
-      cells, total: d.total, rows: d.rows.map(r => [r.name, r.w, r.load, r.cumulative]),
+      cells, total: d.total, floors: d.floors, wallTotal: d.wallTotal,
+      rows: d.rows.map(r => [r.name, r.w, r.load, r.wall, r.cumulative]),
       perMetre: d.perMetre, runLen: d.runLen, worst: d.worst && { trib: d.worst.trib, N: d.worst.N },
     };
     CS.LoadPath.on = false;
@@ -265,18 +288,20 @@ for (const tpl of ['house', 'office']) {
   ok(`${tag}: header total`, c.summary === `${Math.round(c.total)} kN to the ground`, c.summary);
   const tableOk = c.rows.every((r, i) => c.cells[i] && c.cells[i][0] === r[0] &&
     +c.cells[i][1] === Math.round(r[1] * 10) / 10 && +c.cells[i][2] === Math.round(r[2]) &&
-    +c.cells[i][3] === Math.round(r[3]));
+    +c.cells[i][3] === Math.round(r[3]) && +c.cells[i][4] === Math.round(r[4]));
   ok(`${tag}: table matches the takedown`, tableOk, JSON.stringify(c.cells));
   if (c.perMetre) {
-    const want = `${Math.round(c.total)} kN ÷ ${c.runLen.toFixed(1)} m of wall = ${c.perMetre.toFixed(1)} kN/m`;
+    const want = `(${Math.round(c.floors)} kN floors + ${Math.round(c.wallTotal)} kN walls) ÷ ` +
+                 `${c.runLen.toFixed(1)} m of wall = ${c.perMetre.toFixed(1)} kN/m`;
     ok(`${tag}: foundation line`, c.formula[0] === want, `${c.formula[0]}  /  want ${want}`);
   }
   if (c.worst) {
     const f = c.formula[0];
-    const m = f.match(/^([\d.]+) m² × \((\d+(?:\.\d+)?)(?: \+ (\d+) × (\d+(?:\.\d+)?))?\) kN\/m² = (\d+) kN$/);
+    // "A m² × (roof + n × floor) kN/m² [+ C kN cladding] = N kN"
+    const m = f.match(/^([\d.]+) m² × \((\d+(?:\.\d+)?)(?: \+ (\d+) × (\d+(?:\.\d+)?))?\) kN\/m²(?: \+ (\d+) kN cladding)? = (\d+) kN$/);
     ok(`${tag}: worst column line is a sum that adds up`, !!m &&
-       Math.abs(+m[1] * (+m[2] + (+m[3] || 0) * (+m[4] || 0)) - +m[5]) <= 1 &&
-       +m[5] === Math.round(c.worst.N), f);
+       Math.abs(+m[1] * (+m[2] + (+m[3] || 0) * (+m[4] || 0)) + (+m[5] || 0) - +m[6]) <= 1.5 &&
+       +m[6] === Math.round(c.worst.N), f);
   }
   for (const f of c.formula) {
     const m = f.match(/^([\d.]+) kN ÷ tan ([\d.]+)° = ([\d.]+) kN outward$/);

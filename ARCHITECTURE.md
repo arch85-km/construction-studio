@@ -52,7 +52,7 @@ Its sections are numbered in the source; search for the heading.
 | 8 `SYSTEMS` | The catalogue: 30 systems across foundation (4), ground floor (4), walls and structure (9), floor (7) and roof (6) |
 | 8b Connections | Junctions derived from the pair of materials that meet, never chosen. Each carries a sentence on what the joint has to do. |
 | 9 `Gen` | Parameters in, plans out. Vertical systems run first and register their supports, floors and roofs read them, and foundations run last. Plain data, no three.js, so it re-runs on every slider drag. |
-| 11b `Loads` | A gravity takedown by tributary area, with no frame action and no analysis. Its invariant is that the loads on all supports add up to the loads on all floors. |
+| 11b `Loads` | A gravity takedown by tributary area, with no frame action and no analysis. Its invariant is that the loads on all supports add up to the loads on all floors and walls. |
 | 10 `Render`, 11 `Realize` | One renderer and one scene, drawn on demand. Repeating parts are merged into one geometry per part, level, role and material, not instanced, and keep a triangle-range table so a single stud can still be picked. |
 | 12 `View` | Explode (along Y only, layer by layer), display styles, layers and the section box. View state saves with the file but stays out of undo. |
 | 13 UI | DOM helpers, widgets, modals, toasts and the CSV writer |

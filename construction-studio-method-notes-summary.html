@@ -418,13 +418,17 @@ A_required = N / f_permissible
         an RC flat slab), 0.8&nbsp;kN/m&sup2; of partitions on every floor, and the imposed load
         for the use from EN&nbsp;1991-1-1: residential&nbsp;1.5, office&nbsp;2.5, retail&nbsp;4.0,
         industrial&nbsp;7.5, roof&nbsp;0.6&nbsp;kN/m&sup2;. So a timber house weighs about a third
-        of a concrete one. <b>No load factors are applied</b>: these are service loads, not design
+        of a concrete one. The walls add their own weight: each storey adds its weight per
+        square metre of face times the storey height, as kN per metre run &mdash; 4.35&nbsp;kN/m&sup2;
+        for cavity masonry, 0.5 for a timber frame &mdash; so in a masonry house the walls weigh
+        more than the floors. On a frame, the cladding hangs on the edge columns.
+        <b>No load factors are applied</b>: these are service loads, not design
         values, and cannot be carried into a code calculation as they stand.</p>
       <p>Load comes down top-down. Where the vertical system offers <b>lines</b> &mdash; walls
         &mdash; it is spread evenly along the perimeter, so every metre of wall carries the same
         whatever is above it. Where it offers <b>points</b> &mdash; columns &mdash; each grid node
         takes the floor area nearest to it. Two invariants are checked by <span class="cs-mono">npm test</span>: the
-        loads on all supports add up to the loads on all floors, and the reactions every
+        loads on all supports add up to the loads on all floors and walls, and the reactions every
         level&rsquo;s members deliver add up to that level&rsquo;s load. A level carried by a panel
         alone &mdash; a flat slab, a CLT roof &mdash; is read as strips of that panel running the
         way it spans: both ways to the column lines for a two-way slab, across the short direction

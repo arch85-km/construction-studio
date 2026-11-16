@@ -470,7 +470,24 @@ w_roof  = g + 0.6</pre>
           <tr><td>Concrete flat roof</td><td class="cs-d">6.5</td><td>200 mm slab 5.0, insulation, membrane, ballast 1.5</td></tr>
           <tr><td>CLT roof</td><td class="cs-d">1.0</td><td>120 mm CLT 0.6, insulation and membrane 0.4</td></tr>
         </tbody>
-        <caption>Typical values, worked from material densities (EN 1991-1-1 Annex A) and the build-up each system draws, including finishes, ceiling and services. They do not follow the depth the tool sizes, and the walls' own weight is not added: read them as orders of magnitude.</caption>
+        <caption>Typical values, worked from material densities (EN 1991-1-1 Annex A) and the build-up each system draws, including finishes, ceiling and services. They do not follow the depth the tool sizes: read them as orders of magnitude.</caption>
+      </table></div>
+      <p>The walls weigh something too, and in a masonry building they weigh more than the floors.
+        Each storey of wall adds its own weight per square metre of face times the storey height,
+        as a load per metre run:</p>
+      <pre class="cs-formula">wall line = g_wall × storey height   <em>kN/m</em></pre>
+      <div class="cs-tbl"><table>
+        <thead><tr><th>Wall system</th><th class="cs-n">kN/m² of face</th><th>What it assumes</th></tr></thead>
+        <tbody>
+          <tr><td>Cavity masonry</td><td class="cs-d">4.35</td><td>0.021 × brick leaf + 0.020 × block leaf (mm) + 0.2 plaster and ties; follows the leaf thicknesses you set</td></tr>
+          <tr><td>RC walls</td><td class="cs-d">6.4</td><td>0.025 × wall thickness (mm) + 0.15; follows the thickness</td></tr>
+          <tr><td>CLT wall panels</td><td class="cs-d">0.85</td><td>0.005 × panel thickness (mm) + 0.35 cladding and insulation</td></tr>
+          <tr><td>Timber platform frame</td><td class="cs-d">0.5</td><td>studs, OSB, plasterboard, timber cladding</td></tr>
+          <tr><td>Cladding on a steel or RC frame</td><td class="cs-d">0.6</td><td>rainscreen on light steel infill, lined; hung on the edge columns</td></tr>
+          <tr><td>Cladding on timber post and beam</td><td class="cs-d">0.85</td><td>CLT-type cladding panels; hung on the edge columns</td></tr>
+          <tr><td>Portal frame cladding</td><td class="cs-d">0.3</td><td>insulated profiled sheet and rails; hung on the edge columns</td></tr>
+        </tbody>
+        <caption>Densities from EN 1991-1-1 Annex A: facing brick 21 kN/m³, dense block 20, concrete 25, CLT 5. Bearing walls add their line load along the perimeter the takedown stands the building on. On a frame the cladding hangs on the edge columns, each taking half of every edge bay beside it; with "Show cladding" off there is none. A core and internal walls are not counted.</caption>
       </table></div>
 
       <h3>The load takedown</h3>
@@ -485,7 +502,7 @@ w_roof  = g + 0.6</pre>
         </tbody>
       </table></div>
       <p>Two invariants are checked by <span class="cs-mono">npm test</span>, for every template under
-        every use class: the loads on all supports must add up to the loads on all floors, and the
+        every use class: the loads on all supports must add up to the loads on all floors and walls, and the
         reactions every level's members deliver must add up to that level's load. Nothing is lost
         going down, and nothing is lost going sideways.</p>
 

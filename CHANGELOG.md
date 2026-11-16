@@ -7,6 +7,17 @@ resolves to the newest version. The full notes for each release are on the
 
 ## Unreleased
 
+- **Changed** — the walls' own weight is counted. Each storey of wall adds
+  its weight per m² of face times the storey height, as kN per metre run:
+  4.35 kN/m² for cavity masonry (following the leaf thicknesses), 6.4 for
+  RC walls, 0.85 for CLT, 0.5 for a timber frame. On a frame the cladding
+  (0.3–0.85 kN/m²) hangs on the edge columns, each taking half of every
+  edge bay beside it, and is left out when "Show cladding" is off. The
+  masonry house's footing goes from 18.0 to 54.5 kN/m, the walls now
+  weighing twice its floors; the timber house's from 10.3 to 13.0. The Load
+  path card gains a Walls column, a line for each wall build-up, and splits
+  the foundation figure into floors and walls; edge columns print their
+  cladding.
 - **Changed** — loads depend on what the building is made of. Each level's
   kN/m² was one number per use (residential 9, office 11, roof 5), whatever
   the construction. It is now the floor or roof system's own weight, plus

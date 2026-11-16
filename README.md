@@ -289,7 +289,7 @@ Roughly 8,300 lines in one file. Nothing is minified; it is meant to be read.
   meeting there. A new system inherits the right joints the moment it declares
   its material.
 - **The takedown has two invariants.** The loads on every support must add up to
-  the loads on every floor — nothing lost on the way down — and the reactions
+  the loads on every floor and wall — nothing lost on the way down — and the reactions
   every level's members deliver must add up to that level's load — nothing lost
   travelling sideways either. Both are checked by `npm test`
   (`tests/loads.test.mjs`), including levels carried by a flat slab or a CLT
