@@ -26403,6 +26403,21 @@ const LoadPath = (() => {
 
   const wants = k => filter === 'all' || filter === k;
 
+  /* View.applyExplode() SETS each child's position to its layer offset, which
+     is right for the meshes (built in place, at the origin) but would drag a
+     label to that offset and off its member. So a label rides inside a holder
+     at the origin: the holder takes the offset, the label keeps its place. */
+  function tagged(lbl, layer, wall){
+    const h = new THREE.Group();
+    h.userData = wall ? { loadpath:true, layer, wall } : { loadpath:true, layer };
+    h.add(lbl);
+    // A label takes its DOM element down only when it is itself removed, and
+    // clearing the group removes the holder: pass the removal on, or every
+    // rebuild would leave its figures stranded on the page.
+    h.addEventListener('removed', () => h.remove(lbl));
+    return h;
+  }
+
   /* --- drawing ------------------------------------------------------------ */
   function build(){
     const g = Render.groups.loads;
@@ -26486,13 +26501,18 @@ const LoadPath = (() => {
     }
 
     flushArrows(g);
-    Render.invalidate();
+    // Built at rest: put it where the model is now, or an exploded or opened
+    // building would have its diagram left behind until a slider moved.
+    View.applyExplode();
   }
 
   /** A wall gathers along its whole length, so it gets a band, not a stack. */
   function buildWallBands(g, data, levels, grid){
     const segs = [[[0,0],[grid.W,0]], [[grid.W,0],[grid.W,grid.D]],
                   [[grid.W,grid.D],[0,grid.D]], [[0,grid.D],[0,0]]];
+    // the kN/m figure sits beside the x = 0 wall, so it opens with that wall
+    const wn = Geom.normalOf(...segs[3]);
+    const labelWall = { i:0, n:1, nx:wn[0], nz:wn[1] };
     for(let k = 0; k < data.rows.length; k++){
       const r = data.rows[k];
       const below = levels[levels.length - 1 - k - 1] || levels[0];
@@ -26521,8 +26541,8 @@ const LoadPath = (() => {
                 [0,-1,0], 0.55, 0.06 + 0.08*Math.sqrt(t), Loads.colourFor(t), 2);
         }
       }
-      g.add(Render.label(`${U.fx(r.cumulative/data.runLen, 0)} kN/m`,
-        new THREE.Vector3(-0.3 - proj, y, grid.D/2), 'val', 10));
+      g.add(tagged(Render.label(`${U.fx(r.cumulative/data.runLen, 0)} kN/m`,
+        new THREE.Vector3(-0.3 - proj, y, grid.D/2), 'val', 10), 2, labelWall));
     }
   }
 
@@ -26552,16 +26572,16 @@ const LoadPath = (() => {
         }
       }
       // what arrives at the foundation, and where it goes
-      g.add(Render.label(`${U.fx(sp.N, 0)} kN`,
+      g.add(tagged(Render.label(`${U.fx(sp.N, 0)} kN`,
         new THREE.Vector3(sp.x, groundY + 0.35, sp.z), 'val',
-        sp.N >= maxN*0.999 ? 12 : 8));
+        sp.N >= maxN*0.999 ? 12 : 8), 0));
       arrow([sp.x, groundY - 0.25, sp.z], [0,-1,0], 0.75,
               0.06 + 0.12*Math.sqrt(sp.N/maxN), Loads.colourFor(sp.N/maxN), 0);
     }
     const w = data.worst;
     if(w) for(const s of w.perLevel)
-      g.add(Render.label(`${U.fx(s.N, 0)} kN`,
-        new THREE.Vector3(w.x + 0.6, s.y - 0.4, w.z + 0.6), 'val', 11));
+      g.add(tagged(Render.label(`${U.fx(s.N, 0)} kN`,
+        new THREE.Vector3(w.x + 0.6, s.y - 0.4, w.z + 0.6), 'val', 11), 2));
   }
 
   /* --- the chain, in words ------------------------------------------------ */
