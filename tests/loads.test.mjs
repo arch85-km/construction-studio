@@ -141,7 +141,8 @@ for (const tpl of templates) {
       CS.App.rebuild();
       const d = CS.Loads.paths(CS.Store.doc, CS.Gen.plans);
       const strip = s => ({ kind: s.kind, level: s.level, count: s.count || 1, R: s.R,
-                            thrust: s.thrust, pitch: s.pitch, a: s.a, b: s.b, N: s.N });
+                            thrust: s.thrust, spread: s.spread || null, pitch: s.pitch,
+                            a: s.a, b: s.b, N: s.N });
       // what each column, pad and pile was sized for, beside what the takedown
       // says reaches that node at that height
       const sized = [];
@@ -168,7 +169,9 @@ for (const tpl of templates) {
         }
       }
       return {
-        sized, slotSys,
+        sized, slotSys, groundY: d.levels[0].y,
+        tied: CS.Gen.plans.some(p => p.role === 'tie'),
+        portal: (doc.slots.vertical || {}).sys === 'vertical.steel.portal',
         name: T.name, grid: { W: d.grid.W, D: d.grid.D, area: d.grid.area },
         levels: d.levels.length, rows: d.rows, total: d.total, onWalls: d.onWalls,
         runLen: d.runLen, perMetre: d.perMetre,
@@ -250,19 +253,33 @@ for (const tpl of templates) {
          `${delivered.toFixed(3)} vs ${row.load.toFixed(3)} kN`);
     }
 
-    /* the thrust the card prints: H = V / tan(pitch) */
-    for (const s of r.segs.filter(s => s.kind === 'inclined' && s.thrust > 0)) {
-      const want = s.R / Math.tan(s.pitch * Math.PI / 180);
-      if (!near(s.thrust, want, 1e-9)) {
-        ok(`${tag}: thrust = R / tan(pitch)`, false, `${s.thrust} vs ${want}`);
-        break;
+    /* the spread of a pitched roof: H = w s L² / 8h, three-pinned, from the
+       roof's own load. Where it goes: a tie takes it (walls get nothing), a
+       portal pushes out at its bases (h measured from the base), else the walls */
+    const incl = r.segs.filter(s => s.kind === 'inclined');
+    if (incl.length) {
+      const roof = r.rows[0];
+      let bad = null;
+      for (const s of incl) {
+        const p = s.spread;
+        const how = r.tied ? 'tie' : r.portal ? 'frame' : 'walls';
+        const alongZ = Math.abs(s.b[2] - s.a[2]) >= Math.abs(s.b[0] - s.a[0]);
+        const L = alongZ ? r.grid.D : r.grid.W;
+        const tan = Math.tan(s.pitch * Math.PI / 180);
+        const low = Math.min(s.a[1], s.b[1]);
+        const h = (L / 2) * tan + (how === 'frame' ? low - r.groundY : 0);
+        const H = p ? roof.w * p.s * L * L / (8 * h) : NaN;
+        if (!p || p.how !== how || !near(p.L, L) || !near(p.h, h, 1e-6) || !near(p.H, H, 1e-6) ||
+            !near(s.thrust, how === 'tie' ? 0 : H, 1e-6)) { bad = { s, how, L, h, H }; break; }
       }
+      ok(`${tag}: roof spread H = w s L² ÷ 8h, ${r.tied ? 'taken by the tie' : r.portal ? 'at the portal bases' : 'into the walls'}`,
+         !bad, bad ? JSON.stringify({ got: bad.s.spread, want: { how: bad.how, L: bad.L, h: bad.h, H: bad.H } }) : '');
     }
   }
 }
 
 /* --- what the Load path card says, for one wall and one column building -- */
-for (const tpl of ['house', 'office']) {
+for (const tpl of ['house', 'office', 'masonry', 'shed']) {
   const c = await page.evaluate(tpl => {
     const CS = ConstructionStudio;
     const T = CS.App.TEMPLATES.find(t => t.id === tpl);
@@ -298,15 +315,22 @@ for (const tpl of ['house', 'office']) {
   if (c.worst) {
     const f = c.formula[0];
     // "A m² × (roof + n × floor) kN/m² [+ C kN cladding] = N kN"
-    const m = f.match(/^([\d.]+) m² × \((\d+(?:\.\d+)?)(?: \+ (\d+) × (\d+(?:\.\d+)?))?\) kN\/m²(?: \+ (\d+) kN cladding)? = (\d+) kN$/);
+    // (a single level prints without the brackets: "75.00 m² × 1.1 kN/m² ...")
+    const m = f.match(/^([\d.]+) m² × \(?(\d+(?:\.\d+)?)(?: \+ (\d+) × (\d+(?:\.\d+)?))?\)? kN\/m²(?: \+ (\d+) kN cladding)? = (\d+) kN$/);
     ok(`${tag}: worst column line is a sum that adds up`, !!m &&
        Math.abs(+m[1] * (+m[2] + (+m[3] || 0) * (+m[4] || 0)) + (+m[5] || 0) - +m[6]) <= 1.5 &&
        +m[6] === Math.round(c.worst.N), f);
   }
-  for (const f of c.formula) {
-    const m = f.match(/^([\d.]+) kN ÷ tan ([\d.]+)° = ([\d.]+) kN outward$/);
-    if (m) ok(`${tag}: printed thrust follows from printed R and pitch`,
-      Math.abs(+m[1] / Math.tan(+m[2] * Math.PI / 180) - +m[3]) <= 0.15, f);
+  // the roof's spread, printed as a sum that multiplies out to its answer:
+  // "... = w [× s] × L² ÷ (8 × h) = H kN ..."
+  const spreadLine = c.formula.find(f => f.startsWith('H = '));
+  if (spreadLine) {
+    const m = spreadLine.match(/([\d.]+)(?: × ([\d.]+))? × ([\d.]+)² ÷ \(8 × ([\d.]+)\) = ([\d.]+) kN/);
+    const val = m && +m[1] * (m[2] ? +m[2] : 1) * (+m[3]) ** 2 / (8 * +m[4]);
+    ok(`${tag}: spread line multiplies out`, !!m && Math.abs(val - +m[5]) <= Math.max(0.15, 0.02 * +m[5]),
+       `${spreadLine}  →  ${val && val.toFixed(2)}`);
+    const want = { house: 'tension in each tie', masonry: 'per metre of wall', shed: 'at each base' }[tpl];
+    ok(`${tag}: spread says where it goes`, spreadLine.endsWith(want), spreadLine);
   }
 }
 

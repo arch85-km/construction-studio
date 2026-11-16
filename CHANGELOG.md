@@ -7,6 +7,16 @@ resolves to the newest version. The full notes for each release are on the
 
 ## Unreleased
 
+- **Fixed** — the eaves thrust says where the push goes, and is worked from
+  the roof's own load. It was H = V / tan(pitch) on every sloping member,
+  so a trussed roof showed its walls pushed apart (the tie takes that push)
+  and a portal frame showed 85.5 kN at its eaves from rafter shares that
+  undercount the roof. It is now the three-pinned H = w s L² ÷ 8h: in a
+  trussed roof the tie takes it as tension, 3.8 kN per truss on the timber
+  house, and the walls feel nothing; an untied cut roof pushes its walls,
+  5.3 kN per metre on the masonry house; a portal frame pushes out at each
+  base, 62 kN on the shed, with h the apex height above the base. The
+  diagram draws the push where it acts, and none where a tie takes it.
 - **Changed** — the walls' own weight is counted. Each storey of wall adds
   its weight per m² of face times the storey height, as kN per metre run:
   4.35 kN/m² for cavity masonry (following the leaf thicknesses), 6.4 for

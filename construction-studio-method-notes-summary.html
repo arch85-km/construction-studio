@@ -437,8 +437,13 @@ A_required = N / f_permissible
         a portal leg classify themselves. A member takes the strip of floor its family spacing
         implies and delivers half of what it collects to each end &mdash; the classic
         <span class="cs-mono">wL/2</span>. An inclined member also pushes its support sideways, and
-        that push is the whole reason a pitched roof needs a tie:</p>
-      <pre class="cs-formula">H = V &#215; (run / rise)   =   V / tan(pitch)</pre>
+        that push is the whole reason a pitched roof needs a tie. Taking a pair of rafters as a
+        three-pinned arch, with <i>w</i> the roof&rsquo;s load per m&sup2;, <i>s</i> the spacing,
+        <i>L</i> the span and <i>h</i> the apex height above the feet:</p>
+      <pre class="cs-formula">H = w s L&sup2; / 8h   <em>kN</em></pre>
+      <p>In a trussed roof the bottom chord, the tie, takes H as tension and the walls feel nothing.
+        A cut roof with nothing tying its feet pushes its walls apart. A portal frame pushes out at
+        each base, with <i>h</i> measured from the base.</p>
       <p class="cs-note">The strips are normalised so they add back up to the level&rsquo;s load,
         which means an error in any one member&rsquo;s assumed strip is redistributed among the
         others rather than showing up as a shortfall. The arithmetic always balances; that it

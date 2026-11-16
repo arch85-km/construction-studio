@@ -22727,6 +22727,41 @@ const Loads = (() => {
       spans.set(pl.level, strips);
     }
 
+    /* --- what a pitched roof does to what holds it up ----------------------
+       A pair of sloping members pushes its feet apart. Taken as a three-pinned
+       arch - the feet pinned, the apex a hinge - the outward push is
+
+           H = w s L² / 8h
+
+       w the roof's load per m² on plan, s the spacing of the pairs, L the span
+       between the supports, h the height of the apex above the feet. For a
+       couple roof on walls h is the rise, and this is V / tan(pitch) exactly.
+       It is worked from the level's own load, not from the member shares
+       above, so it does not depend on how a level's load was split between
+       rafters, purlins and ridges. Where the push goes depends on the roof:
+         tie   - a truss's bottom chord ties the feet together: the tie is in
+                 tension H and the walls feel nothing;
+         frame - a portal frame: h is the apex above the column bases, and H
+                 pushes out at each base;
+         walls - nothing ties the feet: H pushes the walls apart. */
+    const tiedLevels = new Set(plans.filter(p => p.role === 'tie').map(p => p.level));
+    const portal = (doc.slots.vertical || {}).sys === 'vertical.steel.portal';
+    const groundY = levels[0].y;
+    function spread(pl, r, levelId, rise, run){
+      if(!(rise > 1e-6)) return { thrust:0 };
+      const alongZ = Math.abs(pl.b[2] - pl.a[2]) >= Math.abs(pl.b[0] - pl.a[0]);
+      const L = alongZ ? grid.D : grid.W;                       // wall to wall
+      const s = pl.kind === 'run' && pl.step ? Math.hypot(...pl.step)
+              : (alongZ ? grid.sx : grid.sz);                    // pair to pair
+      const tan = rise/run;
+      const low = Math.min(pl.a[1], pl.b[1]);
+      const how = tiedLevels.has(levelId) ? 'tie' : portal ? 'frame' : 'walls';
+      const h = (L/2)*tan + (how === 'frame' ? low - groundY : 0);
+      const H = r.w*s*L*L/(8*h);
+      return { thrust: how === 'walls' || how === 'frame' ? H : 0, H, how,
+               spread:{ w:r.w, s, L, h, H, perMetre:H/s, how } };
+    }
+
     for(const [levelId, list] of spans){
       const r = byLevel.get(levelId);
       const totalShare = list.reduce((a, x) => a + x.share, 0) || 1;
@@ -22738,12 +22773,11 @@ const Loads = (() => {
         const R = each/2;                    // delivered to each end
         const rise = Math.abs(x.pl.b[1] - x.pl.a[1]);
         const run  = Math.hypot(x.pl.b[0]-x.pl.a[0], x.pl.b[2]-x.pl.a[2]);
-        // a sloping member pushes its foot outward: H = V / tan(pitch)
-        const thrust = x.kind === 'inclined' && rise > 1e-6 ? R*(run/rise) : 0;
         segs.push({ addr:x.pl.addr, role:x.pl.role, level:levelId, kind:x.kind,
                     a:x.pl.a, b:x.pl.b, count:x.n, step:x.pl.step || null,
                     length:x.L, trib:x.trib, inferred:!(x.pl.kind === 'run' && x.pl.step),
-                    lineLoad:each/x.L, each, R, thrust,
+                    lineLoad:each/x.L, each, R,
+                    ...(x.kind === 'inclined' ? spread(x.pl, r, levelId, rise, run) : { thrust:0 }),
                     pitch: rise > 1e-6 ? Math.atan2(rise, run)*180/Math.PI : 0 });
       }
     }
@@ -26706,14 +26740,17 @@ const LoadPath = (() => {
                            mid[2] + d[2]/dl*0.18];
             arrow(start, d, len, rad, hex, layer);
           }
-          // and the sideways push an inclined member puts into its support
+          // and the sideways push an inclined member puts into its support:
+          // at the wall head for an untied roof, at the column base for a
+          // portal frame, and none at all where a tie takes it
           if(kind === 'inclined' && s.thrust > 0){
             const low = a[1] <= b[1] ? a : b;
             const out = [low[0] - mid[0], 0, low[2] - mid[2]];
             const ol = Math.hypot(out[0], out[2]) || 1;
             const ft = s.thrust/maxThrust;
-            arrow([low[0], low[1] + 0.12, low[2]], [out[0]/ol, 0, out[2]/ol],
-                  span*0.3*(0.55 + 0.45*ft), 0.09 + 0.11*Math.sqrt(ft), THRUST_COL, 5);
+            const atBase = s.how === 'frame';
+            arrow([low[0], (atBase ? groundY : low[1]) + 0.12, low[2]], [out[0]/ol, 0, out[2]/ol],
+                  span*0.3*(0.55 + 0.45*ft), 0.09 + 0.11*Math.sqrt(ft), THRUST_COL, atBase ? 2 : 5);
           }
         }
       }
@@ -26917,18 +26954,35 @@ const LoadPath = (() => {
              `<b>${d.supports.length}</b> columns.` }));
     }
 
-    // the thrust an inclined roof puts into its walls, where there is one
-    const inc = (d.segs || []).filter(s => s.kind === 'inclined' && s.thrust > 0);
+    // what a pitched roof pushes on, and with what: H = w s L² / 8h
+    const inc = (d.segs || []).filter(s => s.kind === 'inclined' && s.spread);
     if(inc.length){
-      const worst = inc.reduce((a, b) => b.thrust > a.thrust ? b : a);
-      body.appendChild(el('div', { class:'sizing marginal' }, [
-        el('div', { class:'head' }, [
-          el('span', { class:'ttl', text:'Thrust at the eaves' })]),
-        el('div', { class:'formula',
-          text:`${U.fx(worst.R,1)} kN ÷ tan ${U.fx(worst.pitch,0)}° = ${U.fx(worst.thrust,1)} kN outward` }),
-        el('div', { class:'advice',
-          text:'A sloping roof does not only press down — it pushes the walls apart. ' +
-               'That push is what a ceiling tie, a ring beam or a buttress is for.' })
+      const worst = inc.reduce((a, b) => b.spread.H > a.spread.H ? b : a);
+      const p = worst.spread, f1 = v => U.fx(v, 1), f2 = v => U.fx(v, 2);
+      const sq = `${f1(p.L)}²`;
+      const card = {
+        walls: { cls:'marginal', ttl:'Thrust at the eaves',
+          text:`H = w L² ÷ 8h = ${f1(p.w)} × ${sq} ÷ (8 × ${f2(p.h)}) = ${f1(p.perMetre)} kN per metre of wall`,
+          advice:'Nothing ties the feet of these rafters together, so the roof pushes its walls ' +
+                 'apart as well as pressing down. A cut roof is normally tied by its ceiling joists, ' +
+                 'which are not drawn here; a ring beam, a structural ridge beam or a buttress also ' +
+                 'answers it.' },
+        tie: { cls:'ok', ttl:'Thrust taken by the tie',
+          text:`H = w s L² ÷ 8h = ${f1(p.w)} × ${f2(p.s)} × ${sq} ÷ (8 × ${f2(p.h)}) = ` +
+               `${f1(p.H)} kN tension in each tie`,
+          advice:'The bottom chord of each truss ties its feet together, so the roof pushes its own ' +
+                 'tie, not the walls: the walls carry only its weight. That is what a truss is for.' },
+        frame: { cls:'marginal', ttl:'Spread at the portal bases',
+          text:`H = w L² ÷ 8h, w = ${f1(p.w)} kN/m² × ${f1(p.s)} m: ` +
+               `${f1(p.w*p.s)} × ${sq} ÷ (8 × ${f2(p.h)}) = ${f1(p.H)} kN at each base`,
+          advice:'A portal frame resists the spread with its own stiffness and pushes outward at its ' +
+                 'feet. This is the three-pinned estimate, with h the apex height above the base; the ' +
+                 'bases and the floor slab, or a tie between the feet, take it.' }
+      }[p.how];
+      body.appendChild(el('div', { class:'sizing ' + card.cls }, [
+        el('div', { class:'head' }, [el('span', { class:'ttl', text:card.ttl })]),
+        el('div', { class:'formula', text:card.text }),
+        el('div', { class:'advice', text:card.advice })
       ]));
     }
 

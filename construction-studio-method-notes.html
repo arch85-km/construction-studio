@@ -515,8 +515,22 @@ w_roof  = g + 0.6</pre>
       <p>A member takes the strip of floor its own family spacing implies, delivers half of what it
         collects to each end — the classic <span class="cs-mono">wL/2</span> — and an inclined
         member also pushes its support sideways. That horizontal push is the whole reason a pitched
-        roof needs a tie:</p>
-      <pre class="cs-formula">H = V × (run / rise)   =   V / tan(pitch)</pre>
+        roof needs a tie. A pair of rafters is taken as a three-pinned arch, feet pinned and the
+        apex a hinge, loaded by the roof's own load:</p>
+      <pre class="cs-formula">H = w s L² / 8h   <em>kN</em></pre>
+      <p>Here <i>w</i> is the roof's load per m² on plan, <i>s</i> the spacing of the pairs,
+        <i>L</i> the span between the supports and <i>h</i> the height of the apex above the feet.
+        For a couple roof on walls, <i>h</i> is the rise and this is exactly
+        <span class="cs-mono">V / tan(pitch)</span>. It is worked from the roof's own load, not
+        from the member shares described below. Where the push goes depends on the roof:</p>
+      <div class="cs-tbl"><table>
+        <thead><tr><th>Roof</th><th>Where H goes</th></tr></thead>
+        <tbody>
+          <tr><td>Trussed rafters</td><td>Into the truss's bottom chord, the tie, as tension. The walls feel nothing.</td></tr>
+          <tr><td>Cut rafters</td><td>Into the walls, per metre of wall. Nothing ties these feet: the ceiling joists that normally would are not modelled.</td></tr>
+          <tr><td>Portal frame</td><td>Out at each column base, with <i>h</i> the apex height above the base: the three-pinned estimate of a frame that in fact resists some of it by its own stiffness.</td></tr>
+        </tbody>
+      </table></div>
       <p>A level with no beam, joist or rafter is carried by its panel alone — a flat slab, a CLT
         roof. The panel is read as strips of itself running the way its system spans. A two-way
         slab sends half of each bay's load to the column lines in each direction; a one-way panel
@@ -710,7 +724,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</pre>
       <dl class="cs-ledger">
         <div><span class="cs-chip is-in">In</span><dt>Preliminary member sizing</dt><dd>27 rules covering steel, concrete, timber and masonry, each with a stated source, a span range it suits, and the arithmetic shown on screen as it is worked.</dd></div>
         <div><span class="cs-chip is-in">In</span><dt>Gravity load takedown</dt><dd>Tributary area per support, accumulated storey by storey, to line loads under walls or point loads under columns. Both directions are checked by the repository's test to balance, including levels carried by a slab or panel alone.</dd></div>
-        <div><span class="cs-chip is-in">In</span><dt>Horizontal thrust</dt><dd>At the foot of any inclined member, H = V/tan(pitch), computed from the member's real geometry. This is why the tool can show you that a pitched roof spreads.</dd></div>
+        <div><span class="cs-chip is-in">In</span><dt>Horizontal thrust</dt><dd>H = w s L²/8h, the three-pinned spread of a pitched roof, from its own load and real geometry: taken by the tie in a trussed roof, into the walls of an untied cut roof, and out at the bases of a portal frame. This is why the tool can show you that a pitched roof spreads, and what stops it.</dd></div>
         <div><span class="cs-chip is-in">In</span><dt>Masonry slenderness</dt><dd>h_ef/t_ef against 27, or 20 for thin leaves in two storeys or more, with the cavity-wall effective thickness ⅔(t₁+t₂). The only code check in the application.</dd></div>
         <div><span class="cs-chip is-in">In</span><dt>Foundation sizing</dt><dd>Pad area from bearing pressure, strip width from load per metre, raft thickness from span, pile count from an assumed 600 kN per pile. Soil bearing capacity is an input.</dd></div>
         <div><span class="cs-chip is-in">In</span><dt>Real build-ups</dt><dd>19 layer stacks, each layer its own object at its real thickness, driving the model and the drawing from one source.</dd></div>
@@ -885,7 +899,7 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</pre>
         <li><b>A hand takedown.</b> The tributary-area calculation is the one taught in first-year structures, and the tool performs exactly it. A student's arithmetic and the tool's should match to rounding.</li>
         <li><b>Span-to-depth rules of thumb.</b> The divisors come from Allen &amp; Iano's tables and the standard steel and concrete references, so a depth checked against those books will agree — <em>provided</em> you use the midpoint the tool uses rather than either end of the printed range.</li>
         <li><b>Geometry and quantities.</b> The model is dimensionally real. Element counts, member lengths and layer thicknesses are as drawn, and would survive a take-off.</li>
-        <li><b>Eaves thrust.</b> H = V/tan(pitch) is the textbook result, and the tool computes it from the actual member geometry rather than a lookup.</li>
+        <li><b>Eaves thrust.</b> H = w s L²/8h is the textbook three-pinned result, worked from the roof's own load and its real geometry. For a portal frame it is an estimate: a rigid frame takes some of the spread by its own stiffness, and its real base reactions depend on that stiffness.</li>
       </ul>
 
       <h3>Where it will diverge</h3>

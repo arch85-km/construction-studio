@@ -63,7 +63,7 @@ Its sections are numbered in the source; search for the heading.
 | 18 Dock, 19 Layer diagram | The four part cards and the property sheet, and the build-up drawing |
 | 20 `Seq` | Build order, derived by level, then layer, then role rank, and played back |
 | 21 `Compare` | Two systems on the same grid: two scenes and one shared camera, split by scissor |
-| 19b Load path | The takedown drawn: a sleeve per column storey that grows with the load, arrows along each member, and the horizontal thrust at the foot of an inclined member |
+| 19b Load path | The takedown drawn: a sleeve per column storey that grows with the load, arrows along each member, and the spread of a pitched roof, drawn where it goes: none at the walls of a tied truss roof, at the wall head of an untied one, at the base of a portal frame |
 | 22 `Pick` | A raycast resolved back through the merged batches to one member |
 | 23 `App`, 24 `Build`, 25 `Ribbon`, 26 `boot` | Commands and wiring, grid lines and level datums, the five ribbon tabs, and startup |
 
