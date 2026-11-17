@@ -435,10 +435,18 @@ A_required = N / f_permissible
         (<span class="cs-mono">npm test</span>) checks that nothing is lost on the way.</p>
       <p>Two rafters meeting at the ridge send all their load down to their feet; a truss tie and
         a ridge board carry none. A sloping roof also pushes outward at its feet &mdash; the reason a
-        pitched roof needs a tie. The tool estimates that push, with <i>w</i> the roof&rsquo;s load
-        per m&sup2;, <i>s</i> the rafter spacing, <i>L</i> the span and <i>h</i> the height of the
-        ridge above the feet:</p>
+        pitched roof needs a tie. The tool estimates that push:</p>
       <pre class="cs-formula">H = w &#215; s &#215; L&sup2; &#247; (8 &#215; h)   <em>kN</em></pre>
+      <div class="cs-tbl"><table>
+        <thead><tr><th>Symbol</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><i>H</i></td><td>the outward push at the feet, kN</td></tr>
+          <tr><td><i>w</i></td><td>the roof&rsquo;s load, kN per m&sup2; on plan</td></tr>
+          <tr><td><i>s</i></td><td>the spacing of the rafter pairs (or trusses, or frames), m</td></tr>
+          <tr><td><i>L</i></td><td>the span between the supports, m</td></tr>
+          <tr><td><i>h</i></td><td>the height of the ridge above the feet, m; for a portal frame, above the column base</td></tr>
+        </tbody>
+      </table></div>
       <p>In a trussed roof, the tie along the bottom of each truss takes this push, so the walls
         feel nothing. A cut roof with no ties pushes its walls apart. A portal frame pushes outward
         at each column base, with <i>h</i> measured from the base.</p>
@@ -467,14 +475,17 @@ A_required = N / f_permissible
         27&nbsp;000&nbsp;mm&sup2; of steel in its cross-section. Here is an office column on a
         7.5&nbsp;&times;&nbsp;7.5&nbsp;m grid, sized by the tool:</p>
       <div class="cs-tbl"><table>
-        <thead><tr><th class="cs-n">Storeys</th><th class="cs-n">N</th><th class="cs-n">Area needed</th><th>Section given</th><th class="cs-n">Area provided</th><th class="cs-n">Short by</th><th>Flag</th></tr></thead>
+        <thead><tr><th class="cs-n">Storeys</th><th class="cs-n">N</th><th class="cs-n">Area needed</th><th>Section given</th><th class="cs-n">Area provided</th><th class="cs-n">Steel missing</th><th>Flag</th></tr></thead>
         <tbody>
           <tr><td class="cs-n">6</td><td class="cs-n">2 228 kN</td><td class="cs-n">13 500 mm&sup2;</td><td class="cs-p">HEB 300</td><td class="cs-n">14 910 mm&sup2;</td><td class="cs-d">&mdash;</td><td><span class="cs-chip is-in">ok</span></td></tr>
           <tr><td class="cs-n">8</td><td class="cs-n">3 083 kN</td><td class="cs-n">18 682 mm&sup2;</td><td class="cs-p">HEB 400</td><td class="cs-n">19 780 mm&sup2;</td><td class="cs-d">&mdash;</td><td><span class="cs-chip is-in">ok</span></td></tr>
           <tr><td class="cs-n">10</td><td class="cs-n">3 938 kN</td><td class="cs-n">23 864 mm&sup2;</td><td class="cs-p">HEB 550</td><td class="cs-n">25 410 mm&sup2;</td><td class="cs-d">&mdash;</td><td><span class="cs-chip is-in">ok</span></td></tr>
           <tr><td class="cs-n">12</td><td class="cs-n">4 792 kN</td><td class="cs-n">29 045 mm&sup2;</td><td class="cs-p">HEB 600</td><td class="cs-n">27 000 mm&sup2;</td><td class="cs-d">7%</td><td><span class="cs-chip is-in">ok</span></td></tr>
         </tbody>
-        <caption>HEB 600 is the deepest of the 19 HEB sections in the catalogue. From twelve storeys
+        <caption>&ldquo;Steel missing&rdquo; is how far the section given falls short of the area the
+          rule asks for. At twelve storeys the rule asks for 29&nbsp;045&nbsp;mm&sup2;; HEB&nbsp;600,
+          the deepest of the 19 HEB sections in the catalogue, has 27&nbsp;000&nbsp;mm&sup2;, so the
+          column is 7% short: (29&nbsp;045 &minus; 27&nbsp;000) &divide; 29&nbsp;045. From twelve storeys
           up the tool has run out of steel, hands back the largest section it has, and still reports
           green. Above roughly eleven storeys on this grid, read the column size as &ldquo;at least
           this&rdquo; rather than as an answer.</caption>

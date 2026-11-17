@@ -529,9 +529,17 @@ w_roof  = g + 0.6</pre>
         roof needs a tie. A pair of rafters is taken as a three-pinned arch, feet pinned and the
         apex a hinge, loaded by the roof's own load:</p>
       <pre class="cs-formula">H = w × s × L² ÷ (8 × h)   <em>kN</em></pre>
-      <p>Here <i>w</i> is the roof's load per m² on plan, <i>s</i> the spacing of the pairs,
-        <i>L</i> the span between the supports and <i>h</i> the height of the apex above the feet.
-        For a couple roof on walls, <i>h</i> is the rise and this is exactly
+      <div class="cs-tbl"><table>
+        <thead><tr><th>Symbol</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><i>H</i></td><td>the outward push at the feet, kN</td></tr>
+          <tr><td><i>w</i></td><td>the roof's load, kN per m² on plan</td></tr>
+          <tr><td><i>s</i></td><td>the spacing of the rafter pairs (or trusses, or frames), m</td></tr>
+          <tr><td><i>L</i></td><td>the span between the supports, m</td></tr>
+          <tr><td><i>h</i></td><td>the height of the ridge above the feet, m; for a portal frame, above the column base</td></tr>
+        </tbody>
+      </table></div>
+      <p>For a couple roof on walls, <i>h</i> is the rise and this is exactly
         <span class="cs-mono">V / tan(pitch)</span>. It is worked from the roof's own load, not
         from the member shares described below. Where the push goes depends on the roof:</p>
       <div class="cs-tbl"><table>
@@ -802,14 +810,14 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</pre>
       <p class="cs-note">The consequence is worth seeing concretely. An office column on a
         7.5 × 7.5 m grid, sized by the tool:</p>
       <div class="cs-tbl"><table>
-        <thead><tr><th class="cs-n">Storeys</th><th class="cs-n">N</th><th class="cs-n">Area needed</th><th>Section given</th><th class="cs-n">Area provided</th><th class="cs-n">Short by</th><th>Flag</th></tr></thead>
+        <thead><tr><th class="cs-n">Storeys</th><th class="cs-n">N</th><th class="cs-n">Area needed</th><th>Section given</th><th class="cs-n">Area provided</th><th class="cs-n">Steel missing</th><th>Flag</th></tr></thead>
         <tbody>
           <tr><td class="cs-n">6</td><td class="cs-n">2 228 kN</td><td class="cs-n">13 500 mm²</td><td class="cs-p">HEB 300</td><td class="cs-n">14 910 mm²</td><td class="cs-d">—</td><td><span class="cs-chip is-in">ok</span></td></tr>
           <tr><td class="cs-n">8</td><td class="cs-n">3 083 kN</td><td class="cs-n">18 682 mm²</td><td class="cs-p">HEB 400</td><td class="cs-n">19 780 mm²</td><td class="cs-d">—</td><td><span class="cs-chip is-in">ok</span></td></tr>
           <tr><td class="cs-n">10</td><td class="cs-n">3 938 kN</td><td class="cs-n">23 864 mm²</td><td class="cs-p">HEB 550</td><td class="cs-n">25 410 mm²</td><td class="cs-d">—</td><td><span class="cs-chip is-in">ok</span></td></tr>
           <tr><td class="cs-n">12</td><td class="cs-n">4 792 kN</td><td class="cs-n">29 045 mm²</td><td class="cs-p">HEB 600</td><td class="cs-n">27 000 mm²</td><td class="cs-d">7%</td><td><span class="cs-chip is-in">ok</span></td></tr>
         </tbody>
-        <caption>HEB 600 is the deepest of the 19 HEB sections in the catalogue. From twelve storeys up the tool has run out of steel, hands back the largest section it has, and still reports green. Above roughly eleven storeys on this grid, read the column size as "at least this" rather than as an answer.</caption>
+        <caption>"Steel missing" is how far the section given falls short of the area the rule asks for. At twelve storeys the rule asks for 29 045 mm²; HEB 600, the deepest of the 19 HEB sections in the catalogue, has 27 000 mm², so the column is 7% short: (29 045 − 27 000) ÷ 29 045. From twelve storeys up the tool has run out of steel, hands back the largest section it has, and still reports green. Above roughly eleven storeys on this grid, read the column size as "at least this" rather than as an answer.</caption>
       </table></div>
 
       <h3>Sections move in steps, the rule moves smoothly</h3>
