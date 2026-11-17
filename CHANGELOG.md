@@ -50,7 +50,7 @@ concrete flat slab 19 129 → 22 379 kN; mass timber 6912 → 4303 kN.
 - **Fixed** — the eaves thrust is worked from the roof's own load and says
   where the push goes. H = V / tan(pitch) was applied to every sloping
   member and drawn pushing the walls apart. It is now the three-pinned
-  H = w s L² ÷ 8h: a truss's tie takes it as tension (3.8 kN per truss on
+  H = w × s × L² ÷ (8 × h): a truss's tie takes it as tension (3.8 kN per truss on
   the timber house) and the walls feel nothing; an untied cut roof pushes
   its walls (5.3 kN per metre on the masonry house) or, on a frame, its
   eaves; a portal frame pushes out at each base (62 kN on the shed).

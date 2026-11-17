@@ -430,7 +430,7 @@ A_required = N / f_permissible
         column takes the floor area nearest to it. Within a floor, load passes from member to
         member: the deck sits on the joists or secondary beams, those rest on the main beams, and
         the main beams rest on the columns or walls. Each member passes half its load to each end
-        (<span class="cs-mono">wL/2</span>). A flat slab or a CLT roof, with no beams, passes its
+        (<span class="cs-mono">w &#215; L &#247; 2</span>). A flat slab or a CLT roof, with no beams, passes its
         load straight to the supports, the way it spans. An automated test
         (<span class="cs-mono">npm test</span>) checks that nothing is lost on the way.</p>
       <p>Two rafters meeting at the ridge send all their load down to their feet; a truss tie and
@@ -438,7 +438,7 @@ A_required = N / f_permissible
         pitched roof needs a tie. The tool estimates that push, with <i>w</i> the roof&rsquo;s load
         per m&sup2;, <i>s</i> the rafter spacing, <i>L</i> the span and <i>h</i> the height of the
         ridge above the feet:</p>
-      <pre class="cs-formula">H = w s L&sup2; / 8h   <em>kN</em></pre>
+      <pre class="cs-formula">H = w &#215; s &#215; L&sup2; &#247; (8 &#215; h)   <em>kN</em></pre>
       <p>In a trussed roof, the tie along the bottom of each truss takes this push, so the walls
         feel nothing. A cut roof with no ties pushes its walls apart. A portal frame pushes outward
         at each column base, with <i>h</i> measured from the base.</p>

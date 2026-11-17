@@ -22769,7 +22769,7 @@ const Loads = (() => {
        A pair of sloping members pushes its feet apart. Taken as a three-pinned
        arch - the feet pinned, the apex a hinge - the outward push is
 
-           H = w s L² / 8h
+           H = w × s × L² ÷ (8 × h)
 
        w the roof's load per m² on plan, s the spacing of the pairs, L the span
        between the supports, h the height of the apex above the feet. For a
@@ -27294,7 +27294,7 @@ const LoadPath = (() => {
       if(fnd) body.appendChild(fnd);
     }
 
-    // what a pitched roof pushes on, and with what: H = w s L² / 8h
+    // what a pitched roof pushes on, and with what: H = w × s × L² ÷ (8 × h)
     const inc = (d.segs || []).filter(s => s.kind === 'inclined' && s.spread);
     if(inc.length){
       const worst = inc.reduce((a, b) => b.spread.H > a.spread.H ? b : a);
@@ -27304,23 +27304,23 @@ const LoadPath = (() => {
         // what the rafters' feet push on: bearing walls, or on a frame the
         // eaves and the edge columns under them
         walls: d.onWalls ? { cls:'marginal', ttl:'Thrust at the eaves',
-          text:`H = w L² ÷ 8h = ${f1(p.w)} × ${sq} ÷ (8 × ${f2(p.h)}) = ${f1(p.perMetre)} kN per metre of wall`,
+          text:`H = w × L² ÷ (8 × h) = ${f1(p.w)} × ${sq} ÷ (8 × ${f2(p.h)}) = ${f1(p.perMetre)} kN per metre of wall`,
           advice:'Nothing ties the feet of these rafters together, so the roof pushes its walls ' +
                  'apart as well as pressing down. A cut roof is normally tied by its ceiling joists, ' +
                  'which are not drawn here; a ring beam, a structural ridge beam or a buttress also ' +
                  'answers it.' } : { cls:'marginal', ttl:'Thrust at the eaves',
-          text:`H = w L² ÷ 8h = ${f1(p.w)} × ${sq} ÷ (8 × ${f2(p.h)}) = ${f1(p.perMetre)} kN per metre of eaves`,
+          text:`H = w × L² ÷ (8 × h) = ${f1(p.w)} × ${sq} ÷ (8 × ${f2(p.h)}) = ${f1(p.perMetre)} kN per metre of eaves`,
           advice:'Nothing ties the feet of these rafters together, so the roof pushes the eaves ' +
                  'outward, and the edge columns with them, as well as pressing down. An edge beam ' +
                  'or ceiling ties across the frame, or bracing to carry the push to the ground, ' +
                  'answers it.' },
         tie: { cls:'ok', ttl:'Thrust taken by the tie',
-          text:`H = w s L² ÷ 8h = ${f1(p.w)} × ${f2(p.s)} × ${sq} ÷ (8 × ${f2(p.h)}) = ` +
+          text:`H = w × s × L² ÷ (8 × h) = ${f1(p.w)} × ${f2(p.s)} × ${sq} ÷ (8 × ${f2(p.h)}) = ` +
                `${f1(p.H)} kN tension in each tie`,
           advice:'The bottom chord of each truss ties its feet together, so the roof pushes its own ' +
                  'tie, not the walls: the walls carry only its weight. That is what a truss is for.' },
         frame: { cls:'marginal', ttl:'Spread at the portal bases',
-          text:`H = w L² ÷ 8h, w = ${f1(p.w)} kN/m² × ${f1(p.s)} m: ` +
+          text:`H = w × L² ÷ (8 × h), w = ${f1(p.w)} kN/m² × ${f1(p.s)} m: ` +
                `${f1(p.w*p.s)} × ${sq} ÷ (8 × ${f2(p.h)}) = ${f1(p.H)} kN at each base`,
           advice:'A portal frame resists the spread with its own stiffness and pushes outward at its ' +
                  'feet. This is the three-pinned estimate, with h the apex height above the base; the ' +

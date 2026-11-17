@@ -260,7 +260,7 @@ for (const tpl of templates) {
          kept.slice(0, 2).map(s => `${s.role}: ${s.each} vs ${s.Ra}+${s.Rb}`).join('; '));
     }
 
-    /* the spread of a pitched roof: H = w s L² / 8h, three-pinned, from the
+    /* the spread of a pitched roof: H = w × s × L² ÷ (8 × h), three-pinned, from the
        roof's own load. Where it goes: a tie takes it (walls get nothing), a
        portal pushes out at its bases (h measured from the base), else the walls */
     const incl = r.segs.filter(s => s.kind === 'inclined');
@@ -279,7 +279,7 @@ for (const tpl of templates) {
         if (!p || p.how !== how || !near(p.L, L) || !near(p.h, h, 1e-6) || !near(p.H, H, 1e-6) ||
             !near(s.thrust, how === 'tie' ? 0 : H, 1e-6)) { bad = { s, how, L, h, H }; break; }
       }
-      ok(`${tag}: roof spread H = w s L² ÷ 8h, ${r.tied ? 'taken by the tie' : r.portal ? 'at the portal bases' : 'into the walls'}`,
+      ok(`${tag}: roof spread H = w × s × L² ÷ (8 × h), ${r.tied ? 'taken by the tie' : r.portal ? 'at the portal bases' : 'into the walls'}`,
          !bad, bad ? JSON.stringify({ got: bad.s.spread, want: { how: bad.how, L: bad.L, h: bad.h, H: bad.H } }) : '');
     }
   }
