@@ -11,7 +11,7 @@ Version DOI to come: one is minted when this release is archived.
 The loads, the load path and the sizes they drive are reworked, so figures
 from 1.1.0 change. Before → after, on the templates: timber house 1129 →
 468 kN to the ground; masonry house 2120 → 2094 kN; steel office 19 238 →
-13 195 kN, its worst column B2 2475 → 1373 kN (HEB 280 → HEB 220);
+13 195 kN, its worst column B2 2475 → 1373 kN (HEB 320 → HEB 220);
 concrete flat slab 19 129 → 22 379 kN; mass timber 6912 → 4303 kN.
 
 - **Changed** — loads depend on what the building is made of. Each level's
