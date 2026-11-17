@@ -413,46 +413,39 @@ A_required = N / f_permissible
 <em>RC     </em> f = 0.4 &#215; 30 MPa    <em>(C30)</em>
 <em>timber </em> f = 0.6 &#215; 24 MPa    <em>(GL24)</em>
 <em>masonry</em> f = 2.5 MPa         <em>(pier)</em></pre>
-      <p>The load <i>w</i> on each level is what it is built of plus what is put on it: the floor
-        or roof system&rsquo;s own weight (from 0.6&nbsp;kN/m&sup2; for timber joists to 7.5 for
-        an RC flat slab), 0.8&nbsp;kN/m&sup2; of partitions on every floor, and the imposed load
-        for the use from EN&nbsp;1991-1-1: residential&nbsp;1.5, office&nbsp;2.5, retail&nbsp;4.0,
-        industrial&nbsp;7.5, roof&nbsp;0.6&nbsp;kN/m&sup2;. So a timber house weighs about a third
-        of a concrete one. The walls add their own weight: each storey adds its weight per
-        square metre of face times the storey height, as kN per metre run &mdash; 4.35&nbsp;kN/m&sup2;
-        for cavity masonry, 0.5 for a timber frame &mdash; so in a masonry house the walls weigh
-        more than the floors. On a frame, the cladding hangs on the edge columns.
-        <b>No load factors are applied</b>: these are service loads, not design
-        values, and cannot be carried into a code calculation as they stand.</p>
-      <p>Load comes down top-down. Where the vertical system offers <b>lines</b> &mdash; walls
-        &mdash; it is spread evenly along the perimeter, so every metre of wall carries the same
-        whatever is above it. Where it offers <b>points</b> &mdash; columns &mdash; each grid node
-        takes the floor area nearest to it. Two invariants are checked by <span class="cs-mono">npm test</span>: the
-        loads on all supports add up to the loads on all floors and walls, and the reactions every
-        level&rsquo;s members deliver add up to that level&rsquo;s load. A level carried by a panel
-        alone &mdash; a flat slab, a CLT roof &mdash; is read as strips of that panel running the
-        way it spans: both ways to the column lines for a two-way slab, across the short direction
-        for a one-way panel.</p>
-      <p>Members are classified by their own direction rather than by name, so a rafter, a brace and
-        a portal leg classify themselves. Load passes down a chain: the floor rests on the members
-        nothing else rests on &mdash; joists, secondaries, purlins &mdash; each taking its own strip
-        on plan, and each hands its load to what holds it up, another member or a wall or column,
-        by the length each support carries (the classic <span class="cs-mono">wL/2</span>) and the
-        lever rule for point loads. A primary carries the secondaries on it; a pair of rafters
-        meeting at the apex sends everything to its feet; a tie and a ridge board carry no roof
-        load. An inclined member also pushes its support sideways, and
-        that push is the whole reason a pitched roof needs a tie. Taking a pair of rafters as a
-        three-pinned arch, with <i>w</i> the roof&rsquo;s load per m&sup2;, <i>s</i> the spacing,
-        <i>L</i> the span and <i>h</i> the apex height above the feet:</p>
+      <p>Each floor&rsquo;s load, in kN per square metre, has three parts:</p>
+      <ul>
+        <li><b>What it is made of:</b> the floor or roof&rsquo;s own weight, from 0.6 for timber
+          joists up to 7.5 for a concrete flat slab.</li>
+        <li><b>Partitions:</b> 0.8 on every floor.</li>
+        <li><b>What is put on it:</b> the load for the building&rsquo;s use, from EN&nbsp;1991-1-1
+          &mdash; homes 1.5, offices 2.5, shops 4.0, industrial 7.5, and 0.6 on a roof.</li>
+      </ul>
+      <p>So a timber house weighs about a third of a concrete one. The walls add their own weight
+        too: a cavity masonry wall weighs 4.35&nbsp;kN per square metre of wall, a timber frame 0.5,
+        so in a masonry house the walls weigh more than the floors. On a frame, the cladding hangs
+        on the edge columns. These are everyday working loads with <b>no safety factors</b>: they
+        are not design values and cannot go straight into a code calculation.</p>
+      <p>The load is added up from the roof down. Walls share it evenly along their length; each
+        column takes the floor area nearest to it. Within a floor, load passes from member to
+        member: the deck sits on the joists or secondary beams, those rest on the main beams, and
+        the main beams rest on the columns or walls. Each member passes half its load to each end
+        (<span class="cs-mono">wL/2</span>). A flat slab or a CLT roof, with no beams, passes its
+        load straight to the supports, the way it spans. An automated test
+        (<span class="cs-mono">npm test</span>) checks that nothing is lost on the way.</p>
+      <p>Two rafters meeting at the ridge send all their load down to their feet; a truss tie and
+        a ridge board carry none. A sloping roof also pushes outward at its feet &mdash; the reason a
+        pitched roof needs a tie. The tool estimates that push, with <i>w</i> the roof&rsquo;s load
+        per m&sup2;, <i>s</i> the rafter spacing, <i>L</i> the span and <i>h</i> the height of the
+        ridge above the feet:</p>
       <pre class="cs-formula">H = w s L&sup2; / 8h   <em>kN</em></pre>
-      <p>In a trussed roof the bottom chord, the tie, takes H as tension and the walls feel nothing.
-        A cut roof with nothing tying its feet pushes its walls apart. A portal frame pushes out at
-        each base, with <i>h</i> measured from the base.</p>
-      <p class="cs-note">Overlapping strips are scaled back to the level&rsquo;s load; where they
-        fall short, as beside the steel office&rsquo;s column lines, where a real frame has a beam
-        the tool does not draw, the rest goes straight to the columns. The arithmetic always
-        balances; that it balances is not evidence that any individual member&rsquo;s share is
-        right.</p>
+      <p>In a trussed roof, the tie along the bottom of each truss takes this push, so the walls
+        feel nothing. A cut roof with no ties pushes its walls apart. A portal frame pushes outward
+        at each column base, with <i>h</i> measured from the base.</p>
+      <p class="cs-note">The totals always balance: every floor&rsquo;s load reaches the ground.
+        Where the drawn members leave a gap &mdash; beside the steel office&rsquo;s column lines,
+        where a real frame has a beam the tool does not draw &mdash; that strip goes straight to the
+        columns. Balanced totals do not prove that each member&rsquo;s share is right.</p>
     </div>
   </section>
 
@@ -558,10 +551,16 @@ A_required = N / f_permissible
         here every support takes only what falls nearest to it, so interior columns come out
         under-loaded and edge columns over-loaded relative to an analysed frame. Bracing and cores
         are drawn but carry nothing. Connections are named and shaped, not designed.</p>
-      <p><b>Cite it as a teaching model of construction assembly and load path.</b> Do not cite it as
-        a source of material property data &mdash; the code names no source for those values &mdash;
-        and do not cite it for building physics at all, because there is none. For anything that must
-        stand up, use an engineer and an analysis package.</p>
+      <p><b>Cite it as a teaching model of how buildings are put together and how their load
+        reaches the ground.</b> Do not cite it for two things:</p>
+      <ul>
+        <li><b>Material properties</b> &mdash; the strength, stiffness and density of each material.
+          The tool uses typical figures, but it does not say which book or standard they come from,
+          so they cannot be checked against a source.</li>
+        <li><b>Building physics</b> &mdash; heat loss, U-values, condensation, sound. The tool draws
+          insulation and other layers but calculates none of these.</li>
+      </ul>
+      <p>For anything that must stand up, use a structural engineer and proper analysis software.</p>
       <p class="cs-note"><b>Quote differences, not absolute values.</b> These are rules of thumb
         rounded to catalogue sizes. A change that moves a section by one size is a result; a 5%
         change in a computed depth is the rule&rsquo;s own imprecision, not a finding.</p>
