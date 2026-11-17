@@ -491,9 +491,10 @@ w_roof  = g + 0.6</pre>
       </table></div>
 
       <h3>The load takedown</h3>
-      <p>Computed top down. Each level contributes its whole plan area times its load; the running
-        total is what arrives at each storey. How it is shared depends on what the vertical system
-        declares it offers:</p>
+      <p>The load is added up from the roof down. Each level adds its plan area times its load, and
+        each storey of wall its own weight, to everything above it; that running total is what the
+        storey below must carry. How it is shared depends on what the vertical system declares it
+        offers:</p>
       <div class="cs-tbl"><table>
         <thead><tr><th>Vertical system provides</th><th>Load is shared</th></tr></thead>
         <tbody>
