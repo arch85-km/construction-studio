@@ -26,6 +26,9 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.23142910
     description: "Version DOI — 1.1.0"
+  - type: doi
+    value: 10.5281/zenodo.24320043
+    description: "Version DOI — 1.2.0; cite this when quoting a figure"
 date-released: 2026-11-17
 license: MIT
 url: "https://karam.me.uk/applications/construction-studio/"
