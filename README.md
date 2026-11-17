@@ -217,8 +217,8 @@ scholarly act on top of it. `CITATION.cff` in this repository is the
 machine-readable version.
 
 > Al-Obaidi, K.M. (2026). *Construction Studio: A browser-based modeller for
-> construction and structural systems* (Version 1.1.0) [Computer software].
-> Zenodo. https://doi.org/10.5281/zenodo.23142910
+> construction and structural systems* (Version 1.2.0) [Computer software].
+> Zenodo. https://doi.org/10.5281/zenodo.22751439
 
 ```bibtex
 @software{alobaidi2026constructionstudio,
@@ -226,22 +226,25 @@ machine-readable version.
   title     = {Construction Studio: A browser-based modeller for
                construction and structural systems},
   year      = {2026},
-  version   = {1.1.0},
+  version   = {1.2.0},
   publisher = {Zenodo},
-  doi       = {10.5281/zenodo.23142910},
+  doi       = {10.5281/zenodo.22751439},
   url       = {https://karam.me.uk/applications/construction-studio/},
   note      = {Code MIT licensed; accompanying material CC BY 4.0}
 }
 ```
 
-That is the **version DOI**, frozen on 1.1.0 — the right thing to cite when you
-are reporting figures someone should be able to reproduce, because it names the
-exact code they came from. To cite the tool in general rather than this release,
-use the **concept DOI** [10.5281/zenodo.22751439](https://doi.org/10.5281/zenodo.22751439),
-which always resolves to the newest version.
+Those entries name the **concept DOI**, which always resolves to the newest
+version. They will name 1.2.0's own **version DOI** instead once it exists: a
+version DOI is minted when this release is archived, and not before — so for the
+moment there is no version DOI for this release to cite, and the concept DOI is
+the honest thing to put in a paper. If you are quoting a figure from an earlier
+build, 1.1.0 is archived at https://doi.org/10.5281/zenodo.23142910 and 1.0.1 at
+https://doi.org/10.5281/zenodo.22751440. The loads, the load path and the sizes all changed in
+1.2.0, so say which build a figure came from.
 
-Quote the four systems, the grid and the storey count alongside any figure
-taken from the tool. The sizing rules are span-based, so a depth given without
+Quote the five systems, the grid, the storey count and the use class alongside
+any figure taken from the tool. The sizing rules are span-based, so a depth given without
 its span cannot be checked.
 
 ---

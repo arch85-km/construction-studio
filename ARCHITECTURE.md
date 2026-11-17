@@ -27,7 +27,7 @@ bundled inside it, and there is no web font or icon set to fetch.
 - Section properties are stored in SI and formatted by `U` (`fx`, `sig`,
   `eng`).
 - The release is written into the file in several places: the header
-  citation, `app:'1.1.0'` in the saved document, and the About panel's
+  citation, `app:'1.2.0'` in the saved document, and the About panel's
   "Version X · updated d Month yyyy" and its citation. The release guard reads
   the app's copy.
 - Every size and load the app shows carries one caution,

@@ -5,8 +5,9 @@ Each release is archived on Zenodo with its own version DOI. The concept DOI,
 resolves to the newest version. The full notes for each release are on the
 [releases page](https://github.com/arch85-km/construction-studio/releases).
 
-## Unreleased
+## [1.2.0](https://github.com/arch85-km/construction-studio/releases/tag/v1.2.0) — 17 November 2026
 
+Version DOI to come: one is minted when this release is archived.
 The loads, the load path and the sizes they drive are reworked, so figures
 from 1.1.0 change. Before → after, on the templates: timber house 1129 →
 468 kN to the ground; masonry house 2120 → 2094 kN; steel office 19 238 →
