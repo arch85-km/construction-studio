@@ -35,7 +35,7 @@ architects already use in SketchUp. There is no analysis in it, deliberately.
 | **Load path** | Follow the weight from where it lands to where it goes. Arrows point the way it travels — spread over a **surface**, collected **horizontally** by joists and beams, running down an **inclined** rafter, then **vertically** to the ground — with a sleeve round each column that widens and warms as the load accumulates. Gravity by tributary area: the hand calculation, not an analysis. |
 | **Teaching** | Live sizing readout · build-sequence animation · labelled build-up diagram with a dimension chain · side-by-side comparison on one shared camera. |
 | **Import** | DXF as a traceable underlay or measured into grid lines, OBJ as ghosted site context, and a plan image scaled by two-point calibration. |
-| **Export** | PNG with labels, a title block and a credit line. |
+| **Export** | PNG with labels, a title block and a credit line; Loads CSV and Sizes CSV from the Analysis tab, each headed by the building description and the not-for-construction caution. |
 | **Files** | Save and open `.json` buildings. Snapshot undo. |
 
 Materials are colour-coded the way a student would shade a drawing — steel
@@ -158,7 +158,7 @@ offers to walk you through. After that:
 | **View** | Explode, Open, display style, layer and part isolation, section box. |
 | **Teach** | Build sequence, build-up diagram, system comparison. |
 | **Context** | DXF, OBJ and image import; underlay opacity; PNG export. |
-| **Analysis** | The load path from roof to foundation, filtered by direction, and the building's use class. |
+| **Analysis** | The load path from roof to foundation, filtered by direction; the building's use class; the loads and the sizes as CSV. |
 
 Click any element to see what it is, why it is that size, and to change or
 delete it. Edits are remembered **by position**, so they survive a change to

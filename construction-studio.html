@@ -20716,6 +20716,18 @@ const Model = (() => {
     doc.levels = Object.assign({}, base.levels, doc.levels);
     doc.soil   = Object.assign({}, base.soil, doc.soil);
     doc.slots  = Object.assign({}, base.slots, doc.slots);
+    // 1.1.0 offered "Roof" in the Use list by mistake (the roof's own load sat
+    // in the same table as the uses). A use the tool no longer knows opens as
+    // the default, and says so, rather than quietly loading as something else.
+    if(!(doc.use in SIZING.IMPOSED)){
+      const was = doc.use;
+      doc.use = base.use;
+      if(was != null) setTimeout(() => { try {
+        UI.toast(`This building was saved with Use "${was}", which is not a use; ` +
+                 `it opens as ${base.use[0].toUpperCase() + base.use.slice(1)}. Choose its use in Build.`,
+                 'warn', 8000);
+      } catch(e){} }, 0);
+    }
     doc.perLevel = doc.perLevel || {};
     doc.edits  = doc.edits || {};
     doc.manual = doc.manual || [];
@@ -20914,12 +20926,20 @@ def({
   sizing:{ pad:'found.pad' }, layer:0, seq:0,
   build(ctx){
     const { grid, p, size, base, M, storeys } = ctx;
-    const pts = base.points.length ? base.points
-              : grid.outline.map((q,i) => ({ p:q, i, j:0 }));
+    // On columns, a pad under each one, carrying its own share. With no
+    // columns to stand on (pads under walls, which Gen warns about) there is a
+    // pad at each corner, and the four of them share the whole building - not
+    // a corner bay each, which loses most of the load and, on a grid narrower
+    // than the outline has corners, reads past its edge.
+    const onCols = base.points.length > 0;
+    const pts = onCols ? base.points : grid.outline.map((q, k) => ({ p:q, i:'corner', j:k }));
+    const share = onCols ? 1 : 1/pts.length;
     for(const pt of pts){
-      const z = size('found.pad', { Atrib:pt.trib || grid.tribArea(pt.i, pt.j),
-                                    storeys, ws:SIZING.carried(M, ctx.levels), qAllow:M.soil.qAllow,
-                                    clad:SIZING.wallLineFrom(M, ctx.levels)*SIZING.edgeLen(grid, pt.i, pt.j) });
+      const z = size('found.pad', {
+        Atrib: onCols ? (pt.trib || grid.tribArea(pt.i, pt.j)) : grid.W*grid.D*share,
+        storeys, ws:SIZING.carried(M, ctx.levels), qAllow:M.soil.qAllow,
+        clad: SIZING.wallLineFrom(M, ctx.levels) *
+              (onCols ? SIZING.edgeLen(grid, pt.i, pt.j) : 2*(grid.W + grid.D)*share) });
       const B = z.B || 1.2;
       ctx.out({ kind:'volume', role:'pad', layer:0, level:'L0',
         poly:Geom.rect(pt.p[0]-B/2, pt.p[1]-B/2, pt.p[0]+B/2, pt.p[1]+B/2),
@@ -24827,6 +24847,12 @@ const UI = (() => {
     const note = [
       '# Construction Studio - © Karam Al-Obaidi',
       `# ${doc?.meta?.name || 'Untitled Project'}`,
+      // what a reader needs to check any figure below: the systems, the grid,
+      // the storeys, the use and the soil all change the numbers
+      `# ${App.describeBuilding()}`,
+      `# Grid ${doc.grid.bx} × ${doc.grid.bz} bays at ${doc.grid.sx} × ${doc.grid.sz} m · ` +
+        `${doc.levels.storeys} storeys at ${doc.levels.height} m · use ${doc.use} · ` +
+        `soil ${doc.soil.qAllow} kPa`,
       `# Exported ${new Date().toISOString().slice(0,10)}`,
       '# Sizing is by span rule of thumb, for learning and early design - not analysis.',
       '# Not for construction: structure must be designed and checked by a qualified structural engineer.'
@@ -24836,7 +24862,8 @@ const UI = (() => {
       const v = c.value ? c.value(r) : r[c.key];
       return typeof v === 'number' ? U.sig(v, 6) : `"${String(v ?? '').replace(/"/g,'""')}"`;
     }).join(',')).join('\n');
-    IO.download(new Blob([note + '\n' + head + '\n' + body], { type:'text/csv' }), name);
+    // the byte-order mark tells Excel the file is UTF-8, or "kN/m²" opens as "kN/mÂ²"
+    IO.download(new Blob(['﻿' + note + '\n' + head + '\n' + body], { type:'text/csv;charset=utf-8' }), name);
   }
 
   /** The green / amber / red chip beside a sizing readout. Green says the span
@@ -25179,7 +25206,58 @@ const Draft = (() => {
     });
   }
 
-  return { exportPNG, sheetDialog };
+  /* --- CSV: the numbers behind the card and the sizes ------------------------
+     Two tables a student can check by hand or carry into a report. Both go
+     through UI.csv, whose header carries the not-for-construction caution, so
+     the caution travels with the figures. */
+  const csvName = kind => `${IO.slug(Store.doc.meta.name || 'building')}-${kind}.csv`;
+
+  /** The load takedown, level by level, roof first: what each level weighs and
+      why, the storey of wall under it, and the running total. */
+  function exportLoadsCSV(){
+    const d = Loads.compute(Store.doc);
+    const label = id => (SYSTEMS[id] && SYSTEMS[id].label) || id || '';
+    UI.csv([
+      { label:'Level',                        value:r => r.name },
+      { label:'Height (m)',                   value:r => r.y },
+      { label:'Floor or roof system',         value:r => label(r.sys) },
+      { label:'Own weight (kN/m²)',           value:r => r.dead },
+      { label:'Partitions (kN/m²)',           value:r => r.partitions },
+      { label:'Imposed (kN/m²)',              value:r => r.imposed },
+      { label:'Total (kN/m²)',                value:r => r.w },
+      { label:'Area (m²)',                    value:r => r.area },
+      { label:'Floor load (kN)',              value:r => r.load },
+      { label:'Wall system, storey below',    value:r => label(r.wallSys) },
+      { label:'Wall weight (kN/m² of face)',  value:r => r.wallG },
+      { label:'Storey height (m)',            value:r => r.wallH },
+      { label:'Wall line load (kN/m)',        value:r => r.wallLine },
+      { label:'Walls (kN)',                   value:r => r.wall },
+      { label:'Running total (kN)',           value:r => r.cumulative },
+      { label:'Running, per metre of wall (kN/m)',
+        value:r => d.onWalls ? r.cumulative/d.runLen : '' }
+    ], d.rows, csvName('loads'));
+  }
+
+  /** Every element the rules sized: the rule, the load it was sized for, the
+      depth, the section and the working, exactly as the cards show them. */
+  function exportSizesCSV(){
+    const sized = Gen.plans.filter(pl => pl.meta && pl.meta.ruleId);
+    UI.csv([
+      { label:'Part',          value:pl => pl.part },
+      { label:'Element',       value:pl => pl.label || pl.role },
+      { label:'Level',         value:pl => pl.level },
+      { label:'Count',         value:pl => pl.count || 1 },
+      { label:'Rule',          value:pl => pl.meta.label || pl.meta.ruleId },
+      { label:'Load (kN)',     value:pl => pl.meta.N != null ? pl.meta.N : '' },
+      { label:'Depth (mm)',    value:pl => pl.meta.depth },
+      { label:'Section',       value:pl => pl.meta.sectionId || '' },
+      // as graded: a span rule's "ok" is about the span, a check's about the check
+      { label:'Status',        value:pl => pl.meta.status },
+      { label:'Working',       value:pl => pl.meta.formula }
+    ], sized, csvName('sizes'));
+  }
+
+  return { exportPNG, sheetDialog, exportLoadsCSV, exportSizesCSV };
 })();
 /* ==========================================================================
    16  IMPORT - DXF plans, OBJ context, image underlays
@@ -27223,11 +27301,18 @@ const LoadPath = (() => {
       const p = worst.spread, f1 = v => U.fx(v, 1), f2 = v => U.fx(v, 2);
       const sq = `${f1(p.L)}²`;
       const card = {
-        walls: { cls:'marginal', ttl:'Thrust at the eaves',
+        // what the rafters' feet push on: bearing walls, or on a frame the
+        // eaves and the edge columns under them
+        walls: d.onWalls ? { cls:'marginal', ttl:'Thrust at the eaves',
           text:`H = w L² ÷ 8h = ${f1(p.w)} × ${sq} ÷ (8 × ${f2(p.h)}) = ${f1(p.perMetre)} kN per metre of wall`,
           advice:'Nothing ties the feet of these rafters together, so the roof pushes its walls ' +
                  'apart as well as pressing down. A cut roof is normally tied by its ceiling joists, ' +
                  'which are not drawn here; a ring beam, a structural ridge beam or a buttress also ' +
+                 'answers it.' } : { cls:'marginal', ttl:'Thrust at the eaves',
+          text:`H = w L² ÷ 8h = ${f1(p.w)} × ${sq} ÷ (8 × ${f2(p.h)}) = ${f1(p.perMetre)} kN per metre of eaves`,
+          advice:'Nothing ties the feet of these rafters together, so the roof pushes the eaves ' +
+                 'outward, and the edge columns with them, as well as pressing down. An edge beam ' +
+                 'or ceiling ties across the frame, or bracing to carry the push to the ground, ' +
                  'answers it.' },
         tie: { cls:'ok', ttl:'Thrust taken by the tie',
           text:`H = w s L² ÷ 8h = ${f1(p.w)} × ${f2(p.s)} × ${sq} ÷ (8 × ${f2(p.h)}) = ` +
@@ -28014,6 +28099,15 @@ const Ribbon = (() => {
             .map(k => ({ value:k, label:k[0].toUpperCase()+k.slice(1) })),
           doc.use, v => { Store.begin('Use'); doc.use = v; Store.touch('param');
                           LoadPath.build(); App.refreshChrome(); Dock.render(); })
+      ]),
+      // the figures behind the card and the sizes, as tables to check or keep
+      grp('Export', [
+        btn('Loads CSV', 'i-table', () => Draft.exportLoadsCSV(),
+          { title:'The load takedown level by level - own weight, partitions, imposed, ' +
+                  'walls and the running total - as a CSV table' }),
+        btn('Sizes CSV', 'i-table', () => Draft.exportSizesCSV(),
+          { title:'Every element the rules sized - its rule, load, depth, section and ' +
+                  'working - as a CSV table' })
       ])
     ];
   }

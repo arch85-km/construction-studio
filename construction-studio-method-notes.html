@@ -740,8 +740,8 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</pre>
         <div><span class="cs-chip is-in">In</span><dt>Masonry slenderness</dt><dd>h_ef/t_ef against 27, or 20 for thin leaves in two storeys or more, with the cavity-wall effective thickness ⅔(t₁+t₂). The only code check in the application.</dd></div>
         <div><span class="cs-chip is-in">In</span><dt>Foundation sizing</dt><dd>Pad area from bearing pressure, strip width from load per metre, raft thickness from span and its ground pressure — the whole building over its area — checked against the soil, pile count from an assumed 600 kN per pile. Soil bearing capacity is an input. The Load path card and diagram end at the foundation chosen: a plate under each footing, coloured by how hard the ground works there.</dd></div>
         <div><span class="cs-chip is-in">In</span><dt>Real build-ups</dt><dd>19 layer stacks, each layer its own object at its real thickness, driving the model and the drawing from one source.</dd></div>
-        <div><span class="cs-chip is-part">Partly</span><dt>The green / amber / red flag</dt><dd>It compares the <b>span</b> against the range the rule suits — and, for the masonry and pad rules, a ratio against its limit. It is not a capacity check, and a green flag does not mean the member works.</dd></div>
-        <div><span class="cs-chip is-part">Partly</span><dt>Load-path shares</dt><dd>Load passes down the chain of members — deck to secondary to primary to column — with each member's strip of floor from its own family spacing where the generator recorded one, and otherwise from half the smaller grid dimension: a guess, flagged internally as inferred but not surfaced in the interface. Members are simply supported or continuous over what they rest on; no moment is carried across a joint.</dd></div>
+        <div><span class="cs-chip is-part">Partly</span><dt>The green / amber / red flag</dt><dd>It compares the <b>span</b> against the range the rule suits — and, for the masonry and raft rules, a ratio against its limit (the pad rule has a check, but it always passes). It is not a capacity check, and a green flag does not mean the member works.</dd></div>
+        <div><span class="cs-chip is-part">Partly</span><dt>Load-path shares</dt><dd>Load passes down the chain of members — deck to secondary to primary to column — with each member's strip of floor from its own family spacing where the generator recorded one, and otherwise from half the smaller grid dimension: a guess, which the Load path card says it has made ("taken as half the bay"). Members are simply supported or continuous over what they rest on; no moment is carried across a joint.</dd></div>
       </dl>
 
       <h3>Not modelled</h3>
@@ -987,7 +987,9 @@ a horizontal one   <em>bears</em>      'lines', 'points' or 'either'</pre>
     <p>Report the <b>five systems</b>, the <b>grid</b>, the <b>storey count</b> and the <b>use
       class</b> alongside any figure taken from the tool — all four change the numbers, and a depth
       quoted without its span cannot be checked by anyone reading you. Every exported image carries
-      the building description and the detail level in its title block.</p>
+      the building description and the detail level in its title block, and both CSV exports
+      (Loads and Sizes, on the Analysis tab) carry the systems, grid, storeys, use and soil in
+      their header.</p>
 
     <h3>References</h3>
     <p>What the systems, build-ups and rules are drawn from, and what each one contributes. These

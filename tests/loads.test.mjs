@@ -501,6 +501,92 @@ for (const tpl of ['house', 'office']) {
      `${r.rest.spots} positions for ${r.columns} columns`);
 }
 
+/* --- the CSV exports: the figures behind the card, with the caution ------- */
+console.log('CSV exports');
+for (const tpl of ['house', 'office']) {
+  const want = await page.evaluate(tpl => {
+    const CS = ConstructionStudio;
+    CS.Store.load(CS.App.TEMPLATES.find(t => t.id === tpl).make()); CS.App.rebuild();
+    CS.App.tab = 'analysis'; CS.App.refreshChrome();
+    const d = CS.Loads.compute(CS.Store.doc);
+    return { name: CS.App.TEMPLATES.find(t => t.id === tpl).name, rows: d.rows.length, total: d.total,
+             sized: CS.Gen.plans.filter(p => p.meta && p.meta.ruleId).length };
+  }, tpl);
+  for (const [label, kind] of [['Loads CSV', 'loads'], ['Sizes CSV', 'sizes']]) {
+    const tag = `${want.name}: ${label}`;
+    try {
+      const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 5000 }),
+                                      page.click(`button:has-text("${label}")`)]);
+      const raw = readFileSync(await dl.path(), 'utf8');
+      ok(`${tag}: starts with the UTF-8 byte-order mark, for Excel`, raw.charCodeAt(0) === 0xfeff);
+      const txt = raw.replace(/^﻿/, '');
+      const lines = txt.split('\n'), body = lines.filter(l => !l.startsWith('#')).slice(1);
+      ok(`${tag}: downloads as …-${kind}.csv`, dl.suggestedFilename().endsWith(`-${kind}.csv`), dl.suggestedFilename());
+      ok(`${tag}: carries the not-for-construction caution`, /Not for construction/.test(txt));
+      ok(`${tag}: no NaN or undefined`, !/NaN|undefined/.test(txt));
+      if (kind === 'loads') {
+        ok(`${tag}: one row per level`, body.length === want.rows, `${body.length} rows`);
+        const last = body[body.length - 1].split(',');
+        const running = +last[14];
+        ok(`${tag}: running total = the card's total`, near(running, want.total, 1e-5), `${running} vs ${want.total}`);
+      } else {
+        ok(`${tag}: one row per sized element`, body.length === want.sized, `${body.length} vs ${want.sized}`);
+      }
+    } catch (e) { ok(`${tag}: downloads`, false, e.message.split('\n')[0]); }
+  }
+}
+
+/* --- a 1.1.0 file saved with Use "Roof", which is not a use ---------------- */
+{
+  const r = await page.evaluate(() => {
+    const CS = ConstructionStudio;
+    const json = JSON.stringify(CS.Model.serialize(CS.App.TEMPLATES.find(t => t.id === 'house').make()));
+    const old = JSON.parse(json); old.use = 'roof';
+    const doc = CS.Model.deserialize(JSON.stringify(old));
+    CS.Store.load(doc); CS.App.rebuild(); CS.LoadPath.on = true;
+    const text = CS.LoadPath.card().textContent; CS.LoadPath.on = false;
+    return { use: CS.Store.doc.use, saysRoof: /imposed \(roof\)/.test(text) };
+  });
+  await page.waitForTimeout(50);
+  const toast = await page.evaluate(() => [...document.querySelectorAll('.toast, [class*="toast"]')]
+    .some(e => /not a use/.test(e.textContent)));
+  ok('1.1.0 "Roof" use opens as Office', r.use === 'office', r.use);
+  ok('… and the card no longer says "(roof)"', !r.saysRoof);
+  ok('… and the student is told', toast);
+}
+
+/* --- pads under a wall building: the four corners share the building ------ */
+for (const [bx, bz] of [[1, 1], [2, 2]]) {
+  const r = await page.evaluate(([bx, bz]) => {
+    const CS = ConstructionStudio;
+    const doc = CS.App.TEMPLATES.find(t => t.id === 'house').make();
+    Object.assign(doc.grid, { bx, bz });
+    doc.slots.foundation = { sys: 'foundation.concrete.pad', p: {} };
+    CS.Store.load(doc); CS.App.rebuild();
+    const pads = CS.Gen.plans.filter(p => p.role === 'pad');
+    return { n: pads.length, sum: pads.reduce((a, p) => a + p.meta.N, 0), total: CS.Loads.compute(CS.Store.doc).total,
+             addrs: new Set(pads.map(p => p.addr)).size,
+             nan: pads.some(p => !isFinite(p.meta.N) || /NaN/.test(p.meta.formula)) };
+  }, [bx, bz]);
+  ok(`pads under walls, ${bx}×${bz} bays: four, no NaN`, r.n === 4 && !r.nan, JSON.stringify(r));
+  ok(`pads under walls, ${bx}×${bz} bays: they carry the whole building`, near(r.sum, r.total, 1e-9),
+     `${r.sum} vs ${r.total}`);
+  ok(`pads under walls, ${bx}×${bz} bays: each has its own address`, r.addrs === r.n, `${r.addrs} of ${r.n}`);
+}
+
+/* --- an untied rafter roof on a frame pushes the eaves, not walls --------- */
+{
+  const line = await page.evaluate(() => {
+    const CS = ConstructionStudio;
+    const doc = CS.App.TEMPLATES.find(t => t.id === 'office').make();
+    doc.slots.roof = { sys: 'roof.timber.rafter', p: {} };
+    CS.Store.load(doc); CS.App.rebuild(); CS.LoadPath.on = true;
+    const f = [...CS.LoadPath.card().querySelectorAll('.formula')].map(e => e.textContent).find(t => t.startsWith('H = '));
+    CS.LoadPath.on = false; return f;
+  });
+  ok('cut roof on a frame: thrust per metre of eaves', !!line && line.endsWith('kN per metre of eaves'), line);
+}
+
 ok('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 ok('no off-origin requests', offOrigin.length === 0, offOrigin.slice(0, 3).join(' | '));
 
